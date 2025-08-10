@@ -1,9 +1,14 @@
+using Accounting.Api.Middleware;
 using Accounting.Application.Common.Behaviors;
 using Accounting.Infrastructure; // Ensure this namespace is included for extension methods
 using Accounting.Infrastructure.Persistence;
 using Accounting.Infrastructure.Persistence.Seed;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -25,14 +30,16 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // ProblemDetails
-builder.Services.AddProblemDetails(options =>
-{
-    options.CustomizeProblemDetails = ctx =>
-    {
-        // traceId gibi faydalý bir alan ekleyelim
-        ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
-    };
-});
+//builder.Services.AddProblemDetails(options =>
+//{
+//    options.CustomizeProblemDetails = ctx =>
+//    {
+//        // traceId gibi faydalý bir alan ekleyelim
+//        ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
+//    };
+//});
+
+builder.Services.AddProblemDetails();
 
 // MediatR (Application assembly taramasý)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Accounting.Application.Invoices.Commands.Create.CreateInvoiceCommand).Assembly));
@@ -51,8 +58,8 @@ var app = builder.Build();
 // Middleware pipeline
 app.UseSerilogRequestLogging(); // basit request log
 
-// Exceptionlarý ProblemDetails olarak dönmesi için
-app.UseExceptionHandler();
+app.UseMiddleware<ExceptionToProblemDetailsMiddleware>();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -60,15 +67,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.RoutePrefix = "swagger";          // UI: /swagger
-        c.SwaggerEndpoint("v1/swagger.json", "Accounting.Api v1"); // JSON: /swagger/v1/swagger.json
+        c.RoutePrefix = "swagger";
+        c.SwaggerEndpoint("v1/swagger.json", "Accounting.Api v1");
     });
 }
 
-//app.UseHttpsRedirection();
-
+app.UseHttpsRedirection();
 app.UseAuthorization();
-
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())

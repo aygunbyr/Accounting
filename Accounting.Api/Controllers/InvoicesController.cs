@@ -1,5 +1,7 @@
 ﻿using Accounting.Api.Contracts.Invoices;
 using Accounting.Application.Invoices.Commands.Create;
+using Accounting.Application.Invoices.Queries.GetById;
+using Accounting.Application.Invoices.Queries.List;
 using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using Accounting.Infrastructure.Persistence;
@@ -19,16 +21,26 @@ public class InvoicesController : ControllerBase
     public InvoicesController(IMediator mediator) => _mediator = mediator;
 
     [HttpPost]
-    public async Task<ActionResult<CreateInvoiceResult>> Create([FromBody] CreateInvoiceCommand cmd, CancellationToken ct)
+    [ProducesResponseType(typeof(CreateInvoiceResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<CreateInvoiceResult>> Create([FromBody] CreateInvoiceCommand command, CancellationToken ct)
     {
-        var res = await _mediator.Send(cmd, ct);
+        var res = await _mediator.Send(command, ct);
         return CreatedAtAction(nameof(GetById), new { id = res.Id }, res);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<object>> GetById(int id, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetById([FromRoute] int id, CancellationToken ct)
     {
-        // Şimdilik basit (ileride Query nesnesi yaparız)
-        return Ok(new { id });
+        var res = await _mediator.Send(new GetInvoiceByIdQuery(id), ct);
+        return Ok(res);
+    }
+
+    [HttpGet]
+    public async Task<ActionResult> List([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] string? sort = "dateUtc:desc", CancellationToken ct = default)
+    {
+        var res = await _mediator.Send(new ListInvoicesQuery(pageNumber, pageSize, sort), ct);
+        return Ok(res);
     }
 }
