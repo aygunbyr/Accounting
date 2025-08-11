@@ -10,8 +10,8 @@ public class InvoiceCalculator
 
         foreach(var line in invoice.Lines)
         {
-            var net = Math.Round(line.Qty * line.UnitPrice, 2, MidpointRounding.ToEven);
-            var vat = Math.Round(net * line.VatRate / 100m, 2, MidpointRounding.ToEven);
+            var net = Math.Round(line.Qty * line.UnitPrice, 2, MidpointRounding.AwayFromZero);
+            var vat = Math.Round(net * line.VatRate / 100m, 2, MidpointRounding.AwayFromZero);
             var gross = net + vat;
 
             line.Net = net;
@@ -22,8 +22,8 @@ public class InvoiceCalculator
             tVat += vat;
         }
 
-        invoice.TotalNet = Math.Round(tNet, 2, MidpointRounding.ToEven);
-        invoice.TotalVat = Math.Round(tVat, 2, MidpointRounding.ToEven);
+        invoice.TotalNet = Math.Round(tNet, 2, MidpointRounding.AwayFromZero);
+        invoice.TotalVat = Math.Round(tVat, 2, MidpointRounding.AwayFromZero);
         invoice.TotalGross = invoice.TotalNet + invoice.TotalVat;
 
         return (invoice.TotalNet, invoice.TotalVat, invoice.TotalGross);
