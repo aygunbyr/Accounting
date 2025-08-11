@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using Accounting.Application.Common.Abstractions;
+using MediatR;
 
 namespace Accounting.Application.Invoices.Commands.Create;
 
@@ -7,7 +8,7 @@ public record CreateInvoiceCommand(
     string DateUtc,
     string Currency,
     List<CreateInvoiceLineDto> Lines
-) : IRequest<CreateInvoiceResult>;
+) : IRequest<CreateInvoiceResult>, ITransactionalRequest;
 
 public record CreateInvoiceLineDto(
     int ItemId,

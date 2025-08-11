@@ -49,6 +49,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<Accounting.Application.Invo
 
 // Pipeline Behaviors
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>));
 
 // Infrastructure (DbContext vs.)
 builder.Services.AddInfrastructure(builder.Configuration); // Ensure the AddInfrastructure extension method is implemented and accessible
