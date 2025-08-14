@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Payments.Commands.Create;
+using Accounting.Application.Payments.Queries.List;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,4 +24,28 @@ public class PaymentsController : ControllerBase
     // basit GET (ileride Query ile genişletiriz)
     [HttpGet("{id:int}")]
     public ActionResult<object> GetById(int id) => Ok(new { id });
+
+    [HttpGet]
+    public async Task<ActionResult> List(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? sort = "dateUtc:desc",
+        [FromQuery] int? accountId = null,
+        [FromQuery] int? contactId = null,
+        [FromQuery] int? direction = null,       // 1=In, 2=Out
+        [FromQuery] string? dateFromUtc = null,  // ISO-8601
+        [FromQuery] string? dateToUtc = null,    // ISO-8601
+        CancellationToken ct = default)
+    {
+        var dirEnum = direction is null ? null
+            : (Accounting.Domain.Entities.PaymentDirection?)direction;
+
+        var res = await _mediator.Send(new ListPaymentsQuery(
+            pageNumber, pageSize, sort,
+            accountId, contactId, dirEnum,
+            dateFromUtc, dateToUtc
+        ), ct);
+
+        return Ok(res);
+    }
 }
