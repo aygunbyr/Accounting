@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Models;
+using Accounting.Application.Common.Utils;
 using Accounting.Application.Payments.Queries.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -24,21 +25,16 @@ namespace Accounting.Application.Payments.Queries.List
         {
             var query = _db.Payments.AsNoTracking();
 
-            // Filtreler
-            if (q.AccountId is int accId)
-                query = query.Where(p => p.AccountId == accId);
-
-            if (q.ContactId is int conId)
-                query = query.Where(p => p.ContactId == conId);
-
-            if (q.Direction is not null)
-                query = query.Where(p => p.Direction == q.Direction);
+            // --- Filtreler ---
+            if (q.AccountId is int accId) query = query.Where(p => p.AccountId == accId);
+            if (q.ContactId is int conId) query = query.Where(p => p.ContactId == conId);
+            if (q.Direction is not null) query = query.Where(p => p.Direction == q.Direction);
 
             if (TryParseUtc(q.DateFromUtc, out var fromUtc)) query = query.Where(p => p.DateUtc >= fromUtc);
             if (TryParseUtc(q.DateToUtc, out var toUtc)) query = query.Where(p => p.DateUtc <= toUtc);
 
-            // Sıralama
-            var sort = (q.Sort ?? "dateUtc:desc").Split(":");
+            // --- Sıralama ---
+            var sort = (q.Sort ?? "dateUtc:desc").Split(':');
             var field = sort[0].ToLowerInvariant();
             var dir = sort.Length > 1 ? sort[1].ToLowerInvariant() : "desc";
 
@@ -50,39 +46,43 @@ namespace Accounting.Application.Payments.Queries.List
                 _ => query.OrderByDescending(p => p.DateUtc),
             };
 
+            // --- Toplam kayıt sayısı ---
             var total = await query.CountAsync(ct);
 
-            var page = await query
+            // --- Filtered toplam (sayfa sınırı yok) ---
+            // Not: EF decimal sum -> DB tarafında yapılır; ardından 2 haneye AwayFromZero ile string formatlarız
+            var filteredSum = await query.Select(p => (decimal?)p.Amount).SumAsync(ct) ?? 0m;
+
+            // --- Sayfa verisi ---
+            var pageQuery = query
                 .Skip((q.PageNumber - 1) * q.PageSize)
                 .Take(q.PageSize)
-                .Select(p => new
-                {
-                    p.Id,
-                    p.AccountId,
-                    p.ContactId,
-                    p.LinkedInvoiceId,
-                    p.DateUtc,
-                    p.Direction,
-                    p.Amount,
-                    p.Currency
-                })
-                .ToListAsync(ct);
+                .Select(p => new { p.Id, p.AccountId, p.ContactId, p.LinkedInvoiceId, p.DateUtc, p.Direction, p.Amount, p.Currency });
+
+            var pageData = await pageQuery.ToListAsync(ct);
+
+            // --- Page toplamı (sayfadaki kalemlerin toplamı) ---
+            var pageSum = pageData.Aggregate(0m, (acc, x) => acc + x.Amount);
 
             var inv = CultureInfo.InvariantCulture;
-            var items = page.Select(p => new PaymentListItemDto(
+
+            var items = pageData.Select(p => new PaymentListItemDto(
                 p.Id,
                 p.AccountId,
                 p.ContactId,
                 p.LinkedInvoiceId,
                 p.DateUtc,
                 p.Direction.ToString(),
-                p.Amount.ToString("F2", inv),
+                Money.S2(p.Amount),
                 p.Currency
+            )).ToList();
 
-                )).ToList();
+            var totals = new PagedTotals(
+                PageTotalAmount: Money.S2(pageSum),
+                FilteredTotalAmount: Money.S2(filteredSum)
+            );
 
-            return new PagedResult<PaymentListItemDto>(total, q.PageNumber, q.PageSize, items);
-
+            return new PagedResult<PaymentListItemDto>(total, q.PageNumber, q.PageSize, items, totals);
         }
 
         private static bool TryParseUtc(string? s, out DateTime value)

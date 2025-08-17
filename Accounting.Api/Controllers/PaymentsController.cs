@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Payments.Commands.Create;
+using Accounting.Application.Payments.Queries.GetById;
 using Accounting.Application.Payments.Queries.List;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -21,9 +22,13 @@ public class PaymentsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = res.Id }, res);
     }
 
-    // basit GET (ileride Query ile genişletiriz)
     [HttpGet("{id:int}")]
-    public ActionResult<object> GetById(int id) => Ok(new { id });
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetById([FromRoute] int id, CancellationToken ct)
+    {
+        var res = await _mediator.Send(new GetPaymentByIdQuery(id), ct);
+        return Ok(res);
+    }
 
     [HttpGet]
     public async Task<ActionResult> List(

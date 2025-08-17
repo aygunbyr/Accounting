@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Utils;
 using Accounting.Domain.Entities;
 using MediatR;
 using System.Globalization;
@@ -34,7 +35,7 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
         var inv = CultureInfo.InvariantCulture;
         return new CreatePaymentResult(
             entity.Id,
-            entity.Amount.ToString("F2", inv),
+            Money.S2(entity.Amount),
             entity.Currency
         );
     }

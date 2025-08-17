@@ -51,6 +51,24 @@ public sealed class ExceptionToProblemDetailsMiddleware
                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
             );
         }
+        catch (KeyNotFoundException knf)
+        {
+            var pd = new ProblemDetails
+            {
+                Title = "Not Found",
+                Status = StatusCodes.Status404NotFound,
+                Detail = knf.Message
+            };
+            pd.Extensions["traceId"] = context.TraceIdentifier;
+
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            context.Response.ContentType = "application/problem+json";
+
+            await JsonSerializer.SerializeAsync(
+                context.Response.Body, pd,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
+            );
+        }
         catch (Exception ex)
         {
             // Diğer her şey -> 500 + ProblemDetails

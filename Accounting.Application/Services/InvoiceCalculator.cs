@@ -1,4 +1,5 @@
-﻿using Accounting.Domain.Entities;
+﻿using Accounting.Application.Common.Utils;
+using Accounting.Domain.Entities;
 
 namespace Accounting.Application.Services;
 
@@ -10,8 +11,8 @@ public static class InvoiceCalculator
 
         foreach (var l in invoice.Lines)
         {
-            var net = Math.Round(l.Qty * l.UnitPrice, 2, MidpointRounding.AwayFromZero);
-            var vat = Math.Round(net * l.VatRate / 100m, 2, MidpointRounding.AwayFromZero);
+            var net = Money.R2(l.Qty * l.UnitPrice);
+            var vat = Money.R2(net * l.VatRate / 100m);
             var gross = net + vat;
 
             l.Net = net; l.Vat = vat; l.Gross = gross;
@@ -19,8 +20,8 @@ public static class InvoiceCalculator
             tNet += net; tVat += vat;
         }
 
-        invoice.TotalNet = Math.Round(tNet, 2, MidpointRounding.AwayFromZero);
-        invoice.TotalVat = Math.Round(tVat, 2, MidpointRounding.AwayFromZero);
+        invoice.TotalNet = Money.R2(tNet);
+        invoice.TotalVat = Money.R2(tVat);
         invoice.TotalGross = invoice.TotalNet + invoice.TotalVat;
 
         return (invoice.TotalNet, invoice.TotalVat, invoice.TotalGross);

@@ -20,24 +20,23 @@ builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+// JSON'da parasal alanlar string ("1234.56") olarak gelebilir.
+// Bu ayar, string gelen sayýlarý decimal'a baðlamamýza izin verir (precision kaybýný önler).
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.NumberHandling =
+        System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString;
+});
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Accounting.Api", Version = "v1" });
+    c.MapType<decimal>(() => new OpenApiSchema { Type = "string", Format = "decimal" });
+    c.MapType<decimal?>(() => new OpenApiSchema { Type = "string", Format = "decimal" });
 });
-
-// ProblemDetails
-//builder.Services.AddProblemDetails(options =>
-//{
-//    options.CustomizeProblemDetails = ctx =>
-//    {
-//        // traceId gibi faydalý bir alan ekleyelim
-//        ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
-//    };
-//});
 
 builder.Services.AddProblemDetails();
 
