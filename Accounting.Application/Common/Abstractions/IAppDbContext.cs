@@ -14,6 +14,8 @@ public interface IAppDbContext
     DbSet<InvoiceLine> InvoiceLines { get; }
     DbSet<CashBankAccount> CashBankAccounts { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<ExpenseList> ExpenseLists { get; }
+    DbSet<Expense> Expenses { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

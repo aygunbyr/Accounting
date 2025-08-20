@@ -15,6 +15,8 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
     public DbSet<CashBankAccount> CashBankAccounts => Set<CashBankAccount>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<ExpenseList> ExpenseLists => Set<ExpenseList>();
+    public DbSet<Expense> Expenses => Set<Expense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
