@@ -5,10 +5,21 @@ public record PagedResult<T>(
     int PageNumber,
     int PageSize,
     IReadOnlyList<T> Items,
-    PagedTotals? Totals = null
+    object? Totals = null // Payments'da PagedTotals, Invoices'da InvoicePagedTotals geçeceğiz
     );
 
+// For payment
 public record PagedTotals(
     string? PageTotalAmount,
     string? FilteredTotalAmount
     );
+
+public record InvoicePagedTotals(
+    string PageTotalNet,
+    string PageTotalVat,
+    string PageTotalGross,
+    string FilteredTotalNet,
+    string FilteredTotalVat,
+    string FilteredTotalGross
+    );
+

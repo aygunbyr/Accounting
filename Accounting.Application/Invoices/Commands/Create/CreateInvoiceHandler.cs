@@ -22,7 +22,7 @@ public class CreateInvoiceHandler : IRequestHandler<CreateInvoiceCommand, Create
             ContactId = request.ContactId,
             DateUtc = DateTime.SpecifyKind(parsed, DateTimeKind.Utc),
             Currency = request.Currency,
-            Direction = InvoiceDirection.Sale,
+            Type = InvoiceType.Sales,
             Lines = request.Lines.Select(l => new InvoiceLine
             {
                 ItemId = l.ItemId,

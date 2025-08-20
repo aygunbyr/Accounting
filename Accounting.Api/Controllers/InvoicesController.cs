@@ -38,9 +38,25 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult> List([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, [FromQuery] string? sort = "dateUtc:desc", CancellationToken ct = default)
+    public async Task<ActionResult> List(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? sort = "dateUtc:desc",
+        [FromQuery] int? contactId = null,
+        [FromQuery] int? type = 0, // 0 Any, 1 Sales, 2 Purchase
+        [FromQuery] string? dateFromUtc = null,
+        [FromQuery] string? dateToUtc = null,
+        CancellationToken ct = default)
     {
-        var res = await _mediator.Send(new ListInvoicesQuery(pageNumber, pageSize, sort), ct);
+        var typeEnum = Enum.IsDefined(typeof(InvoiceTypeFilter), type ?? 0)
+            ? (InvoiceTypeFilter)(type ?? 0)
+            : InvoiceTypeFilter.Any;
+
+        var res = await _mediator.Send(new ListInvoicesQuery(
+            pageNumber, pageSize, sort,
+            contactId, typeEnum, dateFromUtc, dateToUtc
+        ), ct);
+
         return Ok(res);
     }
 }

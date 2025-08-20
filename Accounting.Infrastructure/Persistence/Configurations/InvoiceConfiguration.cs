@@ -12,7 +12,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 
         builder.HasKey(x => x.Id);
 
-        builder.Property(x => x.Direction).HasConversion<int>();
+        builder.Property(i => i.Type).HasConversion<int>().IsRequired();
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
         builder.Property(x => x.DateUtc).IsRequired();
 
@@ -27,6 +27,6 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.DateUtc);
-        builder.HasIndex(x => new { x.Direction, x.DateUtc });
+        builder.HasIndex(x => new { x.Type, x.DateUtc });
     }
 }

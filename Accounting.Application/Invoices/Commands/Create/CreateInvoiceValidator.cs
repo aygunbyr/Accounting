@@ -10,6 +10,7 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
         RuleFor(x => x.Currency).NotEmpty().Length(3);
         RuleFor(x => x.DateUtc).NotEmpty();
         RuleFor(x => x.Lines).NotEmpty();
+        RuleFor(x => x.Type).IsInEnum();
 
         RuleForEach(x => x.Lines).ChildRules(line =>
         {
