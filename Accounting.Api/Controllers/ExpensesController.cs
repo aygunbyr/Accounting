@@ -1,5 +1,6 @@
-﻿using Accounting.Application.Expenses.Commands.CreateList;
-using Accounting.Application.Expenses.Commands.AddLine;
+﻿using Accounting.Application.Expenses.Commands.AddLine;
+using Accounting.Application.Expenses.Commands.CreateList;
+using Accounting.Application.Expenses.Queries.List;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,4 +36,25 @@ public class ExpensesController : ControllerBase
 
     [HttpGet("lines/{id:int}")]
     public ActionResult GetLineById([FromRoute] int id) => Ok(new { id });
+
+    [HttpGet("lines")]
+    public async Task<ActionResult> ListLines(
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 20,
+    [FromQuery] string? sort = "dateUtc:desc",
+    [FromQuery] int? expenseListId = null,
+    [FromQuery] int? supplierId = null,
+    [FromQuery] string? currency = null,
+    [FromQuery] string? category = null,
+    [FromQuery] string? dateFromUtc = null,
+    [FromQuery] string? dateToUtc = null,
+    CancellationToken ct = default)
+    {
+        var res = await _mediator.Send(new ListExpensesQuery(
+            pageNumber, pageSize, sort,
+            expenseListId, supplierId, currency, category, dateFromUtc, dateToUtc
+        ), ct);
+
+        return Ok(res);
+    }
 }
