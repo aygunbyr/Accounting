@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Expenses.Commands.AddLine;
 using Accounting.Application.Expenses.Commands.CreateList;
+using Accounting.Application.Expenses.Commands.Review;
+using Accounting.Application.Expenses.Queries.GetById;
 using Accounting.Application.Expenses.Queries.List;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -23,15 +25,12 @@ public class ExpensesController : ControllerBase
     }
 
     [HttpGet("lists/{id:int}")]
-    public ActionResult GetListById([FromRoute] int id) => Ok(new { id });
-
-    [HttpPost("lines")]
-    [ProducesResponseType(typeof(Accounting.Application.Expenses.Queries.Dto.ExpenseLineDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult> AddLine([FromBody] AddExpenseLineCommand cmd, CancellationToken ct)
+    [ProducesResponseType(typeof(Accounting.Application.Expenses.Queries.Dto.ExpenseListDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetListById([FromRoute] int id, CancellationToken ct)
     {
-        var res = await _mediator.Send(cmd, ct);
-        return CreatedAtAction(nameof(GetLineById), new { id = res.Id }, res);
+        var res = await _mediator.Send(new GetExpenseListByIdQuery(id), ct);
+        return Ok(res);
     }
 
     [HttpGet("lines/{id:int}")]
@@ -55,6 +54,16 @@ public class ExpensesController : ControllerBase
             expenseListId, supplierId, currency, category, dateFromUtc, dateToUtc
         ), ct);
 
+        return Ok(res);
+    }
+
+    [HttpPost("lists/{id:int}/review")]
+    [ProducesResponseType(typeof(Accounting.Application.Expenses.Queries.Dto.ExpenseListDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> ReviewList([FromRoute] int id, CancellationToken ct)
+    {
+        var res = await _mediator.Send(new ReviewExpenseListCommand(id), ct);
         return Ok(res);
     }
 }
