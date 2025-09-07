@@ -15,9 +15,20 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
         RuleForEach(x => x.Lines).ChildRules(line =>
         {
             line.RuleFor(l => l.ItemId).GreaterThan(0);
-            line.RuleFor(l => l.Qty).GreaterThan(0);
-            line.RuleFor(l => l.UnitPrice).GreaterThanOrEqualTo(0);
-            line.RuleFor(l => l.VatRate).InclusiveBetween(0, 100);
+
+            line.RuleFor(l => l.Qty)
+                .NotEmpty()
+                .Matches(@"^\d+(\.\d{1,3})?$")
+                .WithMessage("Qty must be a decimal with up to 3 fraction digits.");
+
+            line.RuleFor(l => l.UnitPrice)
+                .NotEmpty()
+                .Matches(@"^\d+(\.\d{1,4})?$")
+                .WithMessage("UnitPrice must be a decimal with up to 4 fraction digits.");
+
+            line.RuleFor(l => l.VatRate)
+                .InclusiveBetween(0, 100);
         });
+
     }
 }

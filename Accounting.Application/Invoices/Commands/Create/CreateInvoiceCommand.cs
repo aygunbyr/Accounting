@@ -12,13 +12,6 @@ public record CreateInvoiceCommand(
     InvoiceType Type = InvoiceType.Sales
 ) : IRequest<CreateInvoiceResult>, ITransactionalRequest;
 
-public record CreateInvoiceLineDto(
-    int ItemId,
-    decimal Qty,
-    decimal UnitPrice,
-    int VatRate
-);
-
 public record CreateInvoiceResult(
     int Id,
     string TotalNet,

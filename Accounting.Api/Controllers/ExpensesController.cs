@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Expenses.Commands.AddLine;
 using Accounting.Application.Expenses.Commands.CreateList;
+using Accounting.Application.Expenses.Commands.PostToBill;
 using Accounting.Application.Expenses.Commands.Review;
 using Accounting.Application.Expenses.Queries.GetById;
 using Accounting.Application.Expenses.Queries.List;
@@ -66,4 +67,30 @@ public class ExpensesController : ControllerBase
         var res = await _mediator.Send(new ReviewExpenseListCommand(id), ct);
         return Ok(res);
     }
+
+    [HttpPost("lists/{id:int}/post-to-bill")]
+    [ProducesResponseType(typeof(PostExpenseListToBillResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> PostToBill([FromRoute] int id, [FromBody] PostExpenseListToBillBody body, CancellationToken ct)
+    {
+        // Body için küçük bir model: SupplierId, Currency, ItemId, DateUtc?
+        var cmd = new PostExpenseListToBillCommand(
+            ExpenseListId: id,
+            SupplierId: body.SupplierId,
+            Currency: body.Currency,
+            ItemId: body.ItemId,
+            DateUtc: body.DateUtc
+        );
+
+        var res = await _mediator.Send(cmd, ct);
+        return Ok(res);
+    }
+
+    public sealed record PostExpenseListToBillBody(
+        int SupplierId,
+        string Currency,
+        int ItemId,
+        string? DateUtc
+    );
 }
