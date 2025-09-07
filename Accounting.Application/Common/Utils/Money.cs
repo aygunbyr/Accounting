@@ -17,5 +17,6 @@ public static class Money
 
     // Format (decimal -> "F2"/"F4" string)
     public static string S2(decimal v) => R2(v).ToString("F2", Inv);
+    public static string S3(decimal v) => R3(v).ToString("F3", Inv);
     public static string S4(decimal v) => R4(v).ToString("F4", Inv);
 }

@@ -1,13 +1,14 @@
 ﻿namespace Accounting.Application.Invoices.Queries.Dto;
 
 public record InvoiceLineDto(
+    int Id,
     int ItemId,
-    decimal Qty,
-    decimal UnitPrice,
+    string Qty,        // F3 string
+    string UnitPrice,  // F4 string
     int VatRate,
-    decimal Net,
-    decimal Vat,
-    decimal Gross
+    string Net,        // F2 string
+    string Vat,        // F2 string
+    string Gross       // F2 string
 );
 
 public record InvoiceDto(
@@ -15,10 +16,10 @@ public record InvoiceDto(
     int ContactId,
     DateTime DateUtc,
     string Currency,
-    string TotalNet,
-    string TotalVat,
-    string TotalGross,
-    List<InvoiceLineDto> Lines
+    string TotalNet,     // F2
+    string TotalVat,     // F2
+    string TotalGross,   // F2
+    IReadOnlyList<InvoiceLineDto> Lines
 );
 
 public record InvoiceListItemDto(
