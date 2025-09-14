@@ -43,7 +43,8 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
             Money.S2(inv.TotalNet),
             Money.S2(inv.TotalVat),
             Money.S2(inv.TotalGross),
-            lines
+            lines,
+            Convert.ToBase64String(inv.RowVersion)
         );
     }
 }

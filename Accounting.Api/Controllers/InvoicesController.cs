@@ -1,5 +1,8 @@
 ﻿using Accounting.Api.Contracts.Invoices;
 using Accounting.Application.Invoices.Commands.Create;
+using Accounting.Application.Invoices.Commands.Delete;
+using Accounting.Application.Invoices.Commands.Update;
+using Accounting.Application.Invoices.Queries.Dto;
 using Accounting.Application.Invoices.Queries.GetById;
 using Accounting.Application.Invoices.Queries.List;
 using Accounting.Application.Services;
@@ -59,4 +62,31 @@ public class InvoicesController : ControllerBase
 
         return Ok(res);
     }
+
+    // PUT /api/invoices/{id}
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> UpdateHeader([FromRoute] int id, [FromBody] UpdateInvoiceHeaderCommand body, CancellationToken ct)
+    {
+        if (id != body.Id) return BadRequest();
+        var res = await _mediator.Send(body, ct);
+        return Ok(res);
+    }
+
+    // DELETE /api/invoices/{id}
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> SoftDelete([FromRoute] int id, [FromBody] RowVersionBody body, CancellationToken ct)
+    {
+        if (id <= 0) return BadRequest();
+        await _mediator.Send(new SoftDeleteInvoiceCommand(id, body.RowVersion), ct);
+        return NoContent();
+    }
+
+    public sealed record RowVersionBody(string RowVersion);
+
 }

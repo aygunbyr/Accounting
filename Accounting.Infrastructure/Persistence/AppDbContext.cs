@@ -1,6 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Accounting.Infrastructure.Persistence;
@@ -27,5 +28,7 @@ public class AppDbContext : DbContext, IAppDbContext
 
     public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
     => await Database.BeginTransactionAsync(cancellationToken);
+
+    public new EntityEntry Entry(object entity) => base.Entry(entity);
 
 }

@@ -1,5 +1,6 @@
 ﻿using Accounting.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,4 +21,7 @@ public interface IAppDbContext
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
+
+    // concurrency için gerekli
+    EntityEntry Entry(object entity);
 }

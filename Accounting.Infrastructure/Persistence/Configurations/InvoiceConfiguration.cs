@@ -6,27 +6,33 @@ namespace Accounting.Infrastructure.Persistence.Configurations;
 
 public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
 {
-    public void Configure(EntityTypeBuilder<Invoice> builder)
+    public void Configure(EntityTypeBuilder<Invoice> b)
     {
-        builder.ToTable("Invoices");
+        b.ToTable("Invoices");
 
-        builder.HasKey(x => x.Id);
+        b.HasKey(x => x.Id);
 
-        builder.Property(i => i.Type).HasConversion<int>().IsRequired();
-        builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
-        builder.Property(x => x.DateUtc).IsRequired();
+        b.Property(i => i.Type).HasConversion<int>().IsRequired();
+        b.Property(x => x.Currency).IsRequired().HasMaxLength(3);
+        b.Property(x => x.DateUtc).IsRequired();
 
         // Totals
-        builder.Property(x => x.TotalNet).HasColumnType("decimal(18,2)");
-        builder.Property(x => x.TotalVat).HasColumnType("decimal(18,2)");
-        builder.Property(x => x.TotalGross).HasColumnType("decimal(18,2)");
+        b.Property(x => x.TotalNet).HasColumnType("decimal(18,2)");
+        b.Property(x => x.TotalVat).HasColumnType("decimal(18,2)");
+        b.Property(x => x.TotalGross).HasColumnType("decimal(18,2)");
 
-        builder.HasMany(x => x.Lines)
+        b.HasMany(x => x.Lines)
             .WithOne()
             .HasForeignKey(l => l.InvoiceId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(x => x.DateUtc);
-        builder.HasIndex(x => new { x.Type, x.DateUtc });
+        b.HasIndex(x => x.DateUtc);
+        b.HasIndex(x => new { x.Type, x.DateUtc });
+
+        // concurrency token
+        b.Property(x => x.RowVersion).IsRowVersion();
+
+        // soft delete
+        b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

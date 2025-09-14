@@ -18,4 +18,7 @@ public class Invoice
 
     public List<InvoiceLine> Lines { get; set; } = new();
 
+    public bool IsDeleted { get; set; } // soft delete
+    public byte[] RowVersion { get; set; } = null!; // optimistic concurrency
+
 }

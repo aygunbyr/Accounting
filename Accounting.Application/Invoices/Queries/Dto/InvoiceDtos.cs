@@ -19,7 +19,8 @@ public record InvoiceDto(
     string TotalNet,     // F2
     string TotalVat,     // F2
     string TotalGross,   // F2
-    IReadOnlyList<InvoiceLineDto> Lines
+    IReadOnlyList<InvoiceLineDto> Lines,
+    string RowVersion // NEW: base64
 );
 
 public record InvoiceListItemDto(
