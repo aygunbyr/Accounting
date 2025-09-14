@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,7 +29,8 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
         }
         catch (DbUpdateConcurrencyException)
         {
-            throw new InvalidOperationException("Fatura başka biri tarafından güncellendi/silindi.");
+            throw new ConcurrencyConflictException(
+        "Kayıt başka bir kullanıcı tarafından güncellendi. Lütfen sayfayı yenileyip tekrar deneyin.");
         }
     }
 }

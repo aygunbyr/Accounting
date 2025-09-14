@@ -1,9 +1,10 @@
-﻿using System.Globalization;
-using Accounting.Application.Common.Abstractions;
+﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Invoices.Queries.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace Accounting.Application.Invoices.Commands.Update;
 
@@ -43,7 +44,8 @@ public class UpdateInvoiceHeaderHandler
         }
         catch (DbUpdateConcurrencyException)
         {
-            throw new InvalidOperationException("Fatura başka biri tarafından güncellendi. Lütfen sayfayı yenileyin.");
+            throw new ConcurrencyConflictException(
+         "Kayıt başka bir kullanıcı tarafından güncellendi. Lütfen sayfayı yenileyip tekrar deneyin.");
         }
 
         // dto

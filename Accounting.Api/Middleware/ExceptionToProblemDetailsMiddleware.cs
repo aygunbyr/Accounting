@@ -1,6 +1,8 @@
-﻿using System.Text.Json;
+﻿using Accounting.Application.Common.Errors;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace Accounting.Api.Middleware;
 
@@ -22,6 +24,8 @@ public sealed class ExceptionToProblemDetailsMiddleware
 
     public async Task Invoke(HttpContext context)
     {
+        var ct = context.RequestAborted;
+
         try
         {
             await _next(context);
@@ -48,7 +52,8 @@ public sealed class ExceptionToProblemDetailsMiddleware
             await JsonSerializer.SerializeAsync(
                 context.Response.Body,
                 pd,
-                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase },
+                cancellationToken: ct
             );
         }
         catch (KeyNotFoundException knf)
@@ -66,8 +71,65 @@ public sealed class ExceptionToProblemDetailsMiddleware
 
             await JsonSerializer.SerializeAsync(
                 context.Response.Body, pd,
-                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase },
+                cancellationToken: ct
             );
+        }
+        // 409 - Concurrency (bizim domain exception)
+        catch (ConcurrencyConflictException cex)
+        {
+            var pd = new ProblemDetails
+            {
+                Title = "Eşzamanlılık çakışması",
+                Status = StatusCodes.Status409Conflict,
+                Detail = cex.Message, // kullanıcı dostu mesaj
+                Type = "about:blank"
+            };
+            pd.Extensions["code"] = cex.Code; // "concurrency_conflict"
+            pd.Extensions["traceId"] = context.TraceIdentifier;
+
+            context.Response.StatusCode = StatusCodes.Status409Conflict;
+            context.Response.ContentType = "application/problem+json";
+            await JsonSerializer.SerializeAsync(context.Response.Body, pd,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }, ct);
+            return;
+        }
+        // 422 - İş kuralı ihlali
+        catch (BusinessRuleException brex)
+        {
+            var pd = new ProblemDetails
+            {
+                Title = "İş kuralı ihlali",
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Detail = brex.Message,
+                Type = "about:blank"
+            };
+            pd.Extensions["code"] = brex.Code; // "business_rule_violation"
+            pd.Extensions["traceId"] = context.TraceIdentifier;
+
+            context.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
+            context.Response.ContentType = "application/problem+json";
+            await JsonSerializer.SerializeAsync(context.Response.Body, pd,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }, ct);
+            return;
+        }
+        // 409 - EF concurrency doğrudan gelirse (fallback)
+        catch (DbUpdateConcurrencyException)
+        {
+            var pd = new ProblemDetails
+            {
+                Title = "Eşzamanlılık çakışması",
+                Status = StatusCodes.Status409Conflict,
+                Detail = "Kayıt başka bir kullanıcı tarafından güncellendi. Lütfen sayfayı yenileyip tekrar deneyin."
+            };
+            pd.Extensions["code"] = "concurrency_conflict";
+            pd.Extensions["traceId"] = context.TraceIdentifier;
+
+            context.Response.StatusCode = StatusCodes.Status409Conflict;
+            context.Response.ContentType = "application/problem+json";
+            await JsonSerializer.SerializeAsync(context.Response.Body, pd,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }, ct);
+            return;
         }
         catch (Exception ex)
         {

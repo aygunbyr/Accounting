@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Expenses.Queries.Dto;
 // CreateInvoiceCommand/Dto referansları:
@@ -34,7 +35,7 @@ public class PostExpenseListToBillHandler
             throw new KeyNotFoundException($"ExpenseList {req.ExpenseListId} not found.");
 
         if (list.Status != ExpenseListStatus.Reviewed)
-            throw new InvalidOperationException("Only Reviewed lists can be posted to bill.");
+            throw new BusinessRuleException("Only Reviewed lists can be posted to bill.");
 
         if (!list.Lines.Any())
             throw new InvalidOperationException("Expense list has no lines.");
