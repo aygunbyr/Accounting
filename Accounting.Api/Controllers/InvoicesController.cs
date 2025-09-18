@@ -1,4 +1,5 @@
-﻿using Accounting.Api.Contracts.Invoices;
+﻿using Accounting.Api.Contracts;
+using Accounting.Api.Contracts.Invoices;
 using Accounting.Application.Invoices.Commands.Create;
 using Accounting.Application.Invoices.Commands.Delete;
 using Accounting.Application.Invoices.Commands.Update;
@@ -80,13 +81,11 @@ public class InvoicesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> SoftDelete([FromRoute] int id, [FromBody] RowVersionBody body, CancellationToken ct)
+    public async Task<ActionResult> SoftDelete([FromRoute] int id, [FromBody] RowVersionDto body, CancellationToken ct)
     {
         if (id <= 0) return BadRequest();
         await _mediator.Send(new SoftDeleteInvoiceCommand(id, body.RowVersion), ct);
         return NoContent();
     }
-
-    public sealed record RowVersionBody(string RowVersion);
 
 }

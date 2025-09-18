@@ -11,4 +11,7 @@ public class Contact
     public string? Phone { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? UpdatedAtUtc { get; set; }
+
+    public bool IsDeleted { get; set; }
+    public byte[] RowVersion { get; set; } = null!;
 }

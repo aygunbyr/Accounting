@@ -6,19 +6,23 @@ namespace Accounting.Infrastructure.Persistence.Configurations;
 
 public class ContactConfiguration : IEntityTypeConfiguration<Contact>
 {
-    public void Configure(EntityTypeBuilder<Contact> builder)
+    public void Configure(EntityTypeBuilder<Contact> b)
     {
-        builder.ToTable("Contacts");
+        b.ToTable("Contacts");
 
-        builder.HasKey(x => x.Id);
+        b.HasKey(x => x.Id);
 
-        builder.Property(x => x.Type).HasConversion<int>();
-        builder.Property(x => x.Name).IsRequired().HasMaxLength(120);
-        builder.Property(x => x.TaxNo).HasMaxLength(20);
-        builder.Property(x => x.Email).HasMaxLength(160);
-        builder.Property(x => x.Phone).HasMaxLength(40);
+        b.Property(x => x.Type).HasConversion<int>();
+        b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        b.Property(x => x.TaxNo).HasMaxLength(20);
+        b.Property(x => x.Email).HasMaxLength(320);
+        b.Property(x => x.Phone).HasMaxLength(40);
 
-        builder.HasIndex(x => x.Name);
-        builder.HasIndex(x => x.Type);
+        b.HasIndex(x => x.Name);
+        b.HasIndex(x => x.Type);
+
+        b.Property(x => x.RowVersion).IsRowVersion(); // optimistic concurrency
+        b.HasQueryFilter(x => !x.IsDeleted); // soft delete
+        b.HasIndex(x => new { x.Type, x.Name }); // basit arama için
     }
 }
