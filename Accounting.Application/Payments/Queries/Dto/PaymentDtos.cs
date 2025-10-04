@@ -9,7 +9,7 @@ public record PaymentListItemDto(
     string Direction,
     string Amount,
     string Currency
-    );
+);
 
 public record PaymentDetailDto(
     int Id,
@@ -19,5 +19,6 @@ public record PaymentDetailDto(
     DateTime DateUtc,
     string Direction,
     string Amount,
-    string Currency
-    );
+    string Currency,
+    string RowVersion
+);

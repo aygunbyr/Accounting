@@ -13,12 +13,8 @@ public class GetPaymentByIdHandler : IRequestHandler<GetPaymentByIdQuery, Paymen
 
     public async Task<PaymentDetailDto> Handle(GetPaymentByIdQuery q, CancellationToken ct)
     {
-        var p = await _db.Payments
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == q.Id, ct);
-
-        if (p is null)
-            throw new KeyNotFoundException($"Payment {q.Id} not found.");
+        var p = await _db.Payments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == q.Id, ct);
+        if (p is null) throw new KeyNotFoundException($"Payment {q.Id} not found.");
 
         var inv = CultureInfo.InvariantCulture;
 
@@ -30,7 +26,8 @@ public class GetPaymentByIdHandler : IRequestHandler<GetPaymentByIdQuery, Paymen
             p.DateUtc,
             p.Direction.ToString(),
             p.Amount.ToString("F2", inv),
-            p.Currency
-            );
+            p.Currency,
+            Convert.ToBase64String(p.RowVersion)
+        );
     }
 }

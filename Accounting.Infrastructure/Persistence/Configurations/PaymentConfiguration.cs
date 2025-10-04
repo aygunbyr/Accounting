@@ -6,18 +6,21 @@ namespace Accounting.Infrastructure.Persistence.Configurations;
 
 public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 {
-    public void Configure(EntityTypeBuilder<Payment> builder)
+    public void Configure(EntityTypeBuilder<Payment> b)
     {
-        builder.ToTable("Payments");
+        b.ToTable("Payments");
 
-        builder.HasKey(x => x.Id);
+        b.HasKey(x => x.Id);
 
-        builder.Property(x => x.Direction).HasConversion<int>();
-        builder.Property(x => x.DateUtc).IsRequired();
-        builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
-        builder.Property(x => x.Amount).HasColumnType("decimal(18,2)");
+        b.Property(x => x.Direction).HasConversion<int>();
+        b.Property(x => x.DateUtc).IsRequired();
+        b.Property(x => x.Currency).IsRequired().HasMaxLength(3);
+        b.Property(x => x.Amount).HasColumnType("decimal(18,2)");
 
-        builder.HasIndex(x => x.DateUtc);
-        builder.HasIndex(x => new { x.Direction, x.DateUtc });
+        b.HasIndex(x => x.DateUtc);
+        b.HasIndex(x => new { x.Direction, x.DateUtc });
+
+        b.Property(x => x.RowVersion).IsRowVersion();
+        b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

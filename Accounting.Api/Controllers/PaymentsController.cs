@@ -1,4 +1,6 @@
-﻿using Accounting.Application.Payments.Commands.Create;
+﻿using Accounting.Api.Contracts;
+using Accounting.Application.Payments.Commands.Create;
+using Accounting.Application.Payments.Queries.Dto;
 using Accounting.Application.Payments.Queries.GetById;
 using Accounting.Application.Payments.Queries.List;
 using MediatR;
@@ -22,7 +24,9 @@ public class PaymentsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = res.Id }, res);
     }
 
+    // GET /api/payments/{id}
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(PaymentDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> GetById([FromRoute] int id, CancellationToken ct)
     {
@@ -53,4 +57,30 @@ public class PaymentsController : ControllerBase
 
         return Ok(res);
     }
+
+    // PUT /api/payments/{id}
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(PaymentDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Update([FromRoute] int id, [FromBody] UpdatePaymentCommand body, CancellationToken ct)
+    {
+        if (id != body.Id) return BadRequest();
+        var res = await _mediator.Send(body, ct);
+        return Ok(res);
+    }
+
+    // DELETE /api/payments/{id}
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> SoftDelete([FromRoute] int id, [FromBody] RowVersionDto body, CancellationToken ct)
+    {
+        if (id <= 0) return BadRequest();
+        await _mediator.Send(new SoftDeletePaymentCommand(id, body.RowVersion), ct);
+        return NoContent();
+    }
+
+
 }

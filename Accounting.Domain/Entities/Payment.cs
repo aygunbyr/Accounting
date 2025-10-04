@@ -12,4 +12,7 @@ public class Payment
     public decimal Amount { get; set; }
     public string Currency { get; set; } = "TRY";
 
+    public bool IsDeleted { get; set; }
+    public byte[] RowVersion { get; set; } = null!;
+
 }
