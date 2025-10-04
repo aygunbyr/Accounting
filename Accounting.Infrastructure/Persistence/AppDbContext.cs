@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Domain.Entities;
+using Accounting.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -8,7 +9,12 @@ namespace Accounting.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IAppDbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly AuditSaveChangesInterceptor _audit;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, AuditSaveChangesInterceptor audit) : base(options)
+    {
+        _audit = audit;
+    }
 
     public DbSet<Contact> Contacts => Set<Contact>();
     public DbSet<Item> Items => Set<Item>();
@@ -24,6 +30,12 @@ public class AppDbContext : DbContext, IAppDbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        optionsBuilder.AddInterceptors(_audit);
     }
 
     public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)

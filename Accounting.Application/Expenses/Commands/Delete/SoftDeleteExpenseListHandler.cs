@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
+using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,18 +13,31 @@ public class SoftDeleteExpenseListHandler : IRequestHandler<SoftDeleteExpenseLis
 
     public async Task Handle(SoftDeleteExpenseListCommand req, CancellationToken ct)
     {
-        var list = await _db.ExpenseLists.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
+        var list = await _db.ExpenseLists
+            .Include(x => x.Lines)
+            .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
+
         if (list is null)
             throw new KeyNotFoundException($"ExpenseList {req.Id} not found.");
 
-        // İş kuralı: Reviewed olan liste silinmesin
-        if (list.Status == Domain.Entities.ExpenseListStatus.Reviewed)
-            throw new BusinessRuleException("Onaylanmış masraf listesi silinemez.");
-
+        // concurrency
         var original = Convert.FromBase64String(req.RowVersion);
         _db.Entry(list).Property("RowVersion").OriginalValue = original;
 
+        // iş kuralı (opsiyonel): Reviewed olan silinemez
+        if (list.Status == ExpenseListStatus.Reviewed)
+            throw new BusinessRuleException("Onaylanmış masraf listesi silinemez.");
+
+        // parent soft delete
         list.IsDeleted = true;
+        list.DeletedAtUtc = DateTime.UtcNow;
+
+        // children soft delete
+        foreach (var line in list.Lines)
+        {
+            line.IsDeleted = true;
+            line.DeletedAtUtc = DateTime.UtcNow;
+        }
 
         try
         {

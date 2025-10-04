@@ -1,4 +1,5 @@
 ﻿using Accounting.Domain.Entities;
+using Accounting.Infrastructure.Persistence.Configurations; // ApplyRowVersion/ApplySoftDelete
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -9,7 +10,6 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
     public void Configure(EntityTypeBuilder<Payment> b)
     {
         b.ToTable("Payments");
-
         b.HasKey(x => x.Id);
 
         b.Property(x => x.Direction).HasConversion<int>();
@@ -17,10 +17,18 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         b.Property(x => x.Currency).IsRequired().HasMaxLength(3);
         b.Property(x => x.Amount).HasColumnType("decimal(18,2)");
 
+        // audit
+        b.Property(x => x.CreatedAtUtc)
+            .HasDefaultValueSql("GETUTCDATE()")
+            .ValueGeneratedOnAdd()
+            .IsRequired();
+
+        // concurrency + soft delete
+        b.ApplyRowVersion();
+        b.ApplySoftDelete();
+
+        // indexes
         b.HasIndex(x => x.DateUtc);
         b.HasIndex(x => new { x.Direction, x.DateUtc });
-
-        b.Property(x => x.RowVersion).IsRowVersion();
-        b.HasQueryFilter(x => !x.IsDeleted);
     }
 }

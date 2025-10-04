@@ -43,7 +43,7 @@ public class GetExpenseListByIdHandler
         return new ExpenseListDetailDto(
             list.Id,
             list.Name,
-            list.CreatedUtc,
+            list.CreatedAtUtc,
             list.Status.ToString(),
             lineDtos,
             Money.S2(total),

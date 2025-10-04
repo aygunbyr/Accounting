@@ -1,6 +1,8 @@
-﻿namespace Accounting.Domain.Entities;
+﻿using Accounting.Domain.Common;
 
-public class InvoiceLine
+namespace Accounting.Domain.Entities;
+
+public class InvoiceLine : IHasTimestamps
 {
     public int Id { get; set; }
     public int InvoiceId { get; set; }
@@ -13,4 +15,7 @@ public class InvoiceLine
     public decimal Net { get; set; }
     public decimal Vat { get; set; }
     public decimal Gross { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
 }

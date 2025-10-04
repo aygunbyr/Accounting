@@ -23,7 +23,7 @@ public class CreateExpenseListHandler : IRequestHandler<CreateExpenseListCommand
         return new ExpenseListDto(
             entity.Id,
             entity.Name,
-            entity.CreatedUtc,
+            entity.CreatedAtUtc,
             entity.Status.ToString()
         );
     }

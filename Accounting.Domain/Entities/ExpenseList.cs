@@ -1,25 +1,24 @@
-﻿namespace Accounting.Domain.Entities;
+﻿using Accounting.Domain.Common;
 
-public enum ExpenseListStatus
-{
-    Draft = 1,
-    Reviewed = 2,
-    Posted = 3, // fatura oluşturuldu
-}
+namespace Accounting.Domain.Entities;
 
-public class ExpenseList
+public enum ExpenseListStatus { Draft = 1, Reviewed = 2, Posted = 3 }
+
+public class ExpenseList : IHasTimestamps, ISoftDeletable, IHasRowVersion
 {
     public int Id { get; set; }
     public string Name { get; set; } = "Masraf Listesi";
-    public DateTime CreatedUtc { get; set; }
-    public ExpenseListStatus Status { get; set; } = ExpenseListStatus.Draft;
 
-    // Post edildiğinde oluşturulan fatura Id'si
+    // eski CreatedUtc yerine unified:
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
+
+    public ExpenseListStatus Status { get; set; } = ExpenseListStatus.Draft;
     public int? PostedInvoiceId { get; set; }
 
     public ICollection<Expense> Lines { get; set; } = new List<Expense>();
 
-    public bool IsDeleted { get; set; } // soft delete
-    public byte[] RowVersion { get; set; } = null!; // optimistic concurrency
-
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+    public byte[] RowVersion { get; set; } = null!;
 }

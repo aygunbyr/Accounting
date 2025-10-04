@@ -6,28 +6,32 @@ namespace Accounting.Infrastructure.Persistence.Configurations;
 
 public class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
 {
-    public void Configure(EntityTypeBuilder<InvoiceLine> builder)
+    public void Configure(EntityTypeBuilder<InvoiceLine> b)
     {
-        builder.ToTable("InvoiceLines");
+        b.ToTable("InvoiceLines");
+        b.HasKey(x => x.Id);
 
-        builder.HasKey(x => x.Id);
+        b.Property(x => x.Qty).HasColumnType("decimal(18,3)");
+        b.Property(x => x.UnitPrice).HasColumnType("decimal(18,4)");
+        b.Property(x => x.VatRate).IsRequired();
 
-        builder.Property(x => x.Qty).HasColumnType("decimal(18,3)");
-        builder.Property(x => x.UnitPrice).HasColumnType("decimal(18,4)");
-        builder.Property(x => x.VatRate).IsRequired();
+        b.Property(x => x.Net).HasColumnType("decimal(18,2)");
+        b.Property(x => x.Vat).HasColumnType("decimal(18,2)");
+        b.Property(x => x.Gross).HasColumnType("decimal(18,2)");
 
-        builder.Property(x => x.Net).HasColumnType("decimal(18,2)");
-        builder.Property(x => x.Vat).HasColumnType("decimal(18,2)");
-        builder.Property(x => x.Gross).HasColumnType("decimal(18,2)");
+        // timestamps
+        b.Property(x => x.CreatedAtUtc)
+            .HasDefaultValueSql("GETUTCDATE()")
+            .ValueGeneratedOnAdd()
+            .IsRequired();
 
-        builder.HasIndex(x => x.InvoiceId);
+        b.HasIndex(x => x.InvoiceId);
 
-        // KDV 0..100 aralığı
-        builder.ToTable(t => t.HasCheckConstraint("CK_InvoiceLine_VatRate_Range", "[VatRate] BETWEEN 0 AND 100"));
-
-        // Quantity, UnitPrice >= 0
-        builder.ToTable(t => t.HasCheckConstraint("CK_InvoiceLine_Qty_Positive", "[Qty] >= 0"));
-        builder.ToTable(t => t.HasCheckConstraint("CK_InvoiceLine_UnitPrice_Positive", "[UnitPrice] >= 0"));
-
+        b.ToTable(t =>
+        {
+            t.HasCheckConstraint("CK_InvoiceLine_VatRate_Range", "[VatRate] BETWEEN 0 AND 100");
+            t.HasCheckConstraint("CK_InvoiceLine_Qty_Positive", "[Qty] >= 0");
+            t.HasCheckConstraint("CK_InvoiceLine_UnitPrice_Positive", "[UnitPrice] >= 0");
+        });
     }
 }

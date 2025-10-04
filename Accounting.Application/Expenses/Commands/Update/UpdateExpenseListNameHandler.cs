@@ -67,7 +67,7 @@ public class UpdateExpenseListNameHandler
         return new ExpenseListDetailDto(
             list.Id,
             list.Name,
-            list.CreatedUtc,
+            list.CreatedAtUtc,
             list.Status.ToString(),
             lines,
             totalStr,

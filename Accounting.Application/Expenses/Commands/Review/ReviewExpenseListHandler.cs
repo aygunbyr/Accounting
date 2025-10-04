@@ -29,7 +29,7 @@ public class ReviewExpenseListHandler : IRequestHandler<ReviewExpenseListCommand
         list.Status = ExpenseListStatus.Reviewed;
         await _db.SaveChangesAsync(ct);
 
-        return new ExpenseListDto(list.Id, list.Name, list.CreatedUtc, list.Status.ToString());
+        return new ExpenseListDto(list.Id, list.Name, list.CreatedAtUtc, list.Status.ToString());
 
     }
 }

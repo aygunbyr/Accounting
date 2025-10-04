@@ -1,4 +1,5 @@
 ﻿using Accounting.Domain.Entities;
+using Accounting.Infrastructure.Persistence.Configurations; // ApplyRowVersion/ApplySoftDelete
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,7 +13,6 @@ public class ExpenseListConfiguration : IEntityTypeConfiguration<ExpenseList>
         b.HasKey(x => x.Id);
 
         b.Property(x => x.Name).HasMaxLength(200).IsRequired();
-        b.Property(x => x.CreatedUtc).IsRequired();
 
         b.Property(x => x.Status)
             .HasConversion<int>()
@@ -26,11 +26,16 @@ public class ExpenseListConfiguration : IEntityTypeConfiguration<ExpenseList>
             .OnDelete(DeleteBehavior.Cascade);
 
         b.HasIndex(x => x.Status);
-        b.HasIndex(x => x.CreatedUtc);
+        b.HasIndex(x => x.CreatedAtUtc);
 
-        b.Property(x => x.RowVersion)
-            .IsRowVersion();              // <— kritik: SQL Server 'rowversion/timestamp'
+        // audit
+        b.Property(x => x.CreatedAtUtc)
+            .HasDefaultValueSql("GETUTCDATE()")
+            .ValueGeneratedOnAdd()
+            .IsRequired();
 
-        b.HasQueryFilter(x => !x.IsDeleted); // soft delete filtresi
+        // concurrency + soft delete
+        b.ApplyRowVersion();
+        b.ApplySoftDelete();
     }
 }

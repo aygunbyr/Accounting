@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Infrastructure.Persistence;
+using Accounting.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +17,10 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(conn));
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
-        
+
+        services.AddScoped<AuditSaveChangesInterceptor>();
+
+
         return services;
     }
 }

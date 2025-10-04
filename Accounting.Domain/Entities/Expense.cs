@@ -1,6 +1,8 @@
-﻿namespace Accounting.Domain.Entities;
+﻿using Accounting.Domain.Common;
 
-public class Expense
+namespace Accounting.Domain.Entities;
+
+public class Expense : IHasTimestamps, ISoftDeletable, IHasRowVersion
 {
     public int Id { get; set; }
 
@@ -9,7 +11,7 @@ public class Expense
 
     public DateTime DateUtc { get; set; } = DateTime.UtcNow;
 
-    public int? SupplierId { get; set; } // Contact Id optional
+    public int? SupplierId { get; set; }
     public string Currency { get; set; } = "TRY";
 
     public decimal Amount { get; set; }
@@ -18,6 +20,11 @@ public class Expense
     public string? Category { get; set; }
     public string? Notes { get; set; }
 
-    // Post edildiğinde bağlandığı invoice id (satır seviyesinde de iz bırakmak isteyebiliriz)
     public int? PostedInvoiceId { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
+    public byte[] RowVersion { get; set; } = null!;
 }
