@@ -27,7 +27,9 @@ public class CreateContactHandler : IRequestHandler<CreateContactCommand, Contac
             entity.Name,
             entity.Type.ToString(),
             entity.Email,
-            Convert.ToBase64String(entity.RowVersion)
+            Convert.ToBase64String(entity.RowVersion),
+            entity.CreatedAtUtc,
+            entity.UpdatedAtUtc
             );
     }
 }

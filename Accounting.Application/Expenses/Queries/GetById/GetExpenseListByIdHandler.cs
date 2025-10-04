@@ -47,7 +47,8 @@ public class GetExpenseListByIdHandler
             list.Status.ToString(),
             lineDtos,
             Money.S2(total),
-            Convert.ToBase64String(list.RowVersion)
+            Convert.ToBase64String(list.RowVersion),
+            list.UpdatedAtUtc
             );
     }
 }

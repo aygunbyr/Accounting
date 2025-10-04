@@ -71,7 +71,8 @@ public class UpdateExpenseListNameHandler
             list.Status.ToString(),
             lines,
             totalStr,
-            Convert.ToBase64String(list.RowVersion)
+            Convert.ToBase64String(list.RowVersion),
+            list.UpdatedAtUtc
         );
     }
 }

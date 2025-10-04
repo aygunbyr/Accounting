@@ -8,7 +8,8 @@ public record PaymentListItemDto(
     DateTime DateUtc,
     string Direction,
     string Amount,
-    string Currency
+    string Currency,
+    DateTime CreatedAtUtc
 );
 
 public record PaymentDetailDto(
@@ -20,5 +21,7 @@ public record PaymentDetailDto(
     string Direction,
     string Amount,
     string Currency,
-    string RowVersion
+    string RowVersion,
+    DateTime CreatedAtUtc,
+    DateTime? UpdatedAtUtc
 );

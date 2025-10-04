@@ -61,7 +61,8 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
                 i.Currency,
                 i.TotalNet,
                 i.TotalVat,
-                i.TotalGross
+                i.TotalGross,
+                i.CreatedAtUtc
             })
             .ToListAsync(ct);
 
@@ -78,7 +79,8 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
             i.Currency,
             Money.S2(i.TotalNet),
             Money.S2(i.TotalVat),
-            Money.S2(i.TotalGross)
+            Money.S2(i.TotalGross),
+            i.CreatedAtUtc
         )).ToList();
 
         var totals = new InvoicePagedTotals(

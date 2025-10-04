@@ -56,7 +56,9 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
             p.Direction.ToString(),
             p.Amount.ToString("F2", inv),
             p.Currency,
-            Convert.ToBase64String(p.RowVersion)
+            Convert.ToBase64String(p.RowVersion),
+            p.CreatedAtUtc,
+            p.UpdatedAtUtc
         );
     }
 }

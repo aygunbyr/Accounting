@@ -3,7 +3,7 @@
 public record ExpenseListDto(
     int Id,
     string Name,
-    DateTime CreatedUtc,
+    DateTime CreatedAtUtc,
     string Status
 );
 
@@ -19,13 +19,14 @@ public record ExpenseLineDto(
     string? Notes
 );
 
-// NEW: RowVersion eklendi (base64) -> PUT/DELETE için gerekli
+// Detay: CreatedAtUtc + UpdatedAtUtc + RowVersion
 public record ExpenseListDetailDto(
     int Id,
     string Name,
-    DateTime CreatedUtc,
+    DateTime CreatedAtUtc,
     string Status,
     IReadOnlyList<ExpenseLineDto> Lines,
     string TotalAmount,
-    string RowVersion
+    string RowVersion,
+    DateTime? UpdatedAtUtc
 );

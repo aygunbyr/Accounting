@@ -31,7 +31,8 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
             .Skip((q.Page - 1) * q.PageSize)
             .Take(q.PageSize)
             .Select(x => new ContactListItemDto(
-                x.Id, x.Name, x.Type.ToString(), x.Email
+                x.Id, x.Name, x.Type.ToString(), x.Email,
+                x.CreatedAtUtc
             ))
             .ToListAsync(ct);
 

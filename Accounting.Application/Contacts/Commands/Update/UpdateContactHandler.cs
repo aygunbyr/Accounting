@@ -36,7 +36,8 @@ public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, Contac
 
         return new ContactDto(
             c.Id, c.Name, c.Type.ToString(), c.Email,
-            Convert.ToBase64String(c.RowVersion)
+            Convert.ToBase64String(c.RowVersion),
+            c.CreatedAtUtc, c.UpdatedAtUtc
         );
     }
 }

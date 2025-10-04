@@ -57,7 +57,7 @@ namespace Accounting.Application.Payments.Queries.List
             var pageQuery = query
                 .Skip((q.PageNumber - 1) * q.PageSize)
                 .Take(q.PageSize)
-                .Select(p => new { p.Id, p.AccountId, p.ContactId, p.LinkedInvoiceId, p.DateUtc, p.Direction, p.Amount, p.Currency });
+                .Select(p => new { p.Id, p.AccountId, p.ContactId, p.LinkedInvoiceId, p.DateUtc, p.Direction, p.Amount, p.Currency, p.CreatedAtUtc });
 
             var pageData = await pageQuery.ToListAsync(ct);
 
@@ -74,7 +74,8 @@ namespace Accounting.Application.Payments.Queries.List
                 p.DateUtc,
                 p.Direction.ToString(),
                 Money.S2(p.Amount),
-                p.Currency
+                p.Currency,
+                p.CreatedAtUtc
             )).ToList();
 
             var totals = new PagedTotals(
