@@ -1,7 +1,11 @@
-﻿using Accounting.Application.Expenses.Commands.AddLine;
+﻿using Accounting.Api.Contracts;
+using Accounting.Application.Expenses.Commands.AddLine;
 using Accounting.Application.Expenses.Commands.CreateList;
+using Accounting.Application.Expenses.Commands.Delete;
 using Accounting.Application.Expenses.Commands.PostToBill;
 using Accounting.Application.Expenses.Commands.Review;
+using Accounting.Application.Expenses.Commands.Update;
+using Accounting.Application.Expenses.Queries.Dto;
 using Accounting.Application.Expenses.Queries.GetById;
 using Accounting.Application.Expenses.Queries.List;
 using MediatR;
@@ -85,6 +89,30 @@ public class ExpensesController : ControllerBase
 
         var res = await _mediator.Send(cmd, ct);
         return Ok(res);
+    }
+
+    // PUT /api/expenses/lists/{id}
+    [HttpPut("lists/{id:int}")]
+    [ProducesResponseType(typeof(ExpenseListDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> UpdateListName([FromRoute] int id, [FromBody] UpdateExpenseListNameCommand body, CancellationToken ct)
+    {
+        if (id != body.Id) return BadRequest();
+        var res = await _mediator.Send(body, ct);
+        return Ok(res);
+    }
+
+    // DELETE /api/expenses/lists/{id}
+    [HttpDelete("lists/{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> SoftDeleteList([FromRoute] int id, [FromBody] RowVersionDto body, CancellationToken ct)
+    {
+        if (id <= 0) return BadRequest();
+        await _mediator.Send(new SoftDeleteExpenseListCommand(id, body.RowVersion), ct);
+        return NoContent();
     }
 
     public sealed record PostExpenseListToBillBody(

@@ -19,4 +19,7 @@ public class ExpenseList
 
     public ICollection<Expense> Lines { get; set; } = new List<Expense>();
 
+    public bool IsDeleted { get; set; } // soft delete
+    public byte[] RowVersion { get; set; } = null!; // optimistic concurrency
+
 }

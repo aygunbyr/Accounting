@@ -27,5 +27,10 @@ public class ExpenseListConfiguration : IEntityTypeConfiguration<ExpenseList>
 
         b.HasIndex(x => x.Status);
         b.HasIndex(x => x.CreatedUtc);
+
+        b.Property(x => x.RowVersion)
+            .IsRowVersion();              // <— kritik: SQL Server 'rowversion/timestamp'
+
+        b.HasQueryFilter(x => !x.IsDeleted); // soft delete filtresi
     }
 }

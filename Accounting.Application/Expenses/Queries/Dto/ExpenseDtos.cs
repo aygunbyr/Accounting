@@ -5,7 +5,7 @@ public record ExpenseListDto(
     string Name,
     DateTime CreatedUtc,
     string Status
-    );
+);
 
 public record ExpenseLineDto(
     int Id,
@@ -17,13 +17,15 @@ public record ExpenseLineDto(
     int VatRate,
     string? Category,
     string? Notes
-    );
+);
 
+// NEW: RowVersion eklendi (base64) -> PUT/DELETE için gerekli
 public record ExpenseListDetailDto(
     int Id,
     string Name,
     DateTime CreatedUtc,
     string Status,
     IReadOnlyList<ExpenseLineDto> Lines,
-    string TotalAmount // string F2 (tüm satırların toplamı)
-    );
+    string TotalAmount,
+    string RowVersion
+);
