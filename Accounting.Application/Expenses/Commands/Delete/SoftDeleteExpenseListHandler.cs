@@ -1,5 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Errors; // BusinessRuleException, ConcurrencyConflictException
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +13,7 @@ public class SoftDeleteExpenseListHandler : IRequestHandler<SoftDeleteExpenseLis
 
     public async Task Handle(SoftDeleteExpenseListCommand req, CancellationToken ct)
     {
+        // Load parent + children with tracking
         var list = await _db.ExpenseLists
             .Include(x => x.Lines)
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
@@ -20,23 +21,41 @@ public class SoftDeleteExpenseListHandler : IRequestHandler<SoftDeleteExpenseLis
         if (list is null)
             throw new KeyNotFoundException($"ExpenseList {req.Id} not found.");
 
-        // concurrency
-        var original = Convert.FromBase64String(req.RowVersion);
-        _db.Entry(list).Property("RowVersion").OriginalValue = original;
+        // Concurrency: parse + set original
+        byte[] originalRv;
+        try
+        {
+            originalRv = Convert.FromBase64String(req.RowVersion);
+        }
+        catch
+        {
+            throw new ConcurrencyConflictException("RowVersion is invalid.");
+        }
 
-        // iş kuralı (opsiyonel): Reviewed olan silinemez
+        _db.Entry(list)
+            .Property(nameof(ExpenseList.RowVersion))
+            .OriginalValue = originalRv;
+
+        // Business rules
+        if (list.Status == ExpenseListStatus.Posted)
+            throw new BusinessRuleException("Posted (faturalandırılmış) masraf listesi silinemez.");
+
+        // (İstersen bunu da korursun)
         if (list.Status == ExpenseListStatus.Reviewed)
             throw new BusinessRuleException("Onaylanmış masraf listesi silinemez.");
 
-        // parent soft delete
+        // Parent soft delete + audit
+        var now = DateTime.UtcNow;
         list.IsDeleted = true;
-        list.DeletedAtUtc = DateTime.UtcNow;
+        list.DeletedAtUtc = now;
+        list.UpdatedAtUtc = now;
 
-        // children soft delete
+        // Children soft delete + audit
         foreach (var line in list.Lines)
         {
             line.IsDeleted = true;
-            line.DeletedAtUtc = DateTime.UtcNow;
+            line.DeletedAtUtc = now;
+            line.UpdatedAtUtc = now;
         }
 
         try
