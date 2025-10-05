@@ -1,11 +1,11 @@
-﻿using Accounting.Application.Common.Abstractions;
+﻿using System.Globalization;
+using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors; // BusinessRuleException, ConcurrencyConflictException
-using Accounting.Application.Common.Utils;
+using Accounting.Application.Common.Utils; // Money.*
 using Accounting.Application.Expenses.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace Accounting.Application.Expenses.Commands.Update;
 
@@ -17,7 +17,7 @@ public class UpdateExpenseListNameHandler
 
     public async Task<ExpenseListDetailDto> Handle(UpdateExpenseListNameCommand req, CancellationToken ct)
     {
-        // Header + Lines ile birlikte çek (TotalAmount hesaplayacağız)
+        // 1) Fetch (TRACKING)
         var list = await _db.ExpenseLists
             .Include(x => x.Lines)
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
@@ -25,29 +25,38 @@ public class UpdateExpenseListNameHandler
         if (list is null)
             throw new KeyNotFoundException($"ExpenseList {req.Id} not found.");
 
-        // İş kuralı: Reviewed olan liste ismi değişmesin (istersen kaldır)
+        // 2) Business rules
         if (list.Status == ExpenseListStatus.Reviewed)
             throw new BusinessRuleException("Onaylanmış masraf listesi güncellenemez.");
 
-        // Concurrency
-        var original = Convert.FromBase64String(req.RowVersion);
-        _db.Entry(list).Property("RowVersion").OriginalValue = original;
+        // 3) Concurrency (parent RowVersion)
+        byte[] rv;
+        try { rv = Convert.FromBase64String(req.RowVersion); }
+        catch { throw new ConcurrencyConflictException("RowVersion geçersiz."); }
+        _db.Entry(list).Property(nameof(ExpenseList.RowVersion)).OriginalValue = rv;
 
+        // 4) Normalize / map
         list.Name = req.Name.Trim();
 
-        try
-        {
-            await _db.SaveChangesAsync(ct);
-        }
+        // 5) Audit
+        list.UpdatedAtUtc = DateTime.UtcNow;
+
+        // 6) Persist
+        try { await _db.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException)
-        {
-            throw new ConcurrencyConflictException("Masraf listesi başka biri tarafından güncellendi.");
-        }
+        { throw new ConcurrencyConflictException("Masraf listesi başka biri tarafından güncellendi."); }
 
-        // DTO üretimi (Amount'lar DB'de decimal ise F2 format; string ise mevcut değer)
-        var inv = CultureInfo.InvariantCulture;
+        // 7) Fresh read
+        var fresh = await _db.ExpenseLists
+            .AsNoTracking()
+            .Include(x => x.Lines)
+            .FirstOrDefaultAsync(x => x.Id == list.Id, ct);
 
-        var lines = list.Lines
+        if (fresh is null)
+            throw new KeyNotFoundException($"ExpenseList {list.Id} not found after update.");
+
+        // 8) DTO
+        var lineDtos = fresh.Lines
             .OrderBy(l => l.DateUtc)
             .Select(l => new ExpenseLineDto(
                 l.Id,
@@ -62,18 +71,17 @@ public class UpdateExpenseListNameHandler
             ))
             .ToList();
 
-        var total = list.Lines.Sum(l => l.Amount);
-        var totalStr = Money.S2(total);
+        var total = fresh.Lines.Sum(l => l.Amount);
 
         return new ExpenseListDetailDto(
-            list.Id,
-            list.Name,
-            list.CreatedAtUtc,
-            list.Status.ToString(),
-            lines,
-            totalStr,
-            Convert.ToBase64String(list.RowVersion),
-            list.UpdatedAtUtc
+            fresh.Id,
+            fresh.Name,
+            fresh.CreatedAtUtc,
+            fresh.Status.ToString(),
+            lineDtos,
+            Money.S2(total),
+            Convert.ToBase64String(fresh.RowVersion),
+            fresh.UpdatedAtUtc
         );
     }
 }

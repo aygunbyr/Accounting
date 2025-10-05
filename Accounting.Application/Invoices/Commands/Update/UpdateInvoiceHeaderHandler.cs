@@ -1,10 +1,11 @@
-﻿using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;
-using Accounting.Application.Common.Utils;
+﻿using System.Globalization;
+using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;  // ConcurrencyConflictException
+using Accounting.Application.Common.Utils;   // Money.*
 using Accounting.Application.Invoices.Queries.Dto;
+using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace Accounting.Application.Invoices.Commands.Update;
 
@@ -16,6 +17,7 @@ public class UpdateInvoiceHeaderHandler
 
     public async Task<InvoiceDto> Handle(UpdateInvoiceHeaderCommand req, CancellationToken ct)
     {
+        // 1) Fetch (TRACKING)
         var inv = await _db.Invoices
             .Include(i => i.Lines)
             .FirstOrDefaultAsync(i => i.Id == req.Id, ct);
@@ -23,54 +25,68 @@ public class UpdateInvoiceHeaderHandler
         if (inv is null)
             throw new KeyNotFoundException($"Invoice {req.Id} not found.");
 
-        // optimistic concurrency: RowVersion karşılaştır
-        var originalBytes = Convert.FromBase64String(req.RowVersion);
-        _db.Entry(inv).Property("RowVersion").OriginalValue = originalBytes;
+        // 2) Business rules: (şimdilik yok / domainine göre eklenebilir)
 
-        // güncelle
+        // 3) Concurrency (parent RowVersion)
+        byte[] rv;
+        try { rv = Convert.FromBase64String(req.RowVersion); }
+        catch { throw new ConcurrencyConflictException("RowVersion geçersiz."); }
+        _db.Entry(inv).Property(nameof(Invoice.RowVersion)).OriginalValue = rv;
+
+        // 4) Normalize/map
         inv.ContactId = req.ContactId;
-        inv.Currency = req.Currency.ToUpperInvariant();
+        inv.Currency = (req.Currency ?? "TRY").ToUpperInvariant();
         inv.Type = req.Type;
 
-        if (!DateTime.TryParse(req.DateUtc, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var dt))
+        if (!DateTime.TryParse(req.DateUtc, CultureInfo.InvariantCulture,
+                               DateTimeStyles.AdjustToUniversal, out var dt))
             throw new ArgumentException("DateUtc is invalid.");
         inv.DateUtc = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
 
-        // toplamlara dokunmuyoruz (header update)
+        // 5) Audit
+        inv.UpdatedAtUtc = DateTime.UtcNow;
 
-        try
-        {
-            await _db.SaveChangesAsync(ct);
-        }
+        // 6) Persist
+        try { await _db.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException)
-        {
-            throw new ConcurrencyConflictException(
-         "Kayıt başka bir kullanıcı tarafından güncellendi. Lütfen sayfayı yenileyip tekrar deneyin.");
-        }
+        { throw new ConcurrencyConflictException("Fatura başka biri tarafından güncellendi."); }
 
-        // dto
-        var lines = inv.Lines.OrderBy(l => l.Id).Select(l => new InvoiceLineDto(
-            l.Id, l.ItemId,
-            Money.S3(l.Qty),
-            Money.S4(l.UnitPrice),
-            l.VatRate,
-            Money.S2(l.Net),
-            Money.S2(l.Vat),
-            Money.S2(l.Gross)
-        )).ToList();
+        // 7) Fresh read
+        var fresh = await _db.Invoices
+            .AsNoTracking()
+            .Include(i => i.Lines)
+            .FirstOrDefaultAsync(i => i.Id == req.Id, ct);
+
+        if (fresh is null)
+            throw new KeyNotFoundException($"Invoice {req.Id} not found after update.");
+
+        // 8) DTO
+        var lines = fresh.Lines
+            .OrderBy(l => l.Id)
+            .Select(l => new InvoiceLineDto(
+                l.Id,
+                l.ItemId,
+                Money.S3(l.Qty),
+                Money.S4(l.UnitPrice),
+                l.VatRate,
+                Money.S2(l.Net),
+                Money.S2(l.Vat),
+                Money.S2(l.Gross)
+            ))
+            .ToList();
 
         return new InvoiceDto(
-            inv.Id,
-            inv.ContactId,
-            inv.DateUtc,
-            inv.Currency,
-            Money.S2(inv.TotalNet),
-            Money.S2(inv.TotalVat),
-            Money.S2(inv.TotalGross),
+            fresh.Id,
+            fresh.ContactId,
+            fresh.DateUtc,
+            fresh.Currency,
+            Money.S2(fresh.TotalNet),
+            Money.S2(fresh.TotalVat),
+            Money.S2(fresh.TotalGross),
             lines,
-            Convert.ToBase64String(inv.RowVersion),
-            inv.CreatedAtUtc,
-            inv.UpdatedAtUtc
+            Convert.ToBase64String(fresh.RowVersion),
+            fresh.CreatedAtUtc,
+            fresh.UpdatedAtUtc
         );
     }
 }
