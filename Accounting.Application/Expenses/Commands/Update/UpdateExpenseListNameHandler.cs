@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors; // BusinessRuleException, ConcurrencyConflictException
+using Accounting.Application.Common.Utils;
 using Accounting.Application.Expenses.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -54,7 +55,7 @@ public class UpdateExpenseListNameHandler
                 l.DateUtc,
                 l.SupplierId,
                 l.Currency,
-                l.Amount.ToString("F2", inv), // l.Amount decimal varsayımı
+                Money.S2(l.Amount),
                 l.VatRate,
                 l.Category,
                 l.Notes
@@ -62,7 +63,7 @@ public class UpdateExpenseListNameHandler
             .ToList();
 
         var total = list.Lines.Sum(l => l.Amount);
-        var totalStr = total.ToString("F2", inv);
+        var totalStr = Money.S2(total);
 
         return new ExpenseListDetailDto(
             list.Id,

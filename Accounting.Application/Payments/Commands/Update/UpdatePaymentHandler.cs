@@ -54,7 +54,7 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
             p.LinkedInvoiceId,
             p.DateUtc,
             p.Direction.ToString(),
-            p.Amount.ToString("F2", inv),
+            Money.S2(p.Amount),
             p.Currency,
             Convert.ToBase64String(p.RowVersion),
             p.CreatedAtUtc,

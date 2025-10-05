@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Utils;
 using Accounting.Application.Payments.Queries.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,7 @@ public class GetPaymentByIdHandler : IRequestHandler<GetPaymentByIdQuery, Paymen
             p.LinkedInvoiceId,
             p.DateUtc,
             p.Direction.ToString(),
-            p.Amount.ToString("F2", inv),
+            Money.S2(p.Amount),
             p.Currency,
             Convert.ToBase64String(p.RowVersion),
             p.CreatedAtUtc,
