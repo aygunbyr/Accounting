@@ -5,8 +5,10 @@ using Accounting.Application.Expenses.Commands.Delete;
 using Accounting.Application.Expenses.Commands.PostToBill;
 using Accounting.Application.Expenses.Commands.Review;
 using Accounting.Application.Expenses.Commands.Update;
+using Accounting.Application.Expenses.Commands.UpdateLine;
 using Accounting.Application.Expenses.Queries.Dto;
 using Accounting.Application.Expenses.Queries.GetById;
+using Accounting.Application.Expenses.Queries.GetLineById;
 using Accounting.Application.Expenses.Queries.List;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -38,21 +40,29 @@ public class ExpensesController : ControllerBase
         return Ok(res);
     }
 
+
     [HttpGet("lines/{id:int}")]
-    public ActionResult GetLineById([FromRoute] int id) => Ok(new { id });
+    [ProducesResponseType(typeof(ExpenseLineDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetLineById([FromRoute] int id, CancellationToken ct)
+    {
+        var res = await _mediator.Send(new GetExpenseLineByIdQuery(id), ct);
+        return Ok(res);
+    }
+
 
     [HttpGet("lines")]
     public async Task<ActionResult> ListLines(
-    [FromQuery] int pageNumber = 1,
-    [FromQuery] int pageSize = 20,
-    [FromQuery] string? sort = "dateUtc:desc",
-    [FromQuery] int? expenseListId = null,
-    [FromQuery] int? supplierId = null,
-    [FromQuery] string? currency = null,
-    [FromQuery] string? category = null,
-    [FromQuery] string? dateFromUtc = null,
-    [FromQuery] string? dateToUtc = null,
-    CancellationToken ct = default)
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? sort = "dateUtc:desc",
+        [FromQuery] int? expenseListId = null,
+        [FromQuery] int? supplierId = null,
+        [FromQuery] string? currency = null,
+        [FromQuery] string? category = null,
+        [FromQuery] string? dateFromUtc = null,
+        [FromQuery] string? dateToUtc = null,
+        CancellationToken ct = default)
     {
         var res = await _mediator.Send(new ListExpensesQuery(
             pageNumber, pageSize, sort,
@@ -113,6 +123,18 @@ public class ExpensesController : ControllerBase
         if (id <= 0) return BadRequest();
         await _mediator.Send(new SoftDeleteExpenseListCommand(id, body.RowVersion), ct);
         return NoContent();
+    }
+
+    // PUT /api/expenses/lines/{id}
+    [HttpPut("lines/{id:int}")]
+    [ProducesResponseType(typeof(ExpenseListDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> UpdateLine([FromRoute] int id, [FromBody] UpdateExpenseLineCommand body, CancellationToken ct)
+    {
+        if (id != body.LineId) return BadRequest("Route id and payload LineId must match.");
+        var res = await _mediator.Send(body, ct);
+        return Ok(res);
     }
 
     public sealed record PostExpenseListToBillBody(
