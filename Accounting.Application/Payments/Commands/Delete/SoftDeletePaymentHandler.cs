@@ -17,6 +17,8 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
         _db.Entry(p).Property("RowVersion").OriginalValue = original;
 
         p.IsDeleted = true;
+        p.DeletedAtUtc = DateTime.UtcNow;
+        p.UpdatedAtUtc = DateTime.UtcNow;
 
         try
         {

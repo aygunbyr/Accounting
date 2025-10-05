@@ -22,6 +22,8 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
         _db.Entry(inv).Property("RowVersion").OriginalValue = originalBytes;
 
         inv.IsDeleted = true;
+        inv.DeletedAtUtc = DateTime.UtcNow;
+        inv.UpdatedAtUtc = DateTime.UtcNow;
 
         try
         {

@@ -19,6 +19,8 @@ public class SoftDeleteContactHandler : IRequestHandler<SoftDeleteContactCommand
         _db.Entry(c).Property("RowVersion").OriginalValue = original;
 
         c.IsDeleted = true;
+        c.DeletedAtUtc = DateTime.UtcNow;
+        c.UpdatedAtUtc = DateTime.UtcNow;
 
         try
         {
