@@ -1,0 +1,34 @@
+﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace Accounting.Application.Items.Commands.Delete;
+
+public class SoftDeleteItemHandler : IRequestHandler<SoftDeleteItemCommand, bool>
+{
+    private readonly IAppDbContext _db;
+    public SoftDeleteItemHandler(IAppDbContext db) => _db = db;
+
+    public async Task<bool> Handle(SoftDeleteItemCommand r, CancellationToken ct)
+    {
+        var e = await _db.Items.FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
+        if (e is null) throw new KeyNotFoundException("Item not found.");
+
+        _db.Entry(e).Property("RowVersion").OriginalValue = Convert.FromBase64String(r.RowVersion);
+
+        e.IsDeleted = true;
+        e.DeletedAtUtc = DateTime.UtcNow;
+        e.UpdatedAtUtc = DateTime.UtcNow;
+
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConcurrencyConflictException("Item silmede eşzamanlılık hatası.");
+        }
+    }
+}

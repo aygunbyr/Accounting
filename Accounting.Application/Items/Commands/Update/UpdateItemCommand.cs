@@ -1,0 +1,14 @@
+﻿using Accounting.Application.Items.Queries.Dto;
+using MediatR;
+using System.Data;
+
+namespace Accounting.Application.Items.Commands.Update;
+
+public record UpdateItemCommand(
+    int Id,
+    string Name,
+    string Unit,
+    int VatRate,
+    string? DefaultUnitPrice,
+    string RowVersion   // base64
+) : IRequest<ItemDetailDto>;
