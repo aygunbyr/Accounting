@@ -40,15 +40,27 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddProblemDetails();
 
-// MediatR (Application assembly taramasý)
+// MediatR + FluentValidation
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Accounting.Application.Invoices.Commands.Create.CreateInvoiceCommand).Assembly));
-
-// FluentValidation (DI taramasý)
 builder.Services.AddValidatorsFromAssemblyContaining<Accounting.Application.Invoices.Commands.Create.CreateInvoiceValidator>();
 
 // Pipeline Behaviors
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>));
+
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", p => p
+        .WithOrigins(
+            "http://localhost:3000", // Next.js / React
+            "http://localhost:4200"  // Angular
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .DisallowCredentials()
+    );
+});
 
 // Infrastructure (DbContext vs.)
 builder.Services.AddInfrastructure(builder.Configuration); // Ensure the AddInfrastructure extension method is implemented and accessible
@@ -57,7 +69,6 @@ var app = builder.Build();
 
 // Middleware pipeline
 app.UseSerilogRequestLogging(); // basit request log
-
 app.UseMiddleware<ExceptionToProblemDetailsMiddleware>();
 
 
@@ -73,6 +84,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// CORS
+app.UseCors("Frontend");
+
 app.UseAuthorization();
 app.MapControllers();
 
