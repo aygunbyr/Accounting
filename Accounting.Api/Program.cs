@@ -65,6 +65,9 @@ builder.Services.AddCors(options =>
 // Infrastructure (DbContext vs.)
 builder.Services.AddInfrastructure(builder.Configuration); // Ensure the AddInfrastructure extension method is implemented and accessible
 
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>();
+
 var app = builder.Build();
 
 // Middleware pipeline
@@ -90,6 +93,8 @@ app.UseCors("Frontend");
 
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 using (var scope = app.Services.CreateScope())
 {
