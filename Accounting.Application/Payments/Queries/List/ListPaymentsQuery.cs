@@ -13,5 +13,7 @@ public record ListPaymentsQuery(
     int? ContactId = null,
     PaymentDirection? Direction = null,
     string? DateFromUtc = null,
-    string? DateToUtc = null
+    string? DateToUtc = null,
+    string? Currency = null
 ) : IRequest<PagedResult<PaymentListItemDto>>;
+

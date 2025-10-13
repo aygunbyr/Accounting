@@ -13,6 +13,10 @@ public class ListPaymentsValidator : AbstractValidator<ListPaymentsQuery>
             .Must(BeValidSort)
             .WithMessage("Sort must be 'dateUtc|amount:asc|desc'.");
 
+        RuleFor(x => x.Currency)
+            .Must(c => string.IsNullOrWhiteSpace(c) || c.Trim().Length == 3)
+            .WithMessage("Currency ISO 4217 3-haneli olmalı (örn. TRY, USD).");
+
         // Tarihleri opsiyonel bırakıyoruz; varsa ISO-8601 olmalı
         RuleFor(x => x.DateFromUtc)
             .Must(BeIso8601OrNull).WithMessage("DateFromUtc must be ISO-8601 (e.g. 2025-08-08T10:00:00Z).");

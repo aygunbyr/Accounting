@@ -44,6 +44,7 @@ public class PaymentsController : ControllerBase
         [FromQuery] int? direction = null,       // 1=In, 2=Out
         [FromQuery] string? dateFromUtc = null,  // ISO-8601
         [FromQuery] string? dateToUtc = null,    // ISO-8601
+        [FromQuery] string? currency = null,
         CancellationToken ct = default)
     {
         var dirEnum = direction is null ? null
@@ -52,7 +53,7 @@ public class PaymentsController : ControllerBase
         var res = await _mediator.Send(new ListPaymentsQuery(
             pageNumber, pageSize, sort,
             accountId, contactId, dirEnum,
-            dateFromUtc, dateToUtc
+            dateFromUtc, dateToUtc, currency
         ), ct);
 
         return Ok(res);

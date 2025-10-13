@@ -33,6 +33,12 @@ namespace Accounting.Application.Payments.Queries.List
             if (TryParseUtc(q.DateFromUtc, out var fromUtc)) query = query.Where(p => p.DateUtc >= fromUtc);
             if (TryParseUtc(q.DateToUtc, out var toUtc)) query = query.Where(p => p.DateUtc <= toUtc);
 
+            if (!string.IsNullOrWhiteSpace(q.Currency))
+            {
+                var curr = q.Currency.Trim().ToUpperInvariant();
+                query = query.Where(p => p.Currency == curr);
+            }
+
             // --- Sıralama ---
             var sort = (q.Sort ?? "dateUtc:desc").Split(':');
             var field = sort[0].ToLowerInvariant();
