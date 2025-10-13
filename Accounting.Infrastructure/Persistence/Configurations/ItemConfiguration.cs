@@ -29,7 +29,7 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
         b.ApplySoftDelete();
 
         // indexes / constraints
-        b.HasIndex(x => x.Name);
+        b.HasIndex(x => x.Name).HasDatabaseName("IX_Items_Name");
         b.ToTable(t =>
         {
             t.HasCheckConstraint("CK_Item_VatRate_Range", "[VatRate] BETWEEN 0 AND 100");

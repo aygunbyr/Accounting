@@ -36,7 +36,8 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         b.ApplySoftDelete();
 
         // indexes
-        b.HasIndex(x => x.DateUtc);
-        b.HasIndex(x => new { x.Type, x.DateUtc });
+        b.HasIndex(x => x.DateUtc).HasDatabaseName("IX_Invoices_DateUtc");
+        b.HasIndex(x => x.ContactId).HasDatabaseName("IX_Invoices_ContactId");
+        b.HasIndex(x => x.Currency).HasDatabaseName("IX_Invoices_Currency");
     }
 }
