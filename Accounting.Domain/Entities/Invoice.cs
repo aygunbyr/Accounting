@@ -23,4 +23,6 @@ public class Invoice : IHasTimestamps, ISoftDeletable, IHasRowVersion
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
     public byte[] RowVersion { get; set; } = null!;
+
+    public Contact Contact { get; set; } = null!;
 }

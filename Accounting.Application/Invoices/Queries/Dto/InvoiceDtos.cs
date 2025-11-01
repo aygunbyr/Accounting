@@ -3,6 +3,9 @@
 public record InvoiceLineDto(
     int Id,
     int ItemId,
+    string ItemCode,
+    string ItemName,
+    string Unit,
     string Qty,        // F3
     string UnitPrice,  // F4
     int VatRate,
@@ -14,6 +17,8 @@ public record InvoiceLineDto(
 public record InvoiceDto(
     int Id,
     int ContactId,
+    string ContactCode,
+    string ContactName,
     DateTime DateUtc,        // Belge tarihi (iş mantığı)
     string Currency,
     string TotalNet,         // F2
@@ -28,6 +33,8 @@ public record InvoiceDto(
 public record InvoiceListItemDto(
     int Id,
     int ContactId,
+    string ContactCode,
+    string ContactName,
     DateTime DateUtc,
     string Currency,
     string TotalNet,

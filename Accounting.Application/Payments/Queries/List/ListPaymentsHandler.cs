@@ -63,7 +63,21 @@ namespace Accounting.Application.Payments.Queries.List
             var pageQuery = query
                 .Skip((q.PageNumber - 1) * q.PageSize)
                 .Take(q.PageSize)
-                .Select(p => new { p.Id, p.AccountId, p.ContactId, p.LinkedInvoiceId, p.DateUtc, p.Direction, p.Amount, p.Currency, p.CreatedAtUtc });
+                .Select(p => new { 
+                    p.Id, 
+                    p.AccountId,
+                    AccountCode = p.Account.Code,
+                    AccountName = p.Account.Name,
+                    p.ContactId,
+                    ContactCode = p.ContactId != null ? p.Contact!.Code : null,
+                    ContactName = p.ContactId != null ? p.Contact!.Name : null,
+                    p.LinkedInvoiceId, 
+                    p.DateUtc, 
+                    p.Direction, 
+                    p.Amount, 
+                    p.Currency, 
+                    p.CreatedAtUtc,
+                });
 
             var pageData = await pageQuery.ToListAsync(ct);
 
@@ -75,7 +89,11 @@ namespace Accounting.Application.Payments.Queries.List
             var items = pageData.Select(p => new PaymentListItemDto(
                 p.Id,
                 p.AccountId,
+                p.AccountCode,
+                p.AccountName,
                 p.ContactId,
+                p.ContactCode,
+                p.ContactName,
                 p.LinkedInvoiceId,
                 p.DateUtc,
                 p.Direction.ToString(),

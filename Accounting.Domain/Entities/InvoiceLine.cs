@@ -5,17 +5,30 @@ namespace Accounting.Domain.Entities;
 public class InvoiceLine : IHasTimestamps
 {
     public int Id { get; set; }
+
+    // FK'ler
     public int InvoiceId { get; set; }
     public int ItemId { get; set; }
 
-    public decimal Qty { get; set; }
-    public decimal UnitPrice { get; set; }
-    public int VatRate { get; set; }
+    // ✅ Snapshot alanlar (o anın kopyası)
+    public string ItemCode { get; set; } = null!;
+    public string ItemName { get; set; } = null!;
+    public string Unit { get; set; } = "adet";   // örn: adet, kg, lt
 
-    public decimal Net { get; set; }
-    public decimal Vat { get; set; }
-    public decimal Gross { get; set; }
+    // Snapshot alanlar (fiyat/KDV o anki kurallarla sabitlenir)
+    public decimal Qty { get; set; }        // 18,3
+    public decimal UnitPrice { get; set; }  // 18,4
+    public int VatRate { get; set; }        // 0..100
+
+    // Türemiş/saklanan tutarlar (AwayFromZero, 2 hane)
+    public decimal Net { get; set; }        // 18,2
+    public decimal Vat { get; set; }        // 18,2
+    public decimal Gross { get; set; }      // 18,2
 
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
+
+    // Navigations
+    public Invoice Invoice { get; set; } = null!;
+    public Item Item { get; set; } = null!;
 }

@@ -6,6 +6,7 @@ public class Item : IHasTimestamps, ISoftDeletable, IHasRowVersion
 {
     public int Id { get; set; }
     public string Name { get; set; } = null!;
+    public string Code { get; set; } = null!;
     public string Unit { get; set; } = "adet";
     public int VatRate { get; set; } = 20;
     public decimal? DefaultUnitPrice { get; set; }

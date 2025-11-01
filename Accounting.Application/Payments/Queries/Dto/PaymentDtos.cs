@@ -3,7 +3,11 @@
 public record PaymentListItemDto(
     int Id,
     int AccountId,
+    string AccountCode,
+    string AccountName,
     int? ContactId,
+    string? ContactCode,
+    string? ContactName,
     int? LinkedInvoiceId,
     DateTime DateUtc,
     string Direction,

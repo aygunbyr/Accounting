@@ -62,7 +62,9 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
                 i.TotalNet,
                 i.TotalVat,
                 i.TotalGross,
-                i.CreatedAtUtc
+                i.CreatedAtUtc,
+                ContactCode = i.Contact.Code,
+                ContactName = i.Contact.Name
             })
             .ToListAsync(ct);
 
@@ -75,6 +77,8 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
         var items = pageData.Select(i => new InvoiceListItemDto(
             i.Id,
             i.ContactId,
+            i.ContactCode,
+            i.ContactName,
             i.DateUtc,
             i.Currency,
             Money.S2(i.TotalNet),

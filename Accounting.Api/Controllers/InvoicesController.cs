@@ -64,18 +64,6 @@ public class InvoicesController : ControllerBase
         return Ok(res);
     }
 
-    // PUT /api/invoices/{id}
-    [HttpPut("{id:int}")]
-    [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> UpdateHeader([FromRoute] int id, [FromBody] UpdateInvoiceHeaderCommand body, CancellationToken ct)
-    {
-        if (id != body.Id) return BadRequest();
-        var res = await _mediator.Send(body, ct);
-        return Ok(res);
-    }
-
     // DELETE /api/invoices/{id}
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -86,6 +74,30 @@ public class InvoicesController : ControllerBase
         if (id <= 0) return BadRequest();
         await _mediator.Send(new SoftDeleteInvoiceCommand(id, body.RowVersion), ct);
         return NoContent();
+    }
+
+    // TAM GÜNCELLEME
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Update([FromRoute] int id, [FromBody] UpdateInvoiceCommand body, CancellationToken ct)
+    {
+        if (id != body.Id) return BadRequest();
+        var res = await _mediator.Send(body, ct);
+        return Ok(res);
+    }
+
+    // SADECE HEADER
+    [HttpPatch("{id:int}/header")]
+    [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> UpdateHeader([FromRoute] int id, [FromBody] UpdateInvoiceHeaderCommand body, CancellationToken ct)
+    {
+        if (id != body.Id) return BadRequest();
+        var res = await _mediator.Send(body, ct);
+        return Ok(res);
     }
 
 }

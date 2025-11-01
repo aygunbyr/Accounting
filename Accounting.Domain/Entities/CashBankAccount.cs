@@ -8,6 +8,7 @@ public class CashBankAccount : IHasTimestamps, ISoftDeletable, IHasRowVersion
 {
     public int Id { get; set; }
     public CashBankAccountType Type { get; set; } = CashBankAccountType.Cash;
+    public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? Iban { get; set; }
 

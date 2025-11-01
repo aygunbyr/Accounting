@@ -19,6 +19,11 @@ public class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
         b.Property(x => x.Vat).HasColumnType("decimal(18,2)");
         b.Property(x => x.Gross).HasColumnType("decimal(18,2)");
 
+        // Snapshot kolonları
+        b.Property(x => x.ItemCode).IsRequired().HasMaxLength(64);     // Unicode: true (Türkçe kod kullanıyorsan)
+        b.Property(x => x.ItemName).IsRequired().HasMaxLength(256);
+        b.Property(x => x.Unit).IsRequired().HasMaxLength(16);
+
         // timestamps
         b.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()")

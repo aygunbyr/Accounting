@@ -8,6 +8,7 @@ public class Contact : IHasTimestamps, ISoftDeletable, IHasRowVersion
 {
     public int Id { get; set; }
     public ContactType Type { get; set; } = ContactType.Customer;
+    public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? TaxNo { get; set; }
     public string? Email { get; set; }

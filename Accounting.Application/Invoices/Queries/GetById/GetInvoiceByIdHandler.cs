@@ -26,10 +26,13 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
             .Select(l => new InvoiceLineDto(
                 l.Id,
                 l.ItemId,
-                Money.S3(l.Qty),        // decimal -> "F3"
-                Money.S4(l.UnitPrice),  // decimal -> "F4"
+                l.Item.Code,
+                l.Item.Name,
+                l.Item.Unit,
+                Money.S3(l.Qty),
+                Money.S4(l.UnitPrice),
                 l.VatRate,
-                Money.S2(l.Net),        // decimal -> "F2"
+                Money.S2(l.Net),
                 Money.S2(l.Vat),
                 Money.S2(l.Gross)
             ))
@@ -38,6 +41,8 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
         return new InvoiceDto(
             inv.Id,
             inv.ContactId,
+            inv.Contact.Code,
+            inv.Contact.Name,
             inv.DateUtc,
             inv.Currency,
             Money.S2(inv.TotalNet),

@@ -12,6 +12,11 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
         b.ToTable("Contacts");
         b.HasKey(x => x.Id);
 
+        b.Property(x => x.Code)
+         .IsRequired()
+         .HasMaxLength(32)
+         .IsUnicode(true);
+
         b.Property(x => x.Type).HasConversion<int>();
         b.Property(x => x.Name).HasMaxLength(200).IsRequired();
         b.Property(x => x.TaxNo).HasMaxLength(20);
@@ -29,7 +34,11 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
         b.ApplySoftDelete();
 
         // indexes
-        b.HasIndex(x => x.Name);
+        b.HasIndex(x => x.Name).HasDatabaseName("IX_Contacts_Name");
+        b.HasIndex(x => x.Code)
+            .HasDatabaseName("UX_Contacts_Code")
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
         b.HasIndex(x => x.Type);
         b.HasIndex(x => new { x.Type, x.Name });
     }

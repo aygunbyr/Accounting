@@ -66,6 +66,9 @@ public class UpdateInvoiceHeaderHandler
             .Select(l => new InvoiceLineDto(
                 l.Id,
                 l.ItemId,
+                l.Item.Code,
+                l.Item.Name,
+                l.Item.Unit,
                 Money.S3(l.Qty),
                 Money.S4(l.UnitPrice),
                 l.VatRate,
@@ -78,6 +81,8 @@ public class UpdateInvoiceHeaderHandler
         return new InvoiceDto(
             fresh.Id,
             fresh.ContactId,
+            fresh.Contact.Code,
+            fresh.Contact.Name,
             fresh.DateUtc,
             fresh.Currency,
             Money.S2(fresh.TotalNet),
