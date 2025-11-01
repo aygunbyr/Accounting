@@ -2,7 +2,7 @@
 using Accounting.Api.Contracts.Invoices;
 using Accounting.Application.Invoices.Commands.Create;
 using Accounting.Application.Invoices.Commands.Delete;
-using Accounting.Application.Invoices.Commands.Update;
+using Accounting.Application.Invoices.Commands.UpdateHeader;
 using Accounting.Application.Invoices.Queries.Dto;
 using Accounting.Application.Invoices.Queries.GetById;
 using Accounting.Application.Invoices.Queries.List;

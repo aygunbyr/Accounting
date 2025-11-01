@@ -17,16 +17,15 @@ public class UpdateExpenseLineHandler
 
     public async Task<ExpenseListDetailDto> Handle(UpdateExpenseLineCommand req, CancellationToken ct)
     {
-        // 1) Satır + parent (tracking)
+        // 1) Satırı ve parent'ı (tracking) al
         var line = await _db.Expenses
-            .Include(x => x.ExpenseList)
-            .ThenInclude(l => l.Lines)
+            .Include(x => x.ExpenseList) // parent yeterli, Lines'ı burada çekmiyoruz
             .FirstOrDefaultAsync(x => x.Id == req.LineId && x.ExpenseListId == req.ExpenseListId, ct);
 
         if (line is null)
             throw new KeyNotFoundException($"Expense line {req.LineId} not found.");
 
-        var list = line.ExpenseList;
+        var list = line.ExpenseList!;
 
         // 2) İş kuralı
         if (list.Status is not (ExpenseListStatus.Draft or ExpenseListStatus.Reviewed))
@@ -45,9 +44,13 @@ public class UpdateExpenseLineHandler
 
         amountDec = Money.R2(amountDec); // AwayFromZero, 2 hane
 
+        var currency = (req.Currency ?? "TRY").Trim().ToUpperInvariant();
+        if (currency.Length != 3)
+            throw new BusinessRuleException("Currency 3 karakter olmalıdır (ISO 4217).");
+
         line.DateUtc = DateTime.SpecifyKind(req.DateUtc, DateTimeKind.Utc);
         line.SupplierId = req.SupplierId;
-        line.Currency = (req.Currency ?? "TRY").ToUpperInvariant();
+        line.Currency = currency;
         line.Amount = amountDec;
         line.VatRate = req.VatRate;
         line.Category = string.IsNullOrWhiteSpace(req.Category) ? null : req.Category.Trim();

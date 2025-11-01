@@ -15,6 +15,7 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
     {
         var inv = await _db.Invoices
             .AsNoTracking()
+            .Include(i => i.Contact)
             .Include(i => i.Lines)
             .FirstOrDefaultAsync(i => i.Id == request.Id, cancellationToken);
 
@@ -26,9 +27,9 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
             .Select(l => new InvoiceLineDto(
                 l.Id,
                 l.ItemId,
-                l.Item.Code,
-                l.Item.Name,
-                l.Item.Unit,
+                l.ItemCode,   // snapshot
+                l.ItemName,   // snapshot
+                l.Unit,       // snapshot
                 Money.S3(l.Qty),
                 Money.S4(l.UnitPrice),
                 l.VatRate,

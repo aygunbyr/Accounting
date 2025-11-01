@@ -92,6 +92,7 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         // 7) Fresh read (AsNoTracking)
         var fresh = await _ctx.Invoices
             .AsNoTracking()
+            .Include(i => i.Contact)
             .Include(i => i.Lines)
             .FirstAsync(i => i.Id == inv.Id, ct);
 
@@ -101,9 +102,9 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             .Select(l => new InvoiceLineDto(
                 l.Id,
                 l.ItemId,
-                l.Item.Code,
-                l.Item.Name,
-                l.Item.Unit,
+                l.ItemCode,
+                l.ItemName,
+                l.Unit,
                 Money.S3(l.Qty),
                 Money.S4(l.UnitPrice),
                 l.VatRate,

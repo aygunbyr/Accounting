@@ -7,7 +7,7 @@ using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
-namespace Accounting.Application.Invoices.Commands.Update;
+namespace Accounting.Application.Invoices.Commands.UpdateHeader;
 
 public class UpdateInvoiceHeaderHandler
     : IRequestHandler<UpdateInvoiceHeaderCommand, InvoiceDto>
@@ -19,27 +19,29 @@ public class UpdateInvoiceHeaderHandler
     {
         // 1) Fetch (TRACKING)
         var inv = await _db.Invoices
-            .Include(i => i.Lines)
+            .Include(i => i.Lines) // header toplamları ve DTO için satırlara ihtiyacımız var
             .FirstOrDefaultAsync(i => i.Id == req.Id, ct);
 
         if (inv is null)
             throw new KeyNotFoundException($"Invoice {req.Id} not found.");
 
-        // 2) Business rules: (şimdilik yok / domainine göre eklenebilir)
+        // 2) Business rules (gerektiğinde)
 
         // 3) Concurrency (parent RowVersion)
         byte[] rv;
         try { rv = Convert.FromBase64String(req.RowVersion); }
         catch { throw new ConcurrencyConflictException("RowVersion geçersiz."); }
-        _db.Entry(inv).Property(nameof(Invoice.RowVersion)).OriginalValue = rv;
+        _db.Entry(inv).Property("RowVersion").OriginalValue = rv;
 
         // 4) Normalize/map
         inv.ContactId = req.ContactId;
-        inv.Currency = (req.Currency ?? "TRY").ToUpperInvariant();
         inv.Type = req.Type;
 
-        if (!DateTime.TryParse(req.DateUtc, CultureInfo.InvariantCulture,
-                               DateTimeStyles.AdjustToUniversal, out var dt))
+        var ccy = (req.Currency ?? "TRY").Trim().ToUpperInvariant();
+        if (ccy.Length != 3) throw new ArgumentException("Currency 3 karakter olmalıdır (ISO 4217).");
+        inv.Currency = ccy;
+
+        if (!DateTime.TryParse(req.DateUtc, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var dt))
             throw new ArgumentException("DateUtc is invalid.");
         inv.DateUtc = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
 
@@ -51,24 +53,25 @@ public class UpdateInvoiceHeaderHandler
         catch (DbUpdateConcurrencyException)
         { throw new ConcurrencyConflictException("Fatura başka biri tarafından güncellendi."); }
 
-        // 7) Fresh read
+        // 7) Fresh read (Contact + Lines) — Snapshot alanlarını kullanacağımız için Item Include'a gerek yok
         var fresh = await _db.Invoices
             .AsNoTracking()
+            .Include(i => i.Contact)
             .Include(i => i.Lines)
             .FirstOrDefaultAsync(i => i.Id == req.Id, ct);
 
         if (fresh is null)
             throw new KeyNotFoundException($"Invoice {req.Id} not found after update.");
 
-        // 8) DTO
+        // 8) Lines → DTO (SNAPSHOT KULLAN)
         var lines = fresh.Lines
             .OrderBy(l => l.Id)
             .Select(l => new InvoiceLineDto(
                 l.Id,
                 l.ItemId,
-                l.Item.Code,
-                l.Item.Name,
-                l.Item.Unit,
+                l.ItemCode,     // snapshot
+                l.ItemName,     // snapshot
+                l.Unit,         // snapshot
                 Money.S3(l.Qty),
                 Money.S4(l.UnitPrice),
                 l.VatRate,

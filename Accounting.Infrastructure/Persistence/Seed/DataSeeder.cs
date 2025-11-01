@@ -7,102 +7,226 @@ public static class DataSeeder
 {
     public static async Task SeedAsync(AppDbContext db)
     {
-        // --- Contacts ---
+        // --- Helpers (rounding: AwayFromZero) ---
+        static decimal R2(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
+        static decimal R3(decimal v) => Math.Round(v, 3, MidpointRounding.AwayFromZero);
+        static decimal R4(decimal v) => Math.Round(v, 4, MidpointRounding.AwayFromZero);
+
+        // ------------------------------------------------
+        // 1) CONTACTS (10 adet)
+        // ------------------------------------------------
         if (!await db.Contacts.AnyAsync())
         {
-            db.Contacts.AddRange(
-                new Contact { Name = "ACME Ltd.", Type = ContactType.Customer, Email = "info@acme.local" },
-                new Contact { Name = "Tedarikçi A.Ş.", Type = ContactType.Vendor, Email = "siparis@tedarikci.local" },
-                new Contact { Name = "Globex A.Ş.", Type = ContactType.Customer, Email = "hello@globex.local" }
-            );
+            var contacts = new List<Contact>();
+            // 6 müşteri
+            for (int i = 1; i <= 6; i++)
+            {
+                contacts.Add(new Contact
+                {
+                    Type = ContactType.Customer,
+                    Code = $"CUST{i:000}",
+                    Name = $"Müşteri {i}",
+                    Email = $"musteri{i}@demo.local",
+                    Phone = $"+90 212 000 0{i:000}"
+                });
+            }
+            // 4 tedarikçi
+            for (int i = 1; i <= 4; i++)
+            {
+                contacts.Add(new Contact
+                {
+                    Type = ContactType.Vendor,
+                    Code = $"VEND{i:000}",
+                    Name = $"Tedarikçi {i}",
+                    Email = $"tedarikci{i}@demo.local",
+                    Phone = $"+90 216 111 0{i:000}"
+                });
+            }
+            db.Contacts.AddRange(contacts);
         }
 
-        // --- Items ---
+        // ------------------------------------------------
+        // 2) ITEMS (10 adet)
+        // ------------------------------------------------
         if (!await db.Items.AnyAsync())
         {
-            db.Items.AddRange(
-                new Item { Name = "Hizmet A", Unit = "saat", VatRate = 20, DefaultUnitPrice = 750.00m },
-                new Item { Name = "Ürün B", Unit = "adet", VatRate = 1, DefaultUnitPrice = 50.00m },
-                new Item { Name = "Danışmanlık", Unit = "saat", VatRate = 20, DefaultUnitPrice = 950.00m },
-                new Item { Name = "Kargo", Unit = "adet", VatRate = 20, DefaultUnitPrice = 80.00m }
-            );
+            var units = new[] { "adet", "kg", "lt", "saat" };
+            var items = new List<Item>();
+            for (int i = 1; i <= 10; i++)
+            {
+                items.Add(new Item
+                {
+                    Code = $"ITEM{i:000}",
+                    Name = $"Stok {i}",
+                    Unit = units[(i - 1) % units.Length],
+                    VatRate = (i % 5 == 0) ? 1 : 20, // arada 1% KDV
+                    DefaultUnitPrice = R4(25m + i * 7.5m)
+                });
+            }
+            db.Items.AddRange(items);
         }
 
-        // --- Cash / Bank Accounts ---
+        // ------------------------------------------------
+        // 3) CASH/BANK ACCOUNTS (10 adet: 5 kasa, 5 banka)
+        // ------------------------------------------------
         if (!await db.CashBankAccounts.AnyAsync())
         {
-            db.CashBankAccounts.AddRange(
-                new CashBankAccount { Name = "Kasa", Type = CashBankAccountType.Cash },
-                new CashBankAccount { Name = "Banka (TL)", Type = CashBankAccountType.Bank, Iban = "TR120006200000000123456789" }
-            );
+            var accs = new List<CashBankAccount>();
+            for (int i = 1; i <= 5; i++)
+            {
+                accs.Add(new CashBankAccount
+                {
+                    Type = CashBankAccountType.Cash,
+                    Code = $"CASH{i:000}",
+                    Name = $"Kasa {i}",
+                });
+            }
+            for (int i = 1; i <= 5; i++)
+            {
+                accs.Add(new CashBankAccount
+                {
+                    Type = CashBankAccountType.Bank,
+                    Code = $"BANK{i:000}",
+                    Name = $"Banka {i}",
+                    Iban = $"TR{i:00}0006200000000{i:000000000}"
+                });
+            }
+            db.CashBankAccounts.AddRange(accs);
         }
 
-        // Önce temel kayıtları kaydedelim ki Id'ler oluşsun
+        // Önce temel kayıtları kaydedelim (ID’ler oluşsun)
         await db.SaveChangesAsync();
 
-        // Id'leri al
-        var kasaId = await db.CashBankAccounts.Where(x => x.Name == "Kasa").Select(x => x.Id).FirstOrDefaultAsync();
-        var bankaTlId = await db.CashBankAccounts.Where(x => x.Name == "Banka (TL)").Select(x => x.Id).FirstOrDefaultAsync();
+        // Lookup listeleri (IDs & entities)
+        var contactIds = await db.Contacts.OrderBy(c => c.Id).Select(c => c.Id).ToListAsync();
+        var customerIds = await db.Contacts.Where(c => c.Type == ContactType.Customer).OrderBy(c => c.Id).Select(c => c.Id).ToListAsync();
+        var vendorIds = await db.Contacts.Where(c => c.Type == ContactType.Vendor).OrderBy(c => c.Id).Select(c => c.Id).ToListAsync();
 
-        var acmeId = await db.Contacts.Where(x => x.Name == "ACME Ltd.").Select(x => x.Id).FirstOrDefaultAsync();
-        var tedarikciId = await db.Contacts.Where(x => x.Name == "Tedarikçi A.Ş.").Select(x => x.Id).FirstOrDefaultAsync();
-        var globexId = await db.Contacts.Where(x => x.Name == "Globex A.Ş.").Select(x => x.Id).FirstOrDefaultAsync();
+        var itemsAll = await db.Items.AsNoTracking().OrderBy(i => i.Id).ToListAsync();
+        var accountIds = await db.CashBankAccounts.OrderBy(a => a.Id).Select(a => a.Id).ToListAsync();
 
-        // --- Payments (TRY + USD; In/Out) ---
-        if (!await db.Payments.AnyAsync())
+        var now = DateTime.UtcNow;
+
+        // ------------------------------------------------
+        // 4) INVOICES (10 adet) + INVOICELINES (10 adet, her faturaya 1 satır)
+        // ------------------------------------------------
+        if (!await db.Invoices.AnyAsync())
         {
-            var now = DateTime.UtcNow;
+            var invoices = new List<Invoice>();
+            for (int i = 1; i <= 10; i++)
+            {
+                // Müşteri ve item seç
+                var contactId = customerIds[(i - 1) % customerIds.Count];
+                var item = itemsAll[(i - 1) % itemsAll.Count];
 
-            db.Payments.AddRange(
-                // Gelen (In) TRY – müşteri tahsilatı
-                new Payment
+                var qty = R3(1m + (i % 3));          // 1..3
+                var unitPrice = R4(item.DefaultUnitPrice ?? 50m);
+                var vatRate = item.VatRate;
+
+                var net = R2(qty * unitPrice);
+                var vat = R2(net * vatRate / 100m);
+                var gross = R2(net + vat);
+
+                var inv = new Invoice
                 {
-                    AccountId = kasaId,
-                    ContactId = acmeId,
-                    Direction = PaymentDirection.In,
-                    Amount = 1500.00m,
-                    Currency = "TRY",
-                    DateUtc = now.AddDays(-2)
-                },
-                // Giden (Out) TRY – tedarikçiye ödeme
-                new Payment
-                {
-                    AccountId = bankaTlId,
-                    ContactId = tedarikciId,
-                    Direction = PaymentDirection.Out,
-                    Amount = 900.00m,
-                    Currency = "TRY",
-                    DateUtc = now.AddDays(-1).AddHours(-3)
-                },
-                // Gelen (In) USD – başka bir müşteriden tahsilat
-                new Payment
-                {
-                    AccountId = bankaTlId,
-                    ContactId = globexId,
-                    Direction = PaymentDirection.In,
-                    Amount = 200.00m,
-                    Currency = "USD",
-                    DateUtc = now.AddDays(-1).AddHours(2)
-                },
-                // Giden (Out) TRY – küçük masraf
-                new Payment
-                {
-                    AccountId = kasaId,
-                    ContactId = tedarikciId,
-                    Direction = PaymentDirection.Out,
-                    Amount = 120.00m,
-                    Currency = "TRY",
-                    DateUtc = now.AddHours(-6)
-                }
-            );
+                    ContactId = contactId,
+                    Type = InvoiceType.Sales,
+                    DateUtc = now.AddDays(-i),
+                    Currency = (i % 4 == 0) ? "USD" : "TRY",
+                    TotalNet = net,
+                    TotalVat = vat,
+                    TotalGross = gross,
+                    Lines = new List<InvoiceLine>
+                    {
+                        new InvoiceLine
+                        {
+                            ItemId     = item.Id,
+                            ItemCode   = item.Code,
+                            ItemName   = item.Name,
+                            Unit       = item.Unit,
+                            Qty        = qty,
+                            UnitPrice  = unitPrice,
+                            VatRate    = vatRate,
+                            Net        = net,
+                            Vat        = vat,
+                            Gross      = gross,
+                            CreatedAtUtc = now.AddDays(-i)
+                        }
+                    },
+                    CreatedAtUtc = now.AddDays(-i)
+                };
+
+                invoices.Add(inv);
+            }
+            db.Invoices.AddRange(invoices);
         }
 
-        // (Opsiyonel) Demo amaçlı pasif/soft-deleted örneği istersen:
-        // if (!await db.Contacts.AnyAsync(c => c.Name == "Silinmiş Demo"))
-        // {
-        //     db.Contacts.Add(new Contact { Name = "Silinmiş Demo", Type = ContactType.Customer, Email = "deleted@demo.local", IsDeleted = true, DeletedAtUtc = DateTime.UtcNow });
-        // }
+        // ------------------------------------------------
+        // 5) PAYMENTS (10 adet)
+        // ------------------------------------------------
+        if (!await db.Payments.AnyAsync())
+        {
+            var payments = new List<Payment>();
+            for (int i = 1; i <= 10; i++)
+            {
+                var accountId = accountIds[(i - 1) % accountIds.Count];
+                var contactId = contactIds[(i - 1) % contactIds.Count];
 
+                payments.Add(new Payment
+                {
+                    AccountId = accountId,
+                    ContactId = contactId,
+                    Direction = (i % 2 == 0) ? PaymentDirection.In : PaymentDirection.Out,
+                    Amount = R2(100m + i * 37.25m),
+                    Currency = (i % 3 == 0) ? "USD" : "TRY",
+                    DateUtc = now.AddHours(-i * 6),
+                    CreatedAtUtc = now.AddHours(-i * 6)
+                });
+            }
+            db.Payments.AddRange(payments);
+        }
+
+        // ------------------------------------------------
+        // 6) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet)
+        // ------------------------------------------------
+        if (!await db.ExpenseLists.AnyAsync())
+        {
+            var lists = new List<ExpenseList>();
+            for (int i = 1; i <= 10; i++)
+            {
+                var list = new ExpenseList
+                {
+                    Name = $"Masraf Listesi {i}",
+                    Status = (i % 3 == 0) ? ExpenseListStatus.Reviewed : ExpenseListStatus.Draft,
+                    CreatedAtUtc = now.AddDays(-i),
+                };
+
+                // Her listeye 1 masraf
+                var supplierId = vendorIds[(i - 1) % vendorIds.Count];
+                var amount = R2(50m + i * 12.4m);
+                var vatRate = (i % 5 == 0) ? 1 : 20;
+
+                list.Lines.Add(new Expense
+                {
+                    DateUtc = now.AddDays(-i).AddHours(-2),
+                    SupplierId = supplierId,
+                    Currency = (i % 4 == 0) ? "USD" : "TRY",
+                    Amount = amount,
+                    VatRate = vatRate,
+                    Category = (i % 2 == 0) ? "Ulaşım" : "Kırtasiye",
+                    Notes = (i % 3 == 0) ? "Toplantı gideri" : null,
+                    CreatedAtUtc = now.AddDays(-i).AddHours(-2)
+                });
+
+                lists.Add(list);
+            }
+
+            db.ExpenseLists.AddRange(lists);
+        }
+
+        // ------------------------------------------------
+        // KAYDET
+        // ------------------------------------------------
         await db.SaveChangesAsync();
     }
 }

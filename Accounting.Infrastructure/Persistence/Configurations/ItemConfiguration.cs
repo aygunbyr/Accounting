@@ -12,7 +12,8 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
         b.ToTable("Items");
         b.HasKey(x => x.Id);
 
-        b.Property(x => x.Name).IsRequired().HasMaxLength(160);
+        b.Property(x => x.Code).IsRequired().HasMaxLength(64);
+        b.Property(x => x.Name).IsRequired().HasMaxLength(256);
         b.Property(x => x.Unit).IsRequired().HasMaxLength(16);
         b.Property(x => x.VatRate).IsRequired();
 
@@ -30,6 +31,10 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
 
         // indexes / constraints
         b.HasIndex(x => x.Name).HasDatabaseName("IX_Items_Name");
+        b.HasIndex(x => x.Code)
+            .HasDatabaseName("UX_Items_Code")
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
         b.ToTable(t =>
         {
             t.HasCheckConstraint("CK_Item_VatRate_Range", "[VatRate] BETWEEN 0 AND 100");

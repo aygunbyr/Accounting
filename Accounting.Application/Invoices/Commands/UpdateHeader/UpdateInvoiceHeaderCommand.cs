@@ -3,7 +3,7 @@ using Accounting.Application.Invoices.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
 
-namespace Accounting.Application.Invoices.Commands.Update;
+namespace Accounting.Application.Invoices.Commands.UpdateHeader;
 
 public record UpdateInvoiceHeaderCommand(
     int Id,

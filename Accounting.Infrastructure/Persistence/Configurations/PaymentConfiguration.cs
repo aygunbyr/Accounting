@@ -14,7 +14,7 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 
         b.Property(x => x.Direction).HasConversion<int>();
         b.Property(x => x.DateUtc).IsRequired();
-        b.Property(x => x.Currency).IsRequired().HasMaxLength(3).IsUnicode(false); // ✅ ASCII
+        b.Property(x => x.Currency).IsRequired().HasMaxLength(3).IsUnicode(false);
         b.Property(x => x.Amount).HasColumnType("decimal(18,2)");
 
         // ✅ Navigations & FK davranışları: hepsi Restrict

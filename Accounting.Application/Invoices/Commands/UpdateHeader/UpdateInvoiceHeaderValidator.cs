@@ -1,7 +1,7 @@
 ﻿using FluentValidation;
 using System.Globalization;
 
-namespace Accounting.Application.Invoices.Commands.Update;
+namespace Accounting.Application.Invoices.Commands.UpdateHeader;
 
 public class UpdateInvoiceHeaderValidator : AbstractValidator<UpdateInvoiceHeaderCommand>
 {
