@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
+using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,7 +16,7 @@ public class SoftDeleteItemHandler : IRequestHandler<SoftDeleteItemCommand, bool
         var e = await _db.Items.FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
         if (e is null) throw new KeyNotFoundException("Item not found.");
 
-        _db.Entry(e).Property("RowVersion").OriginalValue = Convert.FromBase64String(r.RowVersion);
+        _db.Entry(e).Property(nameof(Item.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
 
         e.IsDeleted = true;
         e.DeletedAtUtc = DateTime.UtcNow;

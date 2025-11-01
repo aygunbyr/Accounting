@@ -108,56 +108,79 @@ public static class DataSeeder
         var now = DateTime.UtcNow;
 
         // ------------------------------------------------
-        // 4) INVOICES (10 adet) + INVOICELINES (10 adet, her faturaya 1 satır)
+        // 4) INVOICES (iade dâhil)
+        //    - Satırlar hep pozitif
+        //    - SalesReturn / PurchaseReturn ise header toplamları negatif
         // ------------------------------------------------
         if (!await db.Invoices.AnyAsync())
         {
             var invoices = new List<Invoice>();
-            for (int i = 1; i <= 10; i++)
+            // 12 fatura (çeşitli türlerde)
+            for (int i = 1; i <= 12; i++)
             {
-                // Müşteri ve item seç
-                var contactId = customerIds[(i - 1) % customerIds.Count];
-                var item = itemsAll[(i - 1) % itemsAll.Count];
+                // Tür seçimi: biraz dağıtalım
+                InvoiceType invType =
+                    (i % 6 == 0) ? InvoiceType.SalesReturn :
+                    (i % 5 == 0) ? InvoiceType.PurchaseReturn :
+                    (i % 2 == 0) ? InvoiceType.Purchase :
+                                   InvoiceType.Sales;
 
-                var qty = R3(1m + (i % 3));          // 1..3
+                // Contact seçimi: Sales/SalesReturn -> müşteri, Purchase/PurchaseReturn -> tedarikçi
+                int contactId =
+                    (invType == InvoiceType.Sales || invType == InvoiceType.SalesReturn)
+                        ? customerIds[(i - 1) % customerIds.Count]
+                        : vendorIds[(i - 1) % vendorIds.Count];
+
+                // Item ve miktar/fiyat
+                var item = itemsAll[(i - 1) % itemsAll.Count];
+                var qty = R3(1m + (i % 3));                // 1..3
                 var unitPrice = R4(item.DefaultUnitPrice ?? 50m);
                 var vatRate = item.VatRate;
 
+                // Satır tutarları (pozitif)
                 var net = R2(qty * unitPrice);
                 var vat = R2(net * vatRate / 100m);
                 var gross = R2(net + vat);
 
+                // Header işareti (iade ise -1)
+                decimal sign = (invType == InvoiceType.SalesReturn || invType == InvoiceType.PurchaseReturn) ? -1m : 1m;
+
                 var inv = new Invoice
                 {
                     ContactId = contactId,
-                    Type = InvoiceType.Sales,
+                    Type = invType,
                     DateUtc = now.AddDays(-i),
                     Currency = (i % 4 == 0) ? "USD" : "TRY",
-                    TotalNet = net,
-                    TotalVat = vat,
-                    TotalGross = gross,
+
+                    // Header toplamları (iade negatif)
+                    TotalNet = R2(sign * net),
+                    TotalVat = R2(sign * vat),
+                    TotalGross = R2(sign * gross),
+
                     Lines = new List<InvoiceLine>
                     {
                         new InvoiceLine
                         {
-                            ItemId     = item.Id,
-                            ItemCode   = item.Code,
-                            ItemName   = item.Name,
-                            Unit       = item.Unit,
-                            Qty        = qty,
-                            UnitPrice  = unitPrice,
-                            VatRate    = vatRate,
-                            Net        = net,
-                            Vat        = vat,
-                            Gross      = gross,
-                            CreatedAtUtc = now.AddDays(-i)
+                            ItemId      = item.Id,
+                            ItemCode    = item.Code,   // snapshot
+                            ItemName    = item.Name,   // snapshot
+                            Unit        = item.Unit,   // snapshot
+                            Qty         = qty,
+                            UnitPrice   = unitPrice,
+                            VatRate     = vatRate,
+                            Net         = net,         // satır hep pozitif
+                            Vat         = vat,
+                            Gross       = gross,
+                            CreatedAtUtc= now.AddDays(-i)
                         }
                     },
+
                     CreatedAtUtc = now.AddDays(-i)
                 };
 
                 invoices.Add(inv);
             }
+
             db.Invoices.AddRange(invoices);
         }
 

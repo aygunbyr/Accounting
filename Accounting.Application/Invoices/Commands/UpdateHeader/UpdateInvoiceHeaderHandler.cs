@@ -19,21 +19,19 @@ public class UpdateInvoiceHeaderHandler
     {
         // 1) Fetch (TRACKING)
         var inv = await _db.Invoices
-            .Include(i => i.Lines) // header toplamları ve DTO için satırlara ihtiyacımız var
+            .Include(i => i.Lines) // header toplamları ve DTO için satırlar gerekli
             .FirstOrDefaultAsync(i => i.Id == req.Id, ct);
 
         if (inv is null)
             throw new KeyNotFoundException($"Invoice {req.Id} not found.");
 
-        // 2) Business rules (gerektiğinde)
-
-        // 3) Concurrency (parent RowVersion)
+        // 2) Concurrency (parent RowVersion)
         byte[] rv;
         try { rv = Convert.FromBase64String(req.RowVersion); }
         catch { throw new ConcurrencyConflictException("RowVersion geçersiz."); }
-        _db.Entry(inv).Property("RowVersion").OriginalValue = rv;
+        _db.Entry(inv).Property(nameof(Invoice.RowVersion)).OriginalValue = rv;
 
-        // 4) Normalize/map
+        // 3) Normalize/map
         inv.ContactId = req.ContactId;
         inv.Type = req.Type;
 
@@ -45,8 +43,19 @@ public class UpdateInvoiceHeaderHandler
             throw new ArgumentException("DateUtc is invalid.");
         inv.DateUtc = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
 
-        // 5) Audit
+        // 4) Audit
         inv.UpdatedAtUtc = DateTime.UtcNow;
+
+        // 5) Header toplamlarını Type'a göre yeniden işaretle (satırlar değişmedi)
+        var lineNet = inv.Lines.Sum(x => x.Net);
+        var lineVat = inv.Lines.Sum(x => x.Vat);
+        var lineGross = inv.Lines.Sum(x => x.Gross);
+
+        decimal sign = (inv.Type == InvoiceType.SalesReturn || inv.Type == InvoiceType.PurchaseReturn) ? -1m : 1m;
+
+        inv.TotalNet = Money.R2(sign * lineNet);
+        inv.TotalVat = Money.R2(sign * lineVat);
+        inv.TotalGross = Money.R2(sign * lineGross);
 
         // 6) Persist
         try { await _db.SaveChangesAsync(ct); }

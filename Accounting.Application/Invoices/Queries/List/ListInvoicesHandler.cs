@@ -25,6 +25,8 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
         // Örn: Invoice'ta bool IsPurchase gibi bir alan varsa:
         if (q.Type == InvoiceTypeFilter.Sales) query = query.Where(i => i.Type == InvoiceType.Sales);
         if (q.Type == InvoiceTypeFilter.Purchase) query = query.Where(i => i.Type == InvoiceType.Purchase);
+        if (q.Type == InvoiceTypeFilter.PurchaseReturn) query = query.Where(i => i.Type == InvoiceType.PurchaseReturn);
+        if (q.Type == InvoiceTypeFilter.SalesReturn) query = query.Where(i => i.Type == InvoiceType.SalesReturn);
 
         if (TryParseUtc(q.DateFromUtc, out var fromUtc)) query = query.Where(i => i.DateUtc >= fromUtc);
         if (TryParseUtc(q.DateToUtc, out var toUtc)) query = query.Where(i => i.DateUtc <= toUtc);

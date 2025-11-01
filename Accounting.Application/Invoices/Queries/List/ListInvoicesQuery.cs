@@ -4,7 +4,14 @@ using MediatR;
 
 namespace Accounting.Application.Invoices.Queries.List;
 
-public enum InvoiceTypeFilter { Any = 0, Sales = 1, Purchase = 2 }
+public enum InvoiceTypeFilter
+{
+    Any = 0,
+    Sales = 1,
+    Purchase = 2,
+    SalesReturn = 3,
+    PurchaseReturn = 4
+}
 
 public record ListInvoicesQuery(
     int PageNumber = 1,

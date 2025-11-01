@@ -21,17 +21,25 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             .FirstOrDefaultAsync(i => i.Id == r.Id, ct)
             ?? throw new NotFoundException(nameof(Invoice), r.Id);
 
-        // 3) Concurrency (RowVersion base64)
-        _ctx.Entry(inv).Property("RowVersion")
+        // 2) Concurrency (RowVersion base64)
+        _ctx.Entry(inv).Property(nameof(Invoice.RowVersion))
             .OriginalValue = Convert.FromBase64String(r.RowVersionBase64);
 
-        // 4) Normalize
+        // 3) Normalize (parent)
         inv.Currency = (r.Currency ?? "TRY").Trim().ToUpperInvariant();
         inv.DateUtc = r.DateUtc;
         inv.ContactId = r.ContactId;
 
         // ---- Satır diff senkronu ----
         var now = DateTime.UtcNow;
+
+        // Snapshot doldurmak için gerekli Item'ları tek seferde çek
+        var allItemIds = r.Lines.Select(x => x.ItemId).Distinct().ToList();
+        var itemsMap = await _ctx.Items
+            .Where(i => allItemIds.Contains(i.Id))
+            .Select(i => new { i.Id, i.Code, i.Name, i.Unit, i.VatRate })
+            .ToDictionaryAsync(i => i.Id, ct);
+
         var incomingById = r.Lines.Where(x => x.Id > 0).ToDictionary(x => x.Id);
 
         // a) Silinecekler: mevcutta var, body’de yok
@@ -48,12 +56,25 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         {
             if (incomingById.TryGetValue(line.Id, out var dto))
             {
+                var itemChanged = line.ItemId != dto.ItemId;
                 line.ItemId = dto.ItemId;
                 line.Qty = dto.Qty;
                 line.UnitPrice = dto.UnitPrice;
                 line.VatRate = dto.VatRate;
                 line.UpdatedAtUtc = now;
 
+                // Snapshot tazele (Item değişmişse ya da eksikse)
+                if (itemsMap.TryGetValue(line.ItemId, out var it))
+                {
+                    if (itemChanged || string.IsNullOrWhiteSpace(line.ItemCode))
+                    {
+                        line.ItemCode = it.Code;
+                        line.ItemName = it.Name;
+                        line.Unit = it.Unit;
+                    }
+                }
+
+                // Hesaplar (AwayFromZero politikası)
                 line.Net = Money.R2(dto.Qty * dto.UnitPrice);
                 line.Vat = Money.R2(line.Net * line.VatRate / 100m);
                 line.Gross = Money.R2(line.Net + line.Vat);
@@ -63,9 +84,16 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         // c) Yeni satırlar
         foreach (var dto in r.Lines.Where(x => x.Id == 0))
         {
+            // Snapshot: Item zorunlu
+            if (!itemsMap.TryGetValue(dto.ItemId, out var it))
+                throw new BusinessRuleException($"Item {dto.ItemId} bulunamadı.");
+
             var nl = new InvoiceLine
             {
                 ItemId = dto.ItemId,
+                ItemCode = it.Code,   // snapshot
+                ItemName = it.Name,   // snapshot
+                Unit = it.Unit,   // snapshot
                 Qty = dto.Qty,
                 UnitPrice = dto.UnitPrice,
                 VatRate = dto.VatRate,
@@ -78,25 +106,32 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             inv.Lines.Add(nl);
         }
 
-        // 5) UpdatedAt + parent toplamlar
+        // 4) UpdatedAt + parent toplamlar (iade tiplerinde sign = -1)
         inv.UpdatedAtUtc = now;
-        inv.TotalNet = Money.R2(inv.Lines.Sum(x => x.Net));
-        inv.TotalVat = Money.R2(inv.Lines.Sum(x => x.Vat));
-        inv.TotalGross = Money.R2(inv.Lines.Sum(x => x.Gross));
 
-        // 6) Save + concurrency
+        var lineNet = inv.Lines.Sum(x => x.Net);
+        var lineVat = inv.Lines.Sum(x => x.Vat);
+        var lineGross = inv.Lines.Sum(x => x.Gross);
+
+        decimal sign = (inv.Type == InvoiceType.SalesReturn || inv.Type == InvoiceType.PurchaseReturn) ? -1m : 1m;
+
+        inv.TotalNet = Money.R2(sign * lineNet);
+        inv.TotalVat = Money.R2(sign * lineVat);
+        inv.TotalGross = Money.R2(sign * lineGross);
+
+        // 5) Save + concurrency
         try { await _ctx.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException)
         { throw new ConcurrencyConflictException(); }
 
-        // 7) Fresh read (AsNoTracking)
+        // 6) Fresh read (AsNoTracking + Contact + Lines)
         var fresh = await _ctx.Invoices
             .AsNoTracking()
             .Include(i => i.Contact)
             .Include(i => i.Lines)
             .FirstAsync(i => i.Id == inv.Id, ct);
 
-        // Lines → DTO
+        // Lines → DTO (snapshot kullan)
         var linesDto = fresh.Lines
             .OrderBy(l => l.Id)
             .Select(l => new InvoiceLineDto(
@@ -114,7 +149,7 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             ))
             .ToList();
 
-        // 8) DTO build (10 parametreli sürüm)
+        // 7) DTO build
         return new InvoiceDto(
             fresh.Id,
             fresh.ContactId,

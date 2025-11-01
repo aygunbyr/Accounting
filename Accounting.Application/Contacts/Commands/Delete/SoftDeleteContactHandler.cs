@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
+using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +17,7 @@ public class SoftDeleteContactHandler : IRequestHandler<SoftDeleteContactCommand
         if (c is null) throw new KeyNotFoundException($"Contact {req.Id} not found.");
 
         var original = Convert.FromBase64String(req.RowVersion);
-        _db.Entry(c).Property("RowVersion").OriginalValue = original;
+        _db.Entry(c).Property(nameof(Contact.RowVersion)).OriginalValue = original;
 
         c.IsDeleted = true;
         c.DeletedAtUtc = DateTime.UtcNow;

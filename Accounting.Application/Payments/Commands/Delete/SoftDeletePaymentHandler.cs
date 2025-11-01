@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
+using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
         if (p is null) throw new KeyNotFoundException($"Payment {req.Id} not found.");
 
         var original = Convert.FromBase64String(req.RowVersion);
-        _db.Entry(p).Property("RowVersion").OriginalValue = original;
+        _db.Entry(p).Property(nameof(Payment.RowVersion)).OriginalValue = original;
 
         p.IsDeleted = true;
         p.DeletedAtUtc = DateTime.UtcNow;

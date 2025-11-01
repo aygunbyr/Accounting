@@ -3,6 +3,7 @@ using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;   // ConcurrencyConflictException
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Items.Queries.Dto;
+using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,7 +22,7 @@ public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, ItemDetailDt
 
         // (3) original rowversion
         var original = Convert.FromBase64String(r.RowVersion);
-        _db.Entry(e).Property("RowVersion").OriginalValue = original;
+        _db.Entry(e).Property(nameof(Item.RowVersion)).OriginalValue = original;
 
         // (4) normalize + parse
         e.Name = r.Name.Trim();

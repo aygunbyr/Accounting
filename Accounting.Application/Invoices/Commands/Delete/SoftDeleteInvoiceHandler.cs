@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
+using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,7 +20,7 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
 
         // concurrency
         var originalBytes = Convert.FromBase64String(req.RowVersion);
-        _db.Entry(inv).Property("RowVersion").OriginalValue = originalBytes;
+        _db.Entry(inv).Property(nameof(Invoice.RowVersion)).OriginalValue = originalBytes;
 
         inv.IsDeleted = true;
         inv.DeletedAtUtc = DateTime.UtcNow;
