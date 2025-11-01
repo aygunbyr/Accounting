@@ -35,6 +35,7 @@ public record InvoiceListItemDto(
     int ContactId,
     string ContactCode,
     string ContactName,
+    string Type, // Sales / Purchase
     DateTime DateUtc,
     string Currency,
     string TotalNet,

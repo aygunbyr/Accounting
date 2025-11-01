@@ -57,6 +57,7 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
             .Select(i => new {
                 i.Id,
                 i.ContactId,
+                i.Type,
                 i.DateUtc,
                 i.Currency,
                 i.TotalNet,
@@ -79,6 +80,7 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
             i.ContactId,
             i.ContactCode,
             i.ContactName,
+            i.Type.ToString(),
             i.DateUtc,
             i.Currency,
             Money.S2(i.TotalNet),

@@ -2,6 +2,7 @@
 
 public record ItemListItemDto(
     int Id,
+    string Code,
     string Name,
     string Unit,
     int VatRate,

@@ -30,6 +30,9 @@ public class ListItemsHandler(IAppDbContext db) : IRequestHandler<ListItemsQuery
 
         q = (r.Sort?.ToLowerInvariant()) switch
         {
+            "code:asc" => q.OrderBy(x => x.Code),
+            "code:desc" => q.OrderByDescending(x => x.Code),
+            "name:asc" => q.OrderBy(x => x.Name),
             "name:desc" => q.OrderByDescending(x => x.Name),
             "vatrate:asc" => q.OrderBy(x => x.VatRate).ThenBy(x => x.Name),
             "vatrate:desc" => q.OrderByDescending(x => x.VatRate).ThenBy(x => x.Name),
@@ -43,7 +46,7 @@ public class ListItemsHandler(IAppDbContext db) : IRequestHandler<ListItemsQuery
         var items = await q.Skip((r.PageNumber - 1) * r.PageSize)
                            .Take(r.PageSize)
                            .Select(x => new ItemListItemDto(
-                               x.Id, x.Name, x.Unit, x.VatRate,
+                               x.Id, x.Code, x.Name, x.Unit, x.VatRate,
                                x.DefaultUnitPrice == null ? null : Money.S2(x.DefaultUnitPrice.Value),
                                x.CreatedAtUtc))
                            .ToListAsync(ct);
