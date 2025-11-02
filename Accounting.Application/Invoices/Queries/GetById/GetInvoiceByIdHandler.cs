@@ -52,7 +52,8 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
             lines,
             Convert.ToBase64String(inv.RowVersion),
             inv.CreatedAtUtc,
-            inv.UpdatedAtUtc
+            inv.UpdatedAtUtc,
+            (int)inv.Type
         );
     }
 }

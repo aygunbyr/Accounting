@@ -103,7 +103,8 @@ public class UpdateInvoiceHeaderHandler
             lines,
             Convert.ToBase64String(fresh.RowVersion),
             fresh.CreatedAtUtc,
-            fresh.UpdatedAtUtc
+            fresh.UpdatedAtUtc,
+            (int)fresh.Type
         );
     }
 }

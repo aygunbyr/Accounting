@@ -27,7 +27,8 @@ public record InvoiceDto(
     IReadOnlyList<InvoiceLineDto> Lines,
     string RowVersion,       // base64
     DateTime CreatedAtUtc,   // Audit
-    DateTime? UpdatedAtUtc   // Audit
+    DateTime? UpdatedAtUtc,   // Audit
+    int Type
 );
 
 public record InvoiceListItemDto(
