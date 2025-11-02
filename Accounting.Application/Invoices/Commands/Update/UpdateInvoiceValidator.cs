@@ -1,6 +1,7 @@
-﻿using System;
-using System.Linq;
+﻿using Accounting.Domain.Entities;
 using FluentValidation;
+using System;
+using System.Linq;
 
 namespace Accounting.Application.Invoices.Commands.Update
 {
@@ -27,6 +28,13 @@ namespace Accounting.Application.Invoices.Commands.Update
             RuleFor(x => x.Lines)
                 .NotNull().WithMessage("Lines null olamaz.")
                 .Must(l => l != null && l.Count > 0).WithMessage("En az bir satır olmalıdır.");
+
+            RuleFor(x => x.Type)
+                .NotEmpty()
+                .Must(v => int.TryParse(v, out var n) ? Enum.IsDefined(typeof(InvoiceType), n)
+                                        : new[] { "Sales", "Purchase", "SalesReturn", "PurchaseReturn" }
+                                          .Contains(v, StringComparer.OrdinalIgnoreCase))
+                .WithMessage("Geçersiz fatura türü.");
 
             // Id>0 olan satırlarda tekrar kontrolü
             RuleFor(x => x.Lines)

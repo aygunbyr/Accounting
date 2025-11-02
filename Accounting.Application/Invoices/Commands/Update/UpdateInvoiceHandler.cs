@@ -30,6 +30,8 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         inv.DateUtc = r.DateUtc;
         inv.ContactId = r.ContactId;
 
+        inv.Type = NormalizeType(r.Type, inv.Type);
+
         // ---- Satır diff senkronu ----
         var now = DateTime.UtcNow;
 
@@ -166,5 +168,24 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             fresh.UpdatedAtUtc,
             (int)fresh.Type
         );
+    }
+
+    private static InvoiceType NormalizeType(string? incoming, InvoiceType fallback)
+    {
+        if (string.IsNullOrWhiteSpace(incoming)) return fallback;
+
+        // "1" / "2" / "3" / "4"
+        if (int.TryParse(incoming, out var n) && Enum.IsDefined(typeof(InvoiceType), n))
+            return (InvoiceType)n;
+
+        // "Sales" / "Purchase" / "SalesReturn" / "PurchaseReturn"
+        return incoming.Trim().ToLowerInvariant() switch
+        {
+            "sales" => InvoiceType.Sales,
+            "purchase" => InvoiceType.Purchase,
+            "salesreturn" => InvoiceType.SalesReturn,
+            "purchasereturn" => InvoiceType.PurchaseReturn,
+            _ => fallback
+        };
     }
 }

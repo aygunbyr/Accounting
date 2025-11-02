@@ -7,6 +7,7 @@ public sealed record UpdateInvoiceCommand(
     DateTime DateUtc,
     string Currency,
     int ContactId,
+    string Type,
     IReadOnlyList<UpdateInvoiceLineDto> Lines
 ) : IRequest<InvoiceDto>; // dönüşte taze DTO
 
