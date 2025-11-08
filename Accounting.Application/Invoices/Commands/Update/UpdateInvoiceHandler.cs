@@ -29,13 +29,15 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         inv.Currency = (r.Currency ?? "TRY").Trim().ToUpperInvariant();
         inv.DateUtc = r.DateUtc;
         inv.ContactId = r.ContactId;
-
         inv.Type = NormalizeType(r.Type, inv.Type);
 
         // ---- Satır diff senkronu ----
         var now = DateTime.UtcNow;
 
-        // Snapshot doldurmak için gerekli Item'ları tek seferde çek
+        // sign: iade faturalarında -1, diğerlerinde +1
+        decimal sign = (inv.Type == InvoiceType.SalesReturn || inv.Type == InvoiceType.PurchaseReturn) ? -1m : 1m;
+
+        // Snapshot için gerekli Item'ları tek seferde çek
         var allItemIds = r.Lines.Select(x => x.ItemId).Distinct().ToList();
         var itemsMap = await _ctx.Items
             .Where(i => allItemIds.Contains(i.Id))
@@ -59,26 +61,24 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             if (incomingById.TryGetValue(line.Id, out var dto))
             {
                 var itemChanged = line.ItemId != dto.ItemId;
+
                 line.ItemId = dto.ItemId;
-                line.Qty = dto.Qty;
-                line.UnitPrice = dto.UnitPrice;
+                line.Qty = Money.R3(dto.Qty * sign);      // sign satırda
+                line.UnitPrice = Money.R4(dto.UnitPrice);       // politika uyarı: fiyat gösterimi S4, hesap R2
                 line.VatRate = dto.VatRate;
                 line.UpdatedAtUtc = now;
 
                 // Snapshot tazele (Item değişmişse ya da eksikse)
-                if (itemsMap.TryGetValue(line.ItemId, out var it))
+                if (itemsMap.TryGetValue(line.ItemId, out var it) && (itemChanged || string.IsNullOrWhiteSpace(line.ItemCode)))
                 {
-                    if (itemChanged || string.IsNullOrWhiteSpace(line.ItemCode))
-                    {
-                        line.ItemCode = it.Code;
-                        line.ItemName = it.Name;
-                        line.Unit = it.Unit;
-                    }
+                    line.ItemCode = it.Code;
+                    line.ItemName = it.Name;
+                    line.Unit = it.Unit;
                 }
 
-                // Hesaplar (AwayFromZero politikası)
-                line.Net = Money.R2(dto.Qty * dto.UnitPrice);
-                line.Vat = Money.R2(line.Net * line.VatRate / 100m);
+                // Hesaplar (AwayFromZero)
+                var net = Money.R2(dto.UnitPrice * dto.Qty);
+                var vat = Money.R2(net * line.VatRate / 100m);
                 var gross = Money.R2(net + vat);
 
                 line.Net = Money.R2(net * sign);
@@ -94,36 +94,33 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             if (!itemsMap.TryGetValue(dto.ItemId, out var it))
                 throw new BusinessRuleException($"Item {dto.ItemId} bulunamadı.");
 
+            var net = Money.R2(dto.UnitPrice * dto.Qty);
+            var vat = Money.R2(net * dto.VatRate / 100m);
+            var gross = Money.R2(net + vat);
+
             var nl = new InvoiceLine
             {
                 ItemId = dto.ItemId,
-                ItemCode = it.Code,   // snapshot
-                ItemName = it.Name,   // snapshot
-                Unit = it.Unit,   // snapshot
-                Qty = dto.Qty,
-                UnitPrice = dto.UnitPrice,
+                ItemCode = it.Code,
+                ItemName = it.Name,
+                Unit = it.Unit,
+                Qty = Money.R3(dto.Qty * sign),
+                UnitPrice = Money.R4(dto.UnitPrice),
                 VatRate = dto.VatRate,
+                Net = Money.R2(net * sign),
+                Vat = Money.R2(vat * sign),
+                Gross = Money.R2(gross * sign),
                 CreatedAtUtc = now
             };
-            nl.Net = Money.R2(dto.Qty * dto.UnitPrice);
-            nl.Vat = Money.R2(nl.Net * nl.VatRate / 100m);
-            nl.Gross = Money.R2(nl.Net + nl.Vat);
 
             inv.Lines.Add(nl);
         }
 
-        // 4) UpdatedAt + parent toplamlar (iade tiplerinde sign = -1)
+        // 4) UpdatedAt + parent toplamlar (satırlar zaten işaretli)
         inv.UpdatedAtUtc = now;
-
-        var lineNet = inv.Lines.Sum(x => x.Net);
-        var lineVat = inv.Lines.Sum(x => x.Vat);
-        var lineGross = inv.Lines.Sum(x => x.Gross);
-
-        decimal sign = (inv.Type == InvoiceType.SalesReturn || inv.Type == InvoiceType.PurchaseReturn) ? -1m : 1m;
-
-        inv.TotalNet = Money.R2(sign * lineNet);
-        inv.TotalVat = Money.R2(sign * lineVat);
-        inv.TotalGross = Money.R2(sign * lineGross);
+        inv.TotalNet = Money.R2(inv.Lines.Sum(x => x.Net));
+        inv.TotalVat = Money.R2(inv.Lines.Sum(x => x.Vat));
+        inv.TotalGross = Money.R2(inv.Lines.Sum(x => x.Gross));
 
         // 5) Save + concurrency
         try { await _ctx.SaveChangesAsync(ct); }
@@ -159,8 +156,8 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         return new InvoiceDto(
             fresh.Id,
             fresh.ContactId,
-            fresh.Contact.Code,
-            fresh.Contact.Name,
+            fresh.Contact?.Code ?? "",
+            fresh.Contact?.Name ?? "",
             fresh.DateUtc,
             fresh.Currency,
             Money.S2(fresh.TotalNet),
