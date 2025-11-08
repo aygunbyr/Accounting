@@ -79,7 +79,11 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
                 // Hesaplar (AwayFromZero politikası)
                 line.Net = Money.R2(dto.Qty * dto.UnitPrice);
                 line.Vat = Money.R2(line.Net * line.VatRate / 100m);
-                line.Gross = Money.R2(line.Net + line.Vat);
+                var gross = Money.R2(net + vat);
+
+                line.Net = Money.R2(net * sign);
+                line.Vat = Money.R2(vat * sign);
+                line.Gross = Money.R2(gross * sign);
             }
         }
 
