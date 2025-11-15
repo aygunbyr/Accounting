@@ -94,6 +94,46 @@ public static class DataSeeder
             db.CashBankAccounts.AddRange(accs);
         }
 
+        // ------------------------------------------------
+        // 4) EXPENSE DEFINITIONS (örnek masraf tipleri)  // CHANGED
+        // ------------------------------------------------
+        if (!await db.ExpenseDefinitions.AnyAsync()) // CHANGED
+        {
+            var defs = new List<ExpenseDefinition>    // CHANGED
+            {
+                new()
+                {
+                    Code = "YOL",
+                    Name = "Yol / Ulaşım",
+                    DefaultVatRate = 20,
+                    IsActive = true
+                },
+                new()
+                {
+                    Code = "YEMEK",
+                    Name = "Yemek / İkram",
+                    DefaultVatRate = 10,
+                    IsActive = true
+                },
+                new()
+                {
+                    Code = "KIRTASIYE",
+                    Name = "Kırtasiye",
+                    DefaultVatRate = 20,
+                    IsActive = true
+                },
+                new()
+                {
+                    Code = "YAZILIMABO",
+                    Name = "Yazılım Aboneliği",
+                    DefaultVatRate = 20,
+                    IsActive = true
+                }
+            };
+
+            db.ExpenseDefinitions.AddRange(defs);    // CHANGED
+        }
+
         // Önce temel kayıtları kaydedelim (ID’ler oluşsun)
         await db.SaveChangesAsync();
 
@@ -108,7 +148,7 @@ public static class DataSeeder
         var now = DateTime.UtcNow;
 
         // ------------------------------------------------
-        // 4) INVOICES (iade dâhil)
+        // 5) INVOICES (iade dâhil)                       // CHANGED (sadece numara)
         //    - Satırlar hep pozitif
         //    - SalesReturn / PurchaseReturn ise header toplamları negatif
         // ------------------------------------------------
@@ -185,7 +225,7 @@ public static class DataSeeder
         }
 
         // ------------------------------------------------
-        // 5) PAYMENTS (10 adet)
+        // 6) PAYMENTS (10 adet)                          // CHANGED (sadece numara)
         // ------------------------------------------------
         if (!await db.Payments.AnyAsync())
         {
@@ -210,7 +250,7 @@ public static class DataSeeder
         }
 
         // ------------------------------------------------
-        // 6) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet)
+        // 7) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet) // CHANGED (sadece numara)
         // ------------------------------------------------
         if (!await db.ExpenseLists.AnyAsync())
         {
