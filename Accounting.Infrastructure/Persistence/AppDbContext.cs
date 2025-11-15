@@ -24,6 +24,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<ExpenseList> ExpenseLists => Set<ExpenseList>();
     public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<ExpenseDefinition> ExpenseDefinitions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

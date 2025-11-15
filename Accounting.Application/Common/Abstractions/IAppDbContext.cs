@@ -17,6 +17,7 @@ public interface IAppDbContext
     DbSet<Payment> Payments { get; }
     DbSet<ExpenseList> ExpenseLists { get; }
     DbSet<Expense> Expenses { get; }
+    DbSet<ExpenseDefinition> ExpenseDefinitions { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
