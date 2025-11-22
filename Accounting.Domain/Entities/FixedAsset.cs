@@ -1,6 +1,8 @@
-﻿namespace Accounting.Domain.Entities;
+﻿using Accounting.Domain.Common;
 
-public class FixedAsset
+namespace Accounting.Domain.Entities;
+
+public class FixedAsset : IHasTimestamps, ISoftDeletable, IHasRowVersion
 {
     public int Id { get; set; }
 

@@ -58,5 +58,8 @@ public sealed class FixedAssetConfiguration : IEntityTypeConfiguration<FixedAsse
 
         b.Property(x => x.RowVersion)
             .IsRowVersion();
+
+        b.ApplyRowVersion();
+        b.ApplySoftDelete();
     }
 }
