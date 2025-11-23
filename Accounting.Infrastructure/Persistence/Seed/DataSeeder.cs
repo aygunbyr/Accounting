@@ -95,11 +95,11 @@ public static class DataSeeder
         }
 
         // ------------------------------------------------
-        // 4) EXPENSE DEFINITIONS (örnek masraf tipleri)  // CHANGED
+        // 4) EXPENSE DEFINITIONS (örnek masraf tipleri)
         // ------------------------------------------------
-        if (!await db.ExpenseDefinitions.AnyAsync()) // CHANGED
+        if (!await db.ExpenseDefinitions.AnyAsync())
         {
-            var defs = new List<ExpenseDefinition>    // CHANGED
+            var defs = new List<ExpenseDefinition>
             {
                 new()
                 {
@@ -131,7 +131,7 @@ public static class DataSeeder
                 }
             };
 
-            db.ExpenseDefinitions.AddRange(defs);    // CHANGED
+            db.ExpenseDefinitions.AddRange(defs);
         }
 
         // Önce temel kayıtları kaydedelim (ID’ler oluşsun)
@@ -148,7 +148,7 @@ public static class DataSeeder
         var now = DateTime.UtcNow;
 
         // ------------------------------------------------
-        // 5) INVOICES (iade dâhil)                       // CHANGED (sadece numara)
+        // 5) INVOICES (iade dâhil)
         //    - Satırlar hep pozitif
         //    - SalesReturn / PurchaseReturn ise header toplamları negatif
         // ------------------------------------------------
@@ -225,7 +225,7 @@ public static class DataSeeder
         }
 
         // ------------------------------------------------
-        // 6) PAYMENTS (10 adet)                          // CHANGED (sadece numara)
+        // 6) PAYMENTS (10 adet)
         // ------------------------------------------------
         if (!await db.Payments.AnyAsync())
         {
@@ -250,7 +250,7 @@ public static class DataSeeder
         }
 
         // ------------------------------------------------
-        // 7) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet) // CHANGED (sadece numara)
+        // 7) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet)
         // ------------------------------------------------
         if (!await db.ExpenseLists.AnyAsync())
         {
@@ -286,6 +286,48 @@ public static class DataSeeder
 
             db.ExpenseLists.AddRange(lists);
         }
+
+        // ------------------------------------------------
+        // 8) FIXED ASSETS (demo demirbaşlar)           // NEW
+        // ------------------------------------------------
+        if (!await db.FixedAssets.AnyAsync())         // NEW
+        {                                             // NEW
+            var assets = new List<FixedAsset>         // NEW
+            {                                         // NEW
+                new()                                 // NEW
+                {                                     // NEW
+                    Code = "DMR001",                  // NEW
+                    Name = "Ofis Bilgisayarı",        // NEW
+                    PurchaseDateUtc = now.AddMonths(-18), // NEW
+                    PurchasePrice = R2(25000m),       // NEW
+                    UsefulLifeYears = 5,              // NEW
+                    DepreciationRatePercent = R4(100m / 5m), // NEW
+                    CreatedAtUtc = now.AddMonths(-18) // NEW
+                },                                    // NEW
+                new()                                 // NEW
+                {                                     // NEW
+                    Code = "DMR002",                  // NEW
+                    Name = "Ofis Mobilyası",          // NEW
+                    PurchaseDateUtc = now.AddMonths(-30), // NEW
+                    PurchasePrice = R2(40000m),       // NEW
+                    UsefulLifeYears = 8,              // NEW
+                    DepreciationRatePercent = R4(100m / 8m), // NEW
+                    CreatedAtUtc = now.AddMonths(-30) // NEW
+                },                                    // NEW
+                new()                                 // NEW
+                {                                     // NEW
+                    Code = "DMR003",                  // NEW
+                    Name = "Yazıcı ve Çevre Donanımı",// NEW
+                    PurchaseDateUtc = now.AddMonths(-6), // NEW
+                    PurchasePrice = R2(12000m),       // NEW
+                    UsefulLifeYears = 4,              // NEW
+                    DepreciationRatePercent = R4(100m / 4m), // NEW
+                    CreatedAtUtc = now.AddMonths(-6)  // NEW
+                }                                     // NEW
+            };                                        // NEW
+
+            db.FixedAssets.AddRange(assets);          // NEW
+        }                                             // NEW
 
         // ------------------------------------------------
         // KAYDET
