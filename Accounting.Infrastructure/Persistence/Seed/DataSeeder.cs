@@ -303,6 +303,7 @@ public static class DataSeeder
         // ------------------------------------------------
         // 7) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet)
         // ------------------------------------------------
+        // 7) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet)
         if (!await db.ExpenseLists.AnyAsync())
         {
             var lists = new List<ExpenseList>();
@@ -310,6 +311,9 @@ public static class DataSeeder
             {
                 var list = new ExpenseList
                 {
+                    // 👇 Şube id: round-robin
+                    BranchId = branchIds[(i - 1) % branchIds.Count],
+
                     Name = $"Masraf Listesi {i}",
                     Status = (i % 3 == 0) ? ExpenseListStatus.Reviewed : ExpenseListStatus.Draft,
                     CreatedAtUtc = now.AddDays(-i),
@@ -337,6 +341,7 @@ public static class DataSeeder
 
             db.ExpenseLists.AddRange(lists);
         }
+
 
         // ------------------------------------------------
         // 8) FIXED ASSETS (demo demirbaşlar)

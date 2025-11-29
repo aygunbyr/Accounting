@@ -1,8 +1,10 @@
-﻿using System.Globalization;
-using Accounting.Application.Common.Abstractions;
+﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;                 // Money helper
 using Accounting.Domain.Entities;                          // Invoice, InvoiceLine, InvoiceType
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace Accounting.Application.Invoices.Commands.Create;
 
@@ -32,9 +34,23 @@ public class CreateInvoiceHandler
         // 2.5) Type normalize (Update ile aynı mantık)           // NEW
         var invType = NormalizeType(req.Type, InvoiceType.Sales); // NEW
 
-        // 3) Invoice entity oluştur (toplamlar sıfır)
+        // 3) sign: iade faturalarında -1, diğerlerinde +1
+        decimal sign = (req.Type == InvoiceType.SalesReturn.ToString() || req.Type == InvoiceType.PurchaseReturn.ToString())
+            ? -1m
+            : 1m;
+
+        // 4) Item snapshot (Code/Name/Unit)
+        var itemIds = req.Lines.Select(l => l.ItemId).Distinct().ToList();
+
+        var itemsMap = await _db.Items
+            .Where(i => itemIds.Contains(i.Id))
+            .Select(i => new { i.Id, i.Code, i.Name, i.Unit, i.VatRate })
+            .ToDictionaryAsync(i => i.Id, ct);
+
+        // 5) Invoice entity oluştur (toplamlar sıfır)
         var invoice = new Invoice
         {
+            BranchId = req.BranchId,
             ContactId = req.ContactId,
             DateUtc = dateUtc,
             Currency = currency,
@@ -45,9 +61,13 @@ public class CreateInvoiceHandler
             Lines = new List<InvoiceLine>()
         };
 
-        // 4) Satırları işle (string -> decimal parse + round; net/vat/gross hesapları)
+        // 6) Satırlar
         foreach (var line in req.Lines)
         {
+            // Snapshot: Item zorunlu
+            if (!itemsMap.TryGetValue(line.ItemId, out var it))
+                throw new BusinessRuleException($"Item {line.ItemId} bulunamadı.");
+
             // Parse qty/unitPrice (string -> decimal)
             if (!decimal.TryParse(line.Qty, NumberStyles.Number, CultureInfo.InvariantCulture, out var qty))
                 throw new ArgumentException("Qty is invalid.");
@@ -60,32 +80,35 @@ public class CreateInvoiceHandler
             unitPrice = Money.R4(unitPrice);
 
             // Net = qty * unitPrice (2 hane)
-            var net = Money.R2(qty * unitPrice);
+            var net = Money.R2(unitPrice * qty);
 
             // Vat = net * rate/100 (2 hane)
             var vat = Money.R2(net * line.VatRate / 100m);
 
             // Gross = net + vat (2 hane)
-            var gross = net + vat;
+            var gross = Money.R2(net + vat);
 
-            // Satır entity
             var lineEntity = new InvoiceLine
             {
                 ItemId = line.ItemId,
-                Qty = qty,
+                ItemCode = it.Code,   // 🔴 ÖNEMLİ: snapshot
+                ItemName = it.Name,
+                Unit = it.Unit,
+
+                Qty = Money.R3(qty * sign),
                 UnitPrice = unitPrice,
                 VatRate = line.VatRate,
-                Net = net,
-                Vat = vat,
-                Gross = gross
+
+                Net = Money.R2(net * sign),
+                Vat = Money.R2(vat * sign),
+                Gross = Money.R2(gross * sign),
             };
 
             invoice.Lines.Add(lineEntity);
 
-            // Fatura toplamlarına ekle
-            invoice.TotalNet += net;
-            invoice.TotalVat += vat;
-            invoice.TotalGross += gross;
+            invoice.TotalNet += lineEntity.Net;
+            invoice.TotalVat += lineEntity.Vat;
+            invoice.TotalGross += lineEntity.Gross;
         }
 
         // Her ihtimale karşı toplamları da policy ile son kez kapat (2 hane)

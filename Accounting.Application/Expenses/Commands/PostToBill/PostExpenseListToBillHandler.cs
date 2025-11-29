@@ -28,6 +28,7 @@ public class PostExpenseListToBillHandler
     {
         // Liste + satırlar
         var list = await _db.ExpenseLists
+            .Include(x => x.Branch)
             .Include(x => x.Lines)
             .FirstOrDefaultAsync(x => x.Id == req.ExpenseListId, ct);
 
@@ -71,6 +72,7 @@ public class PostExpenseListToBillHandler
         )).ToList();
 
         var createCmd = new CreateInvoiceCommand(
+            BranchId: list.BranchId,
             ContactId: req.SupplierId,
             DateUtc: dateUtc.ToString("o", CultureInfo.InvariantCulture),
             Currency: req.Currency.ToUpperInvariant(),

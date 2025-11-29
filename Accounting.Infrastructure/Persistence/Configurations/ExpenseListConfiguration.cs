@@ -34,8 +34,15 @@ public class ExpenseListConfiguration : IEntityTypeConfiguration<ExpenseList>
             .ValueGeneratedOnAdd()
             .IsRequired();
 
+        b.HasIndex(i => i.BranchId).HasDatabaseName("IX_ExpenseLists_BranchId");
+
         // concurrency + soft delete
         b.ApplyRowVersion();
         b.ApplySoftDelete();
+
+        b.HasOne(i => i.Branch)
+            .WithMany()
+            .HasForeignKey(i => i.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

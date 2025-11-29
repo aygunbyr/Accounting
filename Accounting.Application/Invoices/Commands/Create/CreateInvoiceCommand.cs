@@ -5,6 +5,7 @@ using MediatR;
 namespace Accounting.Application.Invoices.Commands.Create;
 
 public record CreateInvoiceCommand(
+    int BranchId,
     int ContactId,
     string DateUtc,
     string Currency,

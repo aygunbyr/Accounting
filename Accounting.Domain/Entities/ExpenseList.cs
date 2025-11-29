@@ -7,6 +7,7 @@ public enum ExpenseListStatus { Draft = 1, Reviewed = 2, Posted = 3 }
 public class ExpenseList : IHasTimestamps, ISoftDeletable, IHasRowVersion
 {
     public int Id { get; set; }
+    public int BranchId { get; set; }
     public string Name { get; set; } = "Masraf Listesi";
 
     // eski CreatedUtc yerine unified:
@@ -21,4 +22,5 @@ public class ExpenseList : IHasTimestamps, ISoftDeletable, IHasRowVersion
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
     public byte[] RowVersion { get; set; } = null!;
+    public Branch Branch { get; set; } = null!;
 }
