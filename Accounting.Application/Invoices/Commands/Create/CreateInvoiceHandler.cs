@@ -3,7 +3,6 @@ using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Utils;                 // Money helper
 using Accounting.Domain.Entities;                          // Invoice, InvoiceLine, InvoiceType
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Invoices.Commands.Create;
 
@@ -30,8 +29,8 @@ public class CreateInvoiceHandler
         // 2) Currency normalize
         var currency = (req.Currency ?? "TRY").ToUpperInvariant();
 
-        // (Opsiyonel) ilgili Contact/Item var mı kontrol etmek istersen EF üzerinden doğrulayabilirsin.
-        // Burada minimal gidiyoruz; doğrulama FluentValidation tarafında.
+        // 2.5) Type normalize (Update ile aynı mantık)           // NEW
+        var invType = NormalizeType(req.Type, InvoiceType.Sales); // NEW
 
         // 3) Invoice entity oluştur (toplamlar sıfır)
         var invoice = new Invoice
@@ -39,7 +38,7 @@ public class CreateInvoiceHandler
             ContactId = req.ContactId,
             DateUtc = dateUtc,
             Currency = currency,
-            Type = req.Type,          // InvoiceType.Sales/Purchase
+            Type = invType,
             TotalNet = 0m,
             TotalVat = 0m,
             TotalGross = 0m,
@@ -106,5 +105,24 @@ public class CreateInvoiceHandler
             TotalGross: Money.S2(invoice.TotalGross),
             RoundingPolicy: "AwayFromZero"
         );
+    }
+
+    private static InvoiceType NormalizeType(string? incoming, InvoiceType fallback)
+    {
+        if (string.IsNullOrWhiteSpace(incoming)) return fallback;
+
+        // "1" / "2" / "3" / "4"
+        if (int.TryParse(incoming, out var n) && Enum.IsDefined(typeof(InvoiceType), n))
+            return (InvoiceType)n;
+
+        // "Sales" / "Purchase" / "SalesReturn" / "PurchaseReturn"
+        return incoming.Trim().ToLowerInvariant() switch
+        {
+            "sales" => InvoiceType.Sales,
+            "purchase" => InvoiceType.Purchase,
+            "salesreturn" => InvoiceType.SalesReturn,
+            "purchasereturn" => InvoiceType.PurchaseReturn,
+            _ => fallback
+        };
     }
 }

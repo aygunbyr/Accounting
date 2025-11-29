@@ -75,7 +75,7 @@ public class PostExpenseListToBillHandler
             DateUtc: dateUtc.ToString("o", CultureInfo.InvariantCulture),
             Currency: req.Currency.ToUpperInvariant(),
             Lines: lines,
-            Type: InvoiceType.Purchase        // Satınalma faturası
+            Type: InvoiceType.Purchase.ToString()        // Satınalma faturası
         );
 
         var created = await _mediator.Send(createCmd, ct);

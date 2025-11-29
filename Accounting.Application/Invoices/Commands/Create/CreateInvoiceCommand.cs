@@ -9,7 +9,7 @@ public record CreateInvoiceCommand(
     string DateUtc,
     string Currency,
     List<CreateInvoiceLineDto> Lines,
-    InvoiceType Type = InvoiceType.Sales
+    string Type // "Sales", "Purchase" vb.
 ) : IRequest<CreateInvoiceResult>, ITransactionalRequest;
 
 public record CreateInvoiceResult(

@@ -131,6 +131,7 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         // 6) Fresh read (AsNoTracking + Contact + Lines)
         var fresh = await _ctx.Invoices
             .AsNoTracking()
+            .Include(i => i.Branch)
             .Include(i => i.Contact)
             .Include(i => i.Lines)
             .FirstAsync(i => i.Id == inv.Id, ct);

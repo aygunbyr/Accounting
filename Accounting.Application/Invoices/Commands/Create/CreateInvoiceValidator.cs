@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using Accounting.Domain.Entities;
 using FluentValidation;
 
 namespace Accounting.Application.Invoices.Commands.Create;
@@ -22,7 +23,12 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
             .WithMessage("DateUtc ISO-8601 UTC olmalı (örn: 2025-09-07T10:00:00Z).");
 
         RuleFor(x => x.Type)
-            .IsInEnum();
+            .NotEmpty()
+            .Must(v => int.TryParse(v, out var n)
+                ? Enum.IsDefined(typeof(InvoiceType), n)
+                : new[] { "Sales", "Purchase", "SalesReturn", "PurchaseReturn" }
+                    .Contains(v, StringComparer.OrdinalIgnoreCase))
+            .WithMessage("Geçersiz fatura türü.");
 
         // Satırlar
         RuleFor(x => x.Lines)
