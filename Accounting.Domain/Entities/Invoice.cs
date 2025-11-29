@@ -10,9 +10,10 @@ public enum InvoiceType
     PurchaseReturn = 4
 }
 
-public class Invoice : IHasTimestamps, ISoftDeletable, IHasRowVersion
+public class Invoice : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {
     public int Id { get; set; }
+    public int BranchId { get; set; }
     public int ContactId { get; set; }
     public InvoiceType Type { get; set; } = InvoiceType.Sales;
     public DateTime DateUtc { get; set; } = DateTime.UtcNow;
@@ -31,4 +32,5 @@ public class Invoice : IHasTimestamps, ISoftDeletable, IHasRowVersion
     public byte[] RowVersion { get; set; } = null!;
 
     public Contact Contact { get; set; } = null!;
+    public Branch Branch { get; set; } = null!;
 }

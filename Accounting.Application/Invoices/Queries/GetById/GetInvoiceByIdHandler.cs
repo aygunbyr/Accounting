@@ -16,6 +16,7 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
         var inv = await _db.Invoices
             .AsNoTracking()
             .Include(i => i.Contact)
+            .Include(i => i.Branch)
             .Include(i => i.Lines)
             .FirstOrDefaultAsync(i => i.Id == request.Id, cancellationToken);
 
@@ -53,7 +54,10 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
             Convert.ToBase64String(inv.RowVersion),
             inv.CreatedAtUtc,
             inv.UpdatedAtUtc,
-            (int)inv.Type
+            (int)inv.Type,
+            inv.BranchId,
+            inv.Branch.Code,
+            inv.Branch.Name
         );
     }
 }

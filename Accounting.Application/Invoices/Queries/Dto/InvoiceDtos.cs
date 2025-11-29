@@ -28,7 +28,10 @@ public record InvoiceDto(
     string RowVersion,       // base64
     DateTime CreatedAtUtc,   // Audit
     DateTime? UpdatedAtUtc,   // Audit
-    int Type
+    int Type,
+    int BranchId,
+    string BranchCode,
+    string BranchName
 );
 
 public record InvoiceListItemDto(
@@ -42,5 +45,8 @@ public record InvoiceListItemDto(
     string TotalNet,
     string TotalVat,
     string TotalGross,
-    DateTime CreatedAtUtc    // Liste için yeterli
+    DateTime CreatedAtUtc,
+    int BranchId,
+    string BranchCode,
+    string BranchName
 );

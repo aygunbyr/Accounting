@@ -26,6 +26,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<ExpenseDefinition> ExpenseDefinitions { get; set; } = null!;
     public DbSet<FixedAsset> FixedAssets { get; set; } = null!;
+    public DbSet<Branch> Branches => Set<Branch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

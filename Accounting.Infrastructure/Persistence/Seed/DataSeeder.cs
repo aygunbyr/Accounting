@@ -13,6 +13,38 @@ public static class DataSeeder
         static decimal R4(decimal v) => Math.Round(v, 4, MidpointRounding.AwayFromZero);
 
         // ------------------------------------------------
+        // 0) BRANCHES (örnek şubeler)
+        // ------------------------------------------------
+        if (!await db.Branches.AnyAsync())
+        {
+            var nowBranch = DateTime.UtcNow;
+
+            var branches = new List<Branch>
+            {
+                new()
+                {
+                    Code = "MERKEZ",
+                    Name = "Merkez Şube",
+                    CreatedAtUtc = nowBranch
+                },
+                new()
+                {
+                    Code = "ANKARA",
+                    Name = "Ankara Şubesi",
+                    CreatedAtUtc = nowBranch
+                },
+                new()
+                {
+                    Code = "IZMIR",
+                    Name = "İzmir Şubesi",
+                    CreatedAtUtc = nowBranch
+                }
+            };
+
+            db.Branches.AddRange(branches);
+        }
+
+        // ------------------------------------------------
         // 1) CONTACTS (10 adet)
         // ------------------------------------------------
         if (!await db.Contacts.AnyAsync())
@@ -145,16 +177,30 @@ public static class DataSeeder
         var itemsAll = await db.Items.AsNoTracking().OrderBy(i => i.Id).ToListAsync();
         var accountIds = await db.CashBankAccounts.OrderBy(a => a.Id).Select(a => a.Id).ToListAsync();
 
+        // 👇 NEW: Branch listesi (ID’leri round-robin kullanacağız)
+        var branchIds = await db.Branches
+            .AsNoTracking()
+            .OrderBy(b => b.Id)
+            .Select(b => b.Id)
+            .ToListAsync();
+
         var now = DateTime.UtcNow;
 
         // ------------------------------------------------
         // 5) INVOICES (iade dâhil)
         //    - Satırlar hep pozitif
         //    - SalesReturn / PurchaseReturn ise header toplamları negatif
+        //    - BranchId: mevcut şubeler arasında dağıtılır
         // ------------------------------------------------
         if (!await db.Invoices.AnyAsync())
         {
             var invoices = new List<Invoice>();
+
+            // branch yoksa bile en azından 1 Id’lik fallback
+            var effectiveBranchIds = branchIds.Count > 0
+                ? branchIds
+                : new List<int> { 1 };
+
             // 12 fatura (çeşitli türlerde)
             for (int i = 1; i <= 12; i++)
             {
@@ -185,8 +231,13 @@ public static class DataSeeder
                 // Header işareti (iade ise -1)
                 decimal sign = (invType == InvoiceType.SalesReturn || invType == InvoiceType.PurchaseReturn) ? -1m : 1m;
 
+                // 👇 BranchId: round-robin (1. fatura 1. şube, 2. fatura 2. şube, ...)
+                var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
+
                 var inv = new Invoice
                 {
+                    BranchId = branchId,   // 👈 NEW
+
                     ContactId = contactId,
                     Type = invType,
                     DateUtc = now.AddDays(-i),
@@ -288,46 +339,46 @@ public static class DataSeeder
         }
 
         // ------------------------------------------------
-        // 8) FIXED ASSETS (demo demirbaşlar)           // NEW
+        // 8) FIXED ASSETS (demo demirbaşlar)
         // ------------------------------------------------
-        if (!await db.FixedAssets.AnyAsync())         // NEW
-        {                                             // NEW
-            var assets = new List<FixedAsset>         // NEW
-            {                                         // NEW
-                new()                                 // NEW
-                {                                     // NEW
-                    Code = "DMR001",                  // NEW
-                    Name = "Ofis Bilgisayarı",        // NEW
-                    PurchaseDateUtc = now.AddMonths(-18), // NEW
-                    PurchasePrice = R2(25000m),       // NEW
-                    UsefulLifeYears = 5,              // NEW
-                    DepreciationRatePercent = R4(100m / 5m), // NEW
-                    CreatedAtUtc = now.AddMonths(-18) // NEW
-                },                                    // NEW
-                new()                                 // NEW
-                {                                     // NEW
-                    Code = "DMR002",                  // NEW
-                    Name = "Ofis Mobilyası",          // NEW
-                    PurchaseDateUtc = now.AddMonths(-30), // NEW
-                    PurchasePrice = R2(40000m),       // NEW
-                    UsefulLifeYears = 8,              // NEW
-                    DepreciationRatePercent = R4(100m / 8m), // NEW
-                    CreatedAtUtc = now.AddMonths(-30) // NEW
-                },                                    // NEW
-                new()                                 // NEW
-                {                                     // NEW
-                    Code = "DMR003",                  // NEW
-                    Name = "Yazıcı ve Çevre Donanımı",// NEW
-                    PurchaseDateUtc = now.AddMonths(-6), // NEW
-                    PurchasePrice = R2(12000m),       // NEW
-                    UsefulLifeYears = 4,              // NEW
-                    DepreciationRatePercent = R4(100m / 4m), // NEW
-                    CreatedAtUtc = now.AddMonths(-6)  // NEW
-                }                                     // NEW
-            };                                        // NEW
+        if (!await db.FixedAssets.AnyAsync())
+        {
+            var assets = new List<FixedAsset>
+            {
+                new()
+                {
+                    Code = "DMR001",
+                    Name = "Ofis Bilgisayarı",
+                    PurchaseDateUtc = now.AddMonths(-18),
+                    PurchasePrice = R2(25000m),
+                    UsefulLifeYears = 5,
+                    DepreciationRatePercent = R4(100m / 5m),
+                    CreatedAtUtc = now.AddMonths(-18)
+                },
+                new()
+                {
+                    Code = "DMR002",
+                    Name = "Ofis Mobilyası",
+                    PurchaseDateUtc = now.AddMonths(-30),
+                    PurchasePrice = R2(40000m),
+                    UsefulLifeYears = 8,
+                    DepreciationRatePercent = R4(100m / 8m),
+                    CreatedAtUtc = now.AddMonths(-30)
+                },
+                new()
+                {
+                    Code = "DMR003",
+                    Name = "Yazıcı ve Çevre Donanımı",
+                    PurchaseDateUtc = now.AddMonths(-6),
+                    PurchasePrice = R2(12000m),
+                    UsefulLifeYears = 4,
+                    DepreciationRatePercent = R4(100m / 4m),
+                    CreatedAtUtc = now.AddMonths(-6)
+                }
+            };
 
-            db.FixedAssets.AddRange(assets);          // NEW
-        }                                             // NEW
+            db.FixedAssets.AddRange(assets);
+        }
 
         // ------------------------------------------------
         // KAYDET

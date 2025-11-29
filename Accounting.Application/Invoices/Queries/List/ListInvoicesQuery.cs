@@ -17,6 +17,7 @@ public record ListInvoicesQuery(
     int PageNumber = 1,
     int PageSize = 20,
     string? Sort = "dateUtc:desc",
+    int? BranchId = null, // (null = tüm şubeler)
     int? ContactId = null,
     InvoiceTypeFilter Type = InvoiceTypeFilter.Any,
     string? DateFromUtc = null, // ISO-8601 UTC

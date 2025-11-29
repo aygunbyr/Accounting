@@ -29,6 +29,7 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         inv.Currency = (r.Currency ?? "TRY").Trim().ToUpperInvariant();
         inv.DateUtc = r.DateUtc;
         inv.ContactId = r.ContactId;
+        inv.BranchId = r.BranchId;
         inv.Type = NormalizeType(r.Type, inv.Type);
 
         // ---- Satır diff senkronu ----
@@ -167,7 +168,10 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             Convert.ToBase64String(fresh.RowVersion),
             fresh.CreatedAtUtc,
             fresh.UpdatedAtUtc,
-            (int)fresh.Type
+            (int)fresh.Type,
+            fresh.BranchId,
+            fresh.Branch.Code,
+            fresh.Branch.Name
         );
     }
 

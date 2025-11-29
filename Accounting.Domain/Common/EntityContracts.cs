@@ -16,3 +16,8 @@ public interface IHasRowVersion
 {
     byte[] RowVersion { get; set; }
 }
+
+public interface IHasBranch
+{
+    int BranchId { get; set; }
+}

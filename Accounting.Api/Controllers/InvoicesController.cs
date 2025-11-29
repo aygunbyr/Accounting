@@ -46,6 +46,7 @@ public class InvoicesController : ControllerBase
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] string? sort = "dateUtc:desc",
+        [FromQuery] int? branchId = null,
         [FromQuery] int? contactId = null,
         [FromQuery] int? type = 0, // 0 Any, 1 Sales, 2 Purchase
         [FromQuery] string? dateFromUtc = null,
@@ -57,7 +58,7 @@ public class InvoicesController : ControllerBase
             : InvoiceTypeFilter.Any;
 
         var res = await _mediator.Send(new ListInvoicesQuery(
-            pageNumber, pageSize, sort,
+            pageNumber, pageSize, sort, branchId,
             contactId, typeEnum, dateFromUtc, dateToUtc
         ), ct);
 

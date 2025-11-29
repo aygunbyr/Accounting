@@ -37,7 +37,8 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         b.HasIndex(x => x.DateUtc).HasDatabaseName("IX_Invoices_DateUtc");
         b.HasIndex(x => x.ContactId).HasDatabaseName("IX_Invoices_ContactId");
         b.HasIndex(x => x.Currency).HasDatabaseName("IX_Invoices_Currency");
-        b.HasIndex(x => x.Type).HasDatabaseName("IX_Invoices_Type"); // ✅ opsiyonel ama faydalı
+        b.HasIndex(x => x.Type).HasDatabaseName("IX_Invoices_Type");
+        b.HasIndex(i => i.BranchId).HasDatabaseName("IX_Invoices_BranchId");
 
         b.HasOne(i => i.Contact)
             .WithMany()
@@ -45,5 +46,13 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .OnDelete(DeleteBehavior.Restrict);
 
         b.Property(i => i.ContactId).IsRequired();
+
+        b.HasOne(i => i.Branch)
+            .WithMany()
+            .HasForeignKey(i => i.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        
+
     }
 }

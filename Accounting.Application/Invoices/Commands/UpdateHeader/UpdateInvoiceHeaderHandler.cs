@@ -104,7 +104,10 @@ public class UpdateInvoiceHeaderHandler
             Convert.ToBase64String(fresh.RowVersion),
             fresh.CreatedAtUtc,
             fresh.UpdatedAtUtc,
-            (int)fresh.Type
+            (int)fresh.Type,
+            fresh.BranchId,
+            fresh.Branch.Code,
+            fresh.Branch.Name
         );
     }
 }

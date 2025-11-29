@@ -19,6 +19,11 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
         var query = _db.Invoices.AsNoTracking();
 
         // Filtreler
+        if (q.BranchId is int branchId)
+        {
+            query = query.Where(i => i.BranchId == branchId);
+        }
+
         if (q.ContactId is int cid) query = query.Where(i => i.ContactId == cid);
 
         // Type filtresi (varsa). Domain tarafında satış/alış ayırımını nasıl tuttuğuna göre uyarlayalım.
@@ -67,7 +72,10 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
                 i.TotalGross,
                 i.CreatedAtUtc,
                 ContactCode = i.Contact.Code,
-                ContactName = i.Contact.Name
+                ContactName = i.Contact.Name,
+                i.BranchId,
+                BranchCode = i.Branch.Code,
+                BranchName = i.Branch.Name
             })
             .ToListAsync(ct);
 
@@ -88,7 +96,10 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
             Money.S2(i.TotalNet),
             Money.S2(i.TotalVat),
             Money.S2(i.TotalGross),
-            i.CreatedAtUtc
+            i.CreatedAtUtc,
+            i.BranchId,
+            i.BranchCode,
+            i.BranchName
         )).ToList();
 
         var totals = new InvoicePagedTotals(
