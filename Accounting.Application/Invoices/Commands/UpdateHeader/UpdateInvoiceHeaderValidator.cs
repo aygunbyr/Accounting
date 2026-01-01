@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using Accounting.Application.Common.Validation;
+using FluentValidation;
 using System.Globalization;
 
 namespace Accounting.Application.Invoices.Commands.UpdateHeader;
@@ -11,7 +12,7 @@ public class UpdateInvoiceHeaderValidator : AbstractValidator<UpdateInvoiceHeade
         RuleFor(x => x.ContactId).GreaterThan(0);
         RuleFor(x => x.Currency).NotEmpty().Length(3);
         RuleFor(x => x.Type).IsInEnum();
-        RuleFor(x => x.RowVersion).NotEmpty();
+        RuleFor(x => x.RowVersion).MustBeValidRowVersion();
 
         RuleFor(x => x.DateUtc)
             .NotEmpty()

@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using Accounting.Application.Common.Validation;
+using FluentValidation;
 
 namespace Accounting.Application.Invoices.Commands.Delete;
 
@@ -7,6 +8,6 @@ public class SoftDeleteInvoiceValidator : AbstractValidator<SoftDeleteInvoiceCom
     public SoftDeleteInvoiceValidator()
     {
         RuleFor(x => x.Id).GreaterThan(0);
-        RuleFor(x => x.RowVersion).NotEmpty();
+        RuleFor(x => x.RowVersion).MustBeValidRowVersion();  // Extension
     }
 }

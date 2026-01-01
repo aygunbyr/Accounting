@@ -63,9 +63,15 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             {
                 var itemChanged = line.ItemId != dto.ItemId;
 
+                // ✅ String → decimal parse
+                if (!Money.TryParse4(dto.Qty, out var qty))
+                    throw new BusinessRuleException($"Line {line.Id}: Invalid Qty format.");
+                if (!Money.TryParse4(dto.UnitPrice, out var unitPrice))
+                    throw new BusinessRuleException($"Line {line.Id}: Invalid UnitPrice format.");
+
                 line.ItemId = dto.ItemId;
-                line.Qty = Money.R3(dto.Qty * sign);      // sign satırda
-                line.UnitPrice = Money.R4(dto.UnitPrice);       // politika uyarı: fiyat gösterimi S4, hesap R2
+                line.Qty = Money.R3(qty * sign);           // ✅ parsed qty
+                line.UnitPrice = Money.R4(unitPrice);      // ✅ parsed unitPrice
                 line.VatRate = dto.VatRate;
                 line.UpdatedAtUtc = now;
 
@@ -78,7 +84,7 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
                 }
 
                 // Hesaplar (AwayFromZero)
-                var net = Money.R2(dto.UnitPrice * dto.Qty);
+                var net = Money.R2(unitPrice * qty);       // ✅ parsed values
                 var vat = Money.R2(net * line.VatRate / 100m);
                 var gross = Money.R2(net + vat);
 
@@ -95,7 +101,13 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             if (!itemsMap.TryGetValue(dto.ItemId, out var it))
                 throw new BusinessRuleException($"Item {dto.ItemId} bulunamadı.");
 
-            var net = Money.R2(dto.UnitPrice * dto.Qty);
+            // ✅ String → decimal parse
+            if (!Money.TryParse4(dto.Qty, out var qty))
+                throw new BusinessRuleException($"New line: Invalid Qty format.");
+            if (!Money.TryParse4(dto.UnitPrice, out var unitPrice))
+                throw new BusinessRuleException($"New line: Invalid UnitPrice format.");
+
+            var net = Money.R2(unitPrice * qty);        // ✅ parsed values
             var vat = Money.R2(net * dto.VatRate / 100m);
             var gross = Money.R2(net + vat);
 
@@ -105,8 +117,8 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
                 ItemCode = it.Code,
                 ItemName = it.Name,
                 Unit = it.Unit,
-                Qty = Money.R3(dto.Qty * sign),
-                UnitPrice = Money.R4(dto.UnitPrice),
+                Qty = Money.R3(qty * sign),             // ✅ parsed qty
+                UnitPrice = Money.R4(unitPrice),        // ✅ parsed unitPrice
                 VatRate = dto.VatRate,
                 Net = Money.R2(net * sign),
                 Vat = Money.R2(vat * sign),

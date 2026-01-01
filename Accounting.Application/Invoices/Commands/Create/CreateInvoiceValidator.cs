@@ -34,31 +34,11 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
         {
             line.RuleFor(l => l.ItemId)
                 .GreaterThan(0);
-
-            // string (max 3 ondalık) — örn: "1", "1.2", "1.234"
-            line.RuleFor(l => l.Qty)
-                .NotEmpty()
-                .Matches(@"^\d+(\.\d{1,3})?$")
-                .WithMessage("Qty en fazla 3 ondalık haneye sahip bir sayı olmalı (örn: 1.000).");
-
-            // string (max 4 ondalık) — örn: "10", "10.5", "10.1234"
-            line.RuleFor(l => l.UnitPrice)
-                .NotEmpty()
-                .Matches(@"^\d+(\.\d{1,4})?$")
-                .WithMessage("UnitPrice en fazla 4 ondalık haneye sahip bir sayı olmalı (örn: 10.0000).");
+            line.RuleFor(l => l.Qty).MustBeValidQuantity();        // Extension
+            line.RuleFor(l => l.UnitPrice).MustBeValidUnitPrice(); // Extension
 
             line.RuleFor(l => l.VatRate)
                 .InclusiveBetween(0, 100);
         });
-    }
-
-    private static bool BeIso8601Utc(string iso)
-    {
-        if (string.IsNullOrWhiteSpace(iso)) return false;
-        return DateTime.TryParse(
-            iso,
-            CultureInfo.InvariantCulture,
-            DateTimeStyles.AdjustToUniversal,
-            out _);
     }
 }

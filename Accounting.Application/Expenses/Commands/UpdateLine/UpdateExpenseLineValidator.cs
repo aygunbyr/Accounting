@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using Accounting.Application.Common.Validation;
+using FluentValidation;
 
 namespace Accounting.Application.Expenses.Commands.UpdateLine;
 
@@ -8,15 +9,10 @@ public class UpdateExpenseLineValidator : AbstractValidator<UpdateExpenseLineCom
     {
         RuleFor(x => x.LineId).GreaterThan(0);
         RuleFor(x => x.ExpenseListId).GreaterThan(0);
-        RuleFor(x => x.RowVersion).NotEmpty();
+        RuleFor(x => x.RowVersion).MustBeValidRowVersion();  // Extension
 
-        RuleFor(x => x.Currency)
-            .NotEmpty()
-            .Length(3);
-
-        RuleFor(x => x.Amount)
-            .NotEmpty()
-            .Matches(@"^-?\d+(\.\d{1,})?$");
+        RuleFor(x => x.Currency).MustBeValidCurrency();      // Extension
+        RuleFor(x => x.Amount).MustBeValidMoneyAmount();     // Extension
 
         RuleFor(x => x.VatRate)
             .InclusiveBetween(0, 100);
