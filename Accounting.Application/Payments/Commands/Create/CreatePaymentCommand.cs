@@ -10,7 +10,7 @@ public record CreatePaymentCommand(
     int? LinkedInvoiceId,
     string DateUtc,
     PaymentDirection Direction,
-    decimal Amount,
+    string Amount,
     string Currency
 ) : IRequest<CreatePaymentResult>, ITransactionalRequest;
 

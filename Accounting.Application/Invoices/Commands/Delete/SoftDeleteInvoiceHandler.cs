@@ -19,7 +19,15 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
             throw new KeyNotFoundException($"Invoice {req.Id} not found.");
 
         // concurrency
-        var originalBytes = Convert.FromBase64String(req.RowVersion);
+        byte[] originalBytes;
+        try
+        {
+            originalBytes = Convert.FromBase64String(req.RowVersion);
+        }
+        catch (FormatException)
+        {
+            throw new FluentValidation.ValidationException("RowVersion is not valid Base64.");
+        }
         _db.Entry(inv).Property(nameof(Invoice.RowVersion)).OriginalValue = originalBytes;
 
         inv.IsDeleted = true;

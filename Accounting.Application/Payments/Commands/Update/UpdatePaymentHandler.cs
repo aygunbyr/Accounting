@@ -28,11 +28,19 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
 
         // 4) Normalize/map
         if (!DateTime.TryParse(req.DateUtc, CultureInfo.InvariantCulture,
-                               DateTimeStyles.AdjustToUniversal, out var dt))
-            throw new ArgumentException("DateUtc is invalid.");
+                               DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dt))
+            throw new FluentValidation.ValidationException("DateUtc is invalid or not in UTC format.");
 
         if (!Money.TryParse2(req.Amount, out var amount))
             throw new BusinessRuleException("Amount format is invalid.");
+
+        // Currency Normalization
+        var currency = (req.Currency ?? "TRY").ToUpperInvariant();
+
+        // Whitelist Validation
+        var allowedCurrencies = new[] { "TRY", "USD", "EUR", "GBP" };
+        if (!allowedCurrencies.Contains(currency))
+            throw new FluentValidation.ValidationException($"Currency '{currency}' is not supported.");
 
         p.AccountId = req.AccountId;
         p.ContactId = req.ContactId;
@@ -40,7 +48,7 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
         p.DateUtc = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
         p.Direction = req.Direction;
         p.Amount = amount; // decimal(18,2) — Money.TryParse2 + policy
-        p.Currency = (req.Currency ?? "TRY").ToUpperInvariant();
+        p.Currency = currency;
 
         // 5) Audit
         p.UpdatedAtUtc = DateTime.UtcNow;

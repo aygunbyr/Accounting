@@ -14,6 +14,16 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
         var p = await _db.Payments.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
         if (p is null) throw new KeyNotFoundException($"Payment {req.Id} not found.");
 
+        byte[] originalBytes;
+        try
+        {
+            originalBytes = Convert.FromBase64String(req.RowVersion);
+        }
+        catch (FormatException)
+        {
+            throw new FluentValidation.ValidationException("RowVersion is not valid Base64.");
+        }
+
         var original = Convert.FromBase64String(req.RowVersion);
         _db.Entry(p).Property(nameof(Payment.RowVersion)).OriginalValue = original;
 

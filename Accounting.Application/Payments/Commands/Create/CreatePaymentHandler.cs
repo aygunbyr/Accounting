@@ -14,9 +14,21 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
     public async Task<CreatePaymentResult> Handle(CreatePaymentCommand req, CancellationToken ct)
     {
         if (!DateTime.TryParse(req.DateUtc, CultureInfo.InvariantCulture,
-                               DateTimeStyles.AdjustToUniversal,
+                               DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
                                out var parsed))
-            throw new ArgumentException("DateUtc invalid format");
+            throw new FluentValidation.ValidationException("DateUtc is invalid or not in UTC format.");
+
+        // Amount Parse
+        if (!Money.TryParse2(req.Amount, out var amount))
+            throw new FluentValidation.ValidationException("Amount is invalid.");
+
+        // Currency Normalization
+        var currency = (req.Currency ?? "TRY").ToUpperInvariant();
+
+        // Whitelist Validation
+        var allowedCurrencies = new[] { "TRY", "USD", "EUR", "GBP" };
+        if (!allowedCurrencies.Contains(currency))
+            throw new FluentValidation.ValidationException($"Currency '{currency}' is not supported.");
 
         var entity = new Payment
         {
@@ -25,8 +37,8 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             LinkedInvoiceId = req.LinkedInvoiceId,
             DateUtc = DateTime.SpecifyKind(parsed, DateTimeKind.Utc),
             Direction = req.Direction,
-            Amount = req.Amount,  // decimal(18,2) DB
-            Currency = req.Currency
+            Amount = amount,  // decimal(18,2) DB
+            Currency = currency
         };
 
         _db.Payments.Add(entity);

@@ -1,6 +1,7 @@
-﻿using System.Globalization;
+﻿using Accounting.Application.Common.Validation;
 using Accounting.Domain.Entities;
 using FluentValidation;
+using System.Globalization;
 
 namespace Accounting.Application.Invoices.Commands.Create;
 
@@ -12,15 +13,8 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
         RuleFor(x => x.ContactId)
             .GreaterThan(0);
 
-        RuleFor(x => x.Currency)
-            .NotEmpty()
-            .Length(3)
-            .WithMessage("Currency 3 karakter olmalı (örn: TRY).");
-
-        RuleFor(x => x.DateUtc)
-            .NotEmpty()
-            .Must(BeIso8601Utc)
-            .WithMessage("DateUtc ISO-8601 UTC olmalı (örn: 2025-09-07T10:00:00Z).");
+        RuleFor(x => x.DateUtc).MustBeValidUtcDateTime();           // Extension
+        RuleFor(x => x.Currency).MustBeValidCurrency();             // Extension
 
         RuleFor(x => x.Type)
             .NotEmpty()
