@@ -14,7 +14,7 @@ public class UpdateItemValidator : AbstractValidator<UpdateItemCommand>
         RuleFor(x => x.VatRate).InclusiveBetween(0, 100);
         RuleFor(x => x.RowVersion).MustBeValidRowVersion();
         RuleFor(x => x.DefaultUnitPrice)
-            .Must(p => p is null || Money.TryParse2(p, out _))
-            .WithMessage("DefaultUnitPrice formatı geçersiz.");
+            .MustBeValidUnitPrice()
+            .When(x => !string.IsNullOrWhiteSpace(x.DefaultUnitPrice));
     }
 }
