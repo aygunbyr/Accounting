@@ -24,8 +24,7 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
             throw new FluentValidation.ValidationException("RowVersion is not valid Base64.");
         }
 
-        var original = Convert.FromBase64String(req.RowVersion);
-        _db.Entry(p).Property(nameof(Payment.RowVersion)).OriginalValue = original;
+        _db.Entry(p).Property(nameof(Payment.RowVersion)).OriginalValue = originalBytes;
 
         p.IsDeleted = true;
         p.DeletedAtUtc = DateTime.UtcNow;

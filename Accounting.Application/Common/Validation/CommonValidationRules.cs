@@ -33,6 +33,30 @@ public static class CommonValidationRules
     }
 
     /// <summary>
+    /// Quantity validation (1-3 decimal places, > 0)
+    /// </summary>
+    public static IRuleBuilderOptions<T, string?> MustBeValidQuantity<T>(
+        this IRuleBuilder<T, string?> ruleBuilder)
+    {
+        return ruleBuilder
+            .NotEmpty()
+            .Must(BeValidQuantity)
+            .WithMessage("'{PropertyName}' must be a valid quantity (1-3 decimal places, greater than 0).");
+    }
+
+    /// <summary>
+    /// Unit Price validation (1-4 decimal places, >= 0)
+    /// </summary>
+    public static IRuleBuilderOptions<T, string?> MustBeValidUnitPrice<T>(
+        this IRuleBuilder<T, string?> ruleBuilder)
+    {
+        return ruleBuilder
+            .NotEmpty()
+            .Must(BeValidUnitPrice)
+            .WithMessage("'{PropertyName}' must be a valid unit price (1-4 decimal places, >= 0).");
+    }
+
+    /// <summary>
     /// Currency code validation (ISO-4217 whitelist)
     /// </summary>
     public static IRuleBuilderOptions<T, string?> MustBeValidCurrency<T>(
@@ -83,6 +107,26 @@ public static class CommonValidationRules
         if (string.IsNullOrWhiteSpace(amount)) return false;
         if (!Money.TryParse2(amount, out var parsed)) return false;
         return parsed >= 0m;
+    }
+
+    private static bool BeValidQuantity(string? qty)
+    {
+        if (string.IsNullOrWhiteSpace(qty)) return false;
+        if (!Money.TryParse4(qty, out var parsed)) return false;
+        if (parsed <= 0m) return false;
+
+        var rounded = Money.R3(parsed);
+        return true;
+    }
+
+    private static bool BeValidUnitPrice(string? unitPrice)
+    {
+        if (string.IsNullOrWhiteSpace(unitPrice)) return false;
+        if (!Money.TryParse4(unitPrice, out var parsed)) return false;
+        if (parsed < 0m) return false;
+
+        var rounded = Money.R4(parsed);
+        return true;
     }
 
     private static bool BeValidCurrency(string? currency)
