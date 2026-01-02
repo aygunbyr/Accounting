@@ -42,6 +42,7 @@ public sealed class CreateFixedAssetHandler
 
         var entity = new FixedAsset
         {
+            BranchId = r.BranchId,
             Code = r.Code.Trim(),
             Name = r.Name.Trim(),
             PurchaseDateUtc = r.PurchaseDateUtc,

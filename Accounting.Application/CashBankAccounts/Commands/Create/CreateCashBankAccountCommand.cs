@@ -6,6 +6,7 @@ using MediatR;
 namespace Accounting.Application.CashBankAccounts.Commands.Create;
 
 public record CreateCashBankAccountCommand(
+    int BranchId,
     CashBankAccountType Type,   // <-- enum (Cash|Bank)
     string Name,
     string? Iban

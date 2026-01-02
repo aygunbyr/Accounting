@@ -32,6 +32,7 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
 
         var entity = new Payment
         {
+            BranchId = req.BranchId,
             AccountId = req.AccountId,
             ContactId = req.ContactId,
             LinkedInvoiceId = req.LinkedInvoiceId,

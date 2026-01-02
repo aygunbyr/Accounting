@@ -16,6 +16,11 @@ public class CashBankAccountConfiguration : IEntityTypeConfiguration<CashBankAcc
         b.Property(x => x.Name).IsRequired().HasMaxLength(120);
         b.Property(x => x.Iban).HasMaxLength(34);
 
+        b.HasOne(c => c.Branch)
+            .WithMany()
+            .HasForeignKey(c => c.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // audit
         b.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()")
@@ -29,5 +34,7 @@ public class CashBankAccountConfiguration : IEntityTypeConfiguration<CashBankAcc
         // indexes
         b.HasIndex(x => x.Type);
         b.HasIndex(x => x.Name);
+        b.HasIndex(x => x.BranchId).HasDatabaseName("IX_CashBankAccounts_BranchId");
+
     }
 }

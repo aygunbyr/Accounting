@@ -4,7 +4,7 @@ namespace Accounting.Domain.Entities;
 
 public enum ExpenseListStatus { Draft = 1, Reviewed = 2, Posted = 3 }
 
-public class ExpenseList : IHasTimestamps, ISoftDeletable, IHasRowVersion
+public class ExpenseList : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {
     public int Id { get; set; }
     public int BranchId { get; set; }

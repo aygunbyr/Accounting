@@ -4,9 +4,10 @@ namespace Accounting.Domain.Entities;
 
 public enum CashBankAccountType { Cash = 1, Bank = 2 }
 
-public class CashBankAccount : IHasTimestamps, ISoftDeletable, IHasRowVersion
+public class CashBankAccount : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {
     public int Id { get; set; }
+    public int BranchId { get; set; }
     public CashBankAccountType Type { get; set; } = CashBankAccountType.Cash;
     public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
@@ -18,4 +19,7 @@ public class CashBankAccount : IHasTimestamps, ISoftDeletable, IHasRowVersion
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
     public byte[] RowVersion { get; set; } = null!;
+
+    // Navigations
+    public Branch Branch { get; set; } = null!;
 }

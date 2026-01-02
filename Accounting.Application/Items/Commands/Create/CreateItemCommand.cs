@@ -4,6 +4,7 @@ using MediatR;
 namespace Accounting.Application.Items.Commands.Create;
 
 public record CreateItemCommand(
+    int BranchId,
     string Name,
     string Unit,
     int VatRate,             // 0..100

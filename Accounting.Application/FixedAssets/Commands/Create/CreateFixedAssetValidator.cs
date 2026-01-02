@@ -7,6 +7,7 @@ public sealed class CreateFixedAssetValidator
 {
     public CreateFixedAssetValidator()
     {
+        RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.Code).NotEmpty().MaximumLength(32);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(128);
         RuleFor(x => x.PurchasePrice).GreaterThan(0m);

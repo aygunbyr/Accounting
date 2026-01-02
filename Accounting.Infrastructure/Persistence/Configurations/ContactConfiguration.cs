@@ -23,6 +23,11 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
         b.Property(x => x.Email).HasMaxLength(320);
         b.Property(x => x.Phone).HasMaxLength(40);
 
+        b.HasOne(c => c.Branch)
+            .WithMany()
+            .HasForeignKey(c => c.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // audit
         b.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()")
@@ -41,5 +46,7 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
             .HasFilter("[IsDeleted] = 0");
         b.HasIndex(x => x.Type);
         b.HasIndex(x => new { x.Type, x.Name });
+        b.HasIndex(x => x.BranchId).HasDatabaseName("IX_Contacts_BranchId");
+
     }
 }

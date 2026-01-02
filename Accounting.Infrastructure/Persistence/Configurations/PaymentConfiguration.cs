@@ -23,6 +23,11 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasForeignKey(p => p.AccountId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        b.HasOne(p => p.Branch)
+            .WithMany()
+            .HasForeignKey(p => p.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         b.HasOne(p => p.Contact)
             .WithMany()
             .HasForeignKey(p => p.ContactId)
@@ -45,6 +50,7 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         // indexes
         b.HasIndex(x => x.DateUtc).HasDatabaseName("IX_Payments_DateUtc");
         b.HasIndex(x => x.AccountId).HasDatabaseName("IX_Payments_AccountId");
+        b.HasIndex(x => x.BranchId).HasDatabaseName("IX_Payments_BranchId");
         b.HasIndex(x => x.ContactId).HasDatabaseName("IX_Payments_ContactId");
         b.HasIndex(x => x.LinkedInvoiceId).HasDatabaseName("IX_Payments_LinkedInvoiceId"); // yeni
         b.HasIndex(x => x.Currency).HasDatabaseName("IX_Payments_Currency");

@@ -4,9 +4,10 @@ namespace Accounting.Domain.Entities;
 
 public enum PaymentDirection { In = 1, Out = 2 }
 
-public class Payment : IHasTimestamps, ISoftDeletable, IHasRowVersion
+public class Payment : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {
     public int Id { get; set; }
+    public int BranchId { get; set; }
 
     public int AccountId { get; set; }
     public int? ContactId { get; set; }
@@ -25,6 +26,7 @@ public class Payment : IHasTimestamps, ISoftDeletable, IHasRowVersion
 
     // Navigations
     public CashBankAccount Account { get; set; } = null!;
+    public Branch Branch { get; set; } = null!;
     public Contact? Contact { get; set; }
     public Invoice? LinkedInvoice { get; set; }
 }

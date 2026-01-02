@@ -2,10 +2,10 @@
 
 namespace Accounting.Domain.Entities;
 
-public class FixedAsset : IHasTimestamps, ISoftDeletable, IHasRowVersion
+public class FixedAsset : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {
     public int Id { get; set; }
-
+    public int BranchId { get; set; }
     public string Code { get; set; } = null!;        // benzersiz, max 32
     public string Name { get; set; } = null!;        // max 128
 
@@ -30,4 +30,7 @@ public class FixedAsset : IHasTimestamps, ISoftDeletable, IHasRowVersion
     public DateTime? UpdatedAtUtc { get; set; }
 
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
+    // Navigations
+    public Branch Branch { get; set; } = null!;
 }

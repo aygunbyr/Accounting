@@ -14,6 +14,7 @@ public class CreateContactHandler : IRequestHandler<CreateContactCommand, Contac
     {
         var entity = new Contact
         {
+            BranchId = req.BranchId,
             Name = req.Name.Trim(),
             Type = req.Type,
             Email = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim()

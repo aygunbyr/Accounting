@@ -23,6 +23,7 @@ public sealed class FixedAssetConfiguration : IEntityTypeConfiguration<FixedAsse
         b.Property(x => x.Code)
             .HasMaxLength(32)
             .IsRequired();
+
         b.HasIndex(x => x.Code)
             .IsUnique();
 
@@ -58,6 +59,13 @@ public sealed class FixedAssetConfiguration : IEntityTypeConfiguration<FixedAsse
 
         b.Property(x => x.RowVersion)
             .IsRowVersion();
+
+        b.HasOne(f => f.Branch)
+            .WithMany()
+            .HasForeignKey(f => f.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasIndex(x => x.BranchId).HasDatabaseName("IX_FixedAssets_BranchId");
 
         b.ApplyRowVersion();
         b.ApplySoftDelete();

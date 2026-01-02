@@ -13,6 +13,7 @@ public class CreateCashBankAccountHandler(IAppDbContext db)
     {
         var e = new CashBankAccount
         {
+            BranchId = r.BranchId,
             Type = r.Type,                               // <-- doğrudan enum
             Name = r.Name.Trim(),
             Iban = string.IsNullOrWhiteSpace(r.Iban) ? null : r.Iban.Trim()

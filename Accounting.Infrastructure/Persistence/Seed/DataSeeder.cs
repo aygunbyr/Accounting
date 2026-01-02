@@ -42,6 +42,20 @@ public static class DataSeeder
             };
 
             db.Branches.AddRange(branches);
+            await db.SaveChangesAsync();  // ✅ Branch'leri kaydet ki ID'ler oluşsun
+        }
+
+        // ✅ Branch ID'lerini hemen çek (Contact, Item, vb için gerekli)
+        var branchIds = await db.Branches
+            .AsNoTracking()
+            .OrderBy(b => b.Id)
+            .Select(b => b.Id)
+            .ToListAsync();
+
+        // Eğer hiç branch yoksa fallback
+        if (branchIds.Count == 0)
+        {
+            branchIds = new List<int> { 1 };  // Fallback
         }
 
         // ------------------------------------------------
@@ -55,6 +69,7 @@ public static class DataSeeder
             {
                 contacts.Add(new Contact
                 {
+                    BranchId = branchIds[(i - 1) % branchIds.Count],  // ✅ EKLE
                     Type = ContactType.Customer,
                     Code = $"CUST{i:000}",
                     Name = $"Müşteri {i}",
@@ -67,6 +82,7 @@ public static class DataSeeder
             {
                 contacts.Add(new Contact
                 {
+                    BranchId = branchIds[(i - 1) % branchIds.Count],  // ✅ EKLE
                     Type = ContactType.Vendor,
                     Code = $"VEND{i:000}",
                     Name = $"Tedarikçi {i}",
@@ -88,6 +104,7 @@ public static class DataSeeder
             {
                 items.Add(new Item
                 {
+                    BranchId = branchIds[(i - 1) % branchIds.Count],  // ✅ EKLE
                     Code = $"ITEM{i:000}",
                     Name = $"Stok {i}",
                     Unit = units[(i - 1) % units.Length],
@@ -108,6 +125,7 @@ public static class DataSeeder
             {
                 accs.Add(new CashBankAccount
                 {
+                    BranchId = branchIds[(i - 1) % branchIds.Count],  // ✅ EKLE
                     Type = CashBankAccountType.Cash,
                     Code = $"CASH{i:000}",
                     Name = $"Kasa {i}",
@@ -117,6 +135,7 @@ public static class DataSeeder
             {
                 accs.Add(new CashBankAccount
                 {
+                    BranchId = branchIds[(i - 1) % branchIds.Count],  // ✅ EKLE
                     Type = CashBankAccountType.Bank,
                     Code = $"BANK{i:000}",
                     Name = $"Banka {i}",
@@ -177,12 +196,6 @@ public static class DataSeeder
         var itemsAll = await db.Items.AsNoTracking().OrderBy(i => i.Id).ToListAsync();
         var accountIds = await db.CashBankAccounts.OrderBy(a => a.Id).Select(a => a.Id).ToListAsync();
 
-        // 👇 NEW: Branch listesi (ID’leri round-robin kullanacağız)
-        var branchIds = await db.Branches
-            .AsNoTracking()
-            .OrderBy(b => b.Id)
-            .Select(b => b.Id)
-            .ToListAsync();
 
         var now = DateTime.UtcNow;
 
@@ -288,6 +301,7 @@ public static class DataSeeder
 
                 payments.Add(new Payment
                 {
+                    BranchId = branchIds[(i - 1) % branchIds.Count],  // ✅ EKLE
                     AccountId = accountId,
                     ContactId = contactId,
                     Direction = (i % 2 == 0) ? PaymentDirection.In : PaymentDirection.Out,
@@ -352,6 +366,7 @@ public static class DataSeeder
             {
                 new()
                 {
+                    BranchId = branchIds[0 % branchIds.Count],  // ✅ EKLE
                     Code = "DMR001",
                     Name = "Ofis Bilgisayarı",
                     PurchaseDateUtc = now.AddMonths(-18),
@@ -362,6 +377,7 @@ public static class DataSeeder
                 },
                 new()
                 {
+                    BranchId = branchIds[1 % branchIds.Count],  // ✅ EKLE
                     Code = "DMR002",
                     Name = "Ofis Mobilyası",
                     PurchaseDateUtc = now.AddMonths(-30),
@@ -372,6 +388,7 @@ public static class DataSeeder
                 },
                 new()
                 {
+                    BranchId = branchIds[2 % branchIds.Count],  // ✅ EKLE
                     Code = "DMR003",
                     Name = "Yazıcı ve Çevre Donanımı",
                     PurchaseDateUtc = now.AddMonths(-6),

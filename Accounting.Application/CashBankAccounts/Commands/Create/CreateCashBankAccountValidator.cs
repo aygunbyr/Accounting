@@ -6,7 +6,8 @@ public class CreateCashBankAccountValidator : AbstractValidator<CreateCashBankAc
 {
     public CreateCashBankAccountValidator()
     {
-        RuleFor(x => x.Type).IsInEnum();                // enum doğrulama
+        RuleFor(x => x.BranchId).GreaterThan(0);
+        RuleFor(x => x.Type).IsInEnum();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(160);
         RuleFor(x => x.Iban).MaximumLength(34);
     }

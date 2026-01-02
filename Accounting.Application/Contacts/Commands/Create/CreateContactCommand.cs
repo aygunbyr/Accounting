@@ -6,6 +6,7 @@ using MediatR;
 namespace Accounting.Application.Contacts.Commands.Create;
 
 public record CreateContactCommand(
+    int BranchId,
     string Name,
     ContactType Type,
     string? Email

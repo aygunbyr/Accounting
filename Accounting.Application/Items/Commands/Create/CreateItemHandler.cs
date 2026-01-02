@@ -24,6 +24,7 @@ public class CreateItemHandler : IRequestHandler<CreateItemCommand, ItemDetailDt
 
         var e = new Item
         {
+            BranchId = r.BranchId,
             Name = r.Name.Trim(),
             Unit = r.Unit.Trim(),
             VatRate = r.VatRate,

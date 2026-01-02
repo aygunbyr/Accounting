@@ -5,6 +5,7 @@ using MediatR;
 namespace Accounting.Application.Payments.Commands.Create;
 
 public record CreatePaymentCommand(
+    int BranchId,
     int AccountId,
     int? ContactId,
     int? LinkedInvoiceId,

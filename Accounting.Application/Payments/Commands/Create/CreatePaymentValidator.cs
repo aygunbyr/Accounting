@@ -8,6 +8,7 @@ public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
 {
     public CreatePaymentValidator()
     {
+        RuleFor(x => x.BranchId).GreaterThan(0);
         RuleFor(x => x.AccountId).GreaterThan(0);
         RuleFor(x => x.DateUtc).MustBeValidUtcDateTime();           // Extension
         RuleFor(x => x.Direction).IsInEnum();

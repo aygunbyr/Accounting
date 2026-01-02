@@ -19,6 +19,11 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
 
         b.Property(x => x.DefaultUnitPrice).HasColumnType("decimal(18,4)");
 
+        b.HasOne(i => i.Branch)
+            .WithMany()
+            .HasForeignKey(i => i.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // audit
         b.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()")
@@ -35,6 +40,8 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
             .HasDatabaseName("UX_Items_Code")
             .IsUnique()
             .HasFilter("[IsDeleted] = 0");
+        b.HasIndex(x => x.BranchId).HasDatabaseName("IX_Items_BranchId");
+
         b.ToTable(t =>
         {
             t.HasCheckConstraint("CK_Item_VatRate_Range", "[VatRate] BETWEEN 0 AND 100");
