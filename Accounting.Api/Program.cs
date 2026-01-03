@@ -1,6 +1,7 @@
 using Accounting.Api.Middleware;
 using Accounting.Application.Common.Behaviors;
-using Accounting.Infrastructure; // Ensure this namespace is included for extension methods
+using Accounting.Application.Services;
+using Accounting.Infrastructure;
 using Accounting.Infrastructure.Persistence;
 using Accounting.Infrastructure.Persistence.Seed;
 using FluentValidation;
@@ -63,7 +64,7 @@ builder.Services.AddCors(options =>
 });
 
 // Infrastructure (DbContext vs.)
-builder.Services.AddInfrastructure(builder.Configuration); // Ensure the AddInfrastructure extension method is implemented and accessible
+builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>();
@@ -71,7 +72,7 @@ builder.Services.AddHealthChecks()
 var app = builder.Build();
 
 // Middleware pipeline
-app.UseSerilogRequestLogging(); // basit request log
+app.UseSerilogRequestLogging();
 app.UseMiddleware<ExceptionToProblemDetailsMiddleware>();
 
 
@@ -96,11 +97,13 @@ app.MapControllers();
 
 app.MapHealthChecks("/health");
 
+// Database Migration + Seeding
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var balanceService = scope.ServiceProvider.GetRequiredService<IInvoiceBalanceService>();
     await db.Database.MigrateAsync();
-    await DataSeeder.SeedAsync(db);
+    await DataSeeder.SeedAsync(db, balanceService);
 }
 
 app.Run();

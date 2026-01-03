@@ -1,11 +1,11 @@
 ﻿using Accounting.Domain.Entities;
+using Accounting.Application.Services;  // ✅ EKLE
 using Microsoft.EntityFrameworkCore;
-
 namespace Accounting.Infrastructure.Persistence.Seed;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(AppDbContext db)
+    public static async Task SeedAsync(AppDbContext db, IInvoiceBalanceService balanceService)  // ✅ DEĞİŞTİ
     {
         // --- Helpers (rounding: AwayFromZero) ---
         static decimal R2(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
@@ -260,6 +260,7 @@ public static class DataSeeder
                     TotalNet = R2(sign * net),
                     TotalVat = R2(sign * vat),
                     TotalGross = R2(sign * gross),
+                    Balance = R2(sign * gross),  // ✅ Başlangıç: henüz ödeme yok
 
                     Lines = new List<InvoiceLine>
                     {
@@ -286,34 +287,77 @@ public static class DataSeeder
             }
 
             db.Invoices.AddRange(invoices);
+            await db.SaveChangesAsync();  // ✅ Invoice ID'leri oluşsun
         }
 
+        // ✅ Invoice ID'lerini çek (Payment linking için)
+        var invoiceIds = await db.Invoices
+            .AsNoTracking()
+            .OrderBy(inv => inv.Id)
+            .Select(inv => inv.Id)
+            .ToListAsync();
+
         // ------------------------------------------------
-        // 6) PAYMENTS (10 adet)
+        // 6) PAYMENTS (15 adet, bazıları faturaya bağlı)
         // ------------------------------------------------
         if (!await db.Payments.AnyAsync())
         {
             var payments = new List<Payment>();
+
+            // İlk 10 payment: Faturalara bağlı (kısmi ödemeler)
             for (int i = 1; i <= 10; i++)
+            {
+                var accountId = accountIds[(i - 1) % accountIds.Count];
+                var contactId = contactIds[(i - 1) % contactIds.Count];
+                var linkedInvoiceId = invoiceIds.Count > 0
+                    ? invoiceIds[(i - 1) % Math.Min(10, invoiceIds.Count)]
+                    : (int?)null;
+
+                payments.Add(new Payment
+                {
+                    BranchId = branchIds[(i - 1) % branchIds.Count],
+                    AccountId = accountId,
+                    ContactId = contactId,
+                    LinkedInvoiceId = linkedInvoiceId,  // ✅ Faturaya bağlı!
+                    Direction = PaymentDirection.In,
+                    Amount = R2(100m + i * 37.25m),
+                    Currency = "TRY",
+                    DateUtc = now.AddHours(-i * 6),
+                    CreatedAtUtc = now.AddHours(-i * 6)
+                });
+            }
+
+            // Son 5 payment: Faturasız (avans, genel ödemeler)
+            for (int i = 11; i <= 15; i++)
             {
                 var accountId = accountIds[(i - 1) % accountIds.Count];
                 var contactId = contactIds[(i - 1) % contactIds.Count];
 
                 payments.Add(new Payment
                 {
-                    BranchId = branchIds[(i - 1) % branchIds.Count],  // ✅ EKLE
+                    BranchId = branchIds[(i - 1) % branchIds.Count],
                     AccountId = accountId,
                     ContactId = contactId,
+                    LinkedInvoiceId = null,  // ✅ Faturasız
                     Direction = (i % 2 == 0) ? PaymentDirection.In : PaymentDirection.Out,
-                    Amount = R2(100m + i * 37.25m),
+                    Amount = R2(50m + i * 20m),
                     Currency = (i % 3 == 0) ? "USD" : "TRY",
                     DateUtc = now.AddHours(-i * 6),
                     CreatedAtUtc = now.AddHours(-i * 6)
                 });
             }
-            db.Payments.AddRange(payments);
-        }
 
+            db.Payments.AddRange(payments);
+            await db.SaveChangesAsync();  // ✅ Payment'ları kaydet
+
+            // ✅ SERVICE KULLAN: Balance'ları güncelle
+            foreach (var invoiceId in invoiceIds.Take(10))
+            {
+                await balanceService.RecalculateBalanceAsync(invoiceId);
+            }
+
+            await db.SaveChangesAsync();  // ✅ Balance'ları kaydet
+        }
         // ------------------------------------------------
         // 7) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet)
         // ------------------------------------------------
