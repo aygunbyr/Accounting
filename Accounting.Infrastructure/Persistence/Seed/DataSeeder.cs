@@ -298,37 +298,62 @@ public static class DataSeeder
             .ToListAsync();
 
         // ------------------------------------------------
-        // 6) PAYMENTS (15 adet, bazıları faturaya bağlı)
+        // 6) PAYMENTS (Invoice'lara bağlı + faturasız)
         // ------------------------------------------------
         if (!await db.Payments.AnyAsync())
         {
             var payments = new List<Payment>();
 
-            // İlk 10 payment: Faturalara bağlı (kısmi ödemeler)
-            for (int i = 1; i <= 10; i++)
+            // İlk 10 invoice'a kısmi ödemeler (TotalGross'u aşmayan)
+            for (int i = 1; i <= Math.Min(10, invoiceIds.Count); i++)
             {
+                var invoiceId = invoiceIds[i - 1];
+
+                // Invoice bilgilerini al
+                var invoice = await db.Invoices
+                    .AsNoTracking()
+                    .Where(inv => inv.Id == invoiceId)
+                    .Select(inv => new { inv.TotalGross, inv.Currency, inv.Type })
+                    .FirstOrDefaultAsync();
+
+                if (invoice == null) continue;
+
+                // Sadece Sales ve Purchase için ödeme (Return'lere ödeme yok)
+                if (invoice.Type != InvoiceType.Sales && invoice.Type != InvoiceType.Purchase)
+                    continue;
+
+                // TotalGross negatifse atla (Return invoice'ları)
+                if (invoice.TotalGross <= 0)
+                    continue;
+
+                // Currency TRY değilse atla (basitlik için)
+                if (invoice.Currency != "TRY")
+                    continue;
+
+                // Ödeme tutarı: TotalGross'un %30-70 arası (rastgele)
+                var percentage = 0.3m + ((i * 7) % 41) / 100m;  // 0.30-0.70 arası
+                var paymentAmount = R2(invoice.TotalGross * percentage);
+
+                // Account ve Contact seç
                 var accountId = accountIds[(i - 1) % accountIds.Count];
                 var contactId = contactIds[(i - 1) % contactIds.Count];
-                var linkedInvoiceId = invoiceIds.Count > 0
-                    ? invoiceIds[(i - 1) % Math.Min(10, invoiceIds.Count)]
-                    : (int?)null;
 
                 payments.Add(new Payment
                 {
                     BranchId = branchIds[(i - 1) % branchIds.Count],
                     AccountId = accountId,
                     ContactId = contactId,
-                    LinkedInvoiceId = linkedInvoiceId,  // ✅ Faturaya bağlı!
-                    Direction = PaymentDirection.In,
-                    Amount = R2(100m + i * 37.25m),
+                    LinkedInvoiceId = invoiceId,
+                    Direction = invoice.Type == InvoiceType.Sales ? PaymentDirection.In : PaymentDirection.Out,
+                    Amount = paymentAmount,
                     Currency = "TRY",
                     DateUtc = now.AddHours(-i * 6),
                     CreatedAtUtc = now.AddHours(-i * 6)
                 });
             }
 
-            // Son 5 payment: Faturasız (avans, genel ödemeler)
-            for (int i = 11; i <= 15; i++)
+            // 5 faturasız ödeme (avans, genel giderler)
+            for (int i = 1; i <= 5; i++)
             {
                 var accountId = accountIds[(i - 1) % accountIds.Count];
                 var contactId = contactIds[(i - 1) % contactIds.Count];
@@ -338,27 +363,31 @@ public static class DataSeeder
                     BranchId = branchIds[(i - 1) % branchIds.Count],
                     AccountId = accountId,
                     ContactId = contactId,
-                    LinkedInvoiceId = null,  // ✅ Faturasız
+                    LinkedInvoiceId = null,  // Faturasız
                     Direction = (i % 2 == 0) ? PaymentDirection.In : PaymentDirection.Out,
-                    Amount = R2(50m + i * 20m),
+                    Amount = R2(100m + i * 50m),
                     Currency = (i % 3 == 0) ? "USD" : "TRY",
-                    DateUtc = now.AddHours(-i * 6),
-                    CreatedAtUtc = now.AddHours(-i * 6)
+                    DateUtc = now.AddHours(-i * 12),
+                    CreatedAtUtc = now.AddHours(-i * 12)
                 });
             }
 
             db.Payments.AddRange(payments);
-            await db.SaveChangesAsync();  // ✅ Payment'ları kaydet
+            await db.SaveChangesAsync();
 
-            // ✅ SERVICE KULLAN: Balance'ları güncelle
-            foreach (var invoiceId in invoiceIds.Take(10))
+            // Balance'ları güncelle (sadece linked payment'lar için)
+            var linkedInvoiceIds = payments
+                .Where(p => p.LinkedInvoiceId.HasValue)
+                .Select(p => p.LinkedInvoiceId.Value)
+                .Distinct();
+
+            foreach (var invoiceId in linkedInvoiceIds)
             {
                 await balanceService.RecalculateBalanceAsync(invoiceId);
             }
 
-            await db.SaveChangesAsync();  // ✅ Balance'ları kaydet
+            await db.SaveChangesAsync();
         }
-        // ------------------------------------------------
         // 7) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet)
         // ------------------------------------------------
         // 7) EXPENSE LISTS (10 adet) + EXPENSES (10 adet, her listeye 1 adet)
