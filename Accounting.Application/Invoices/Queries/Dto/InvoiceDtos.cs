@@ -24,6 +24,7 @@ public record InvoiceDto(
     string TotalNet,         // F2
     string TotalVat,         // F2
     string TotalGross,       // F2
+    string Balance,
     IReadOnlyList<InvoiceLineDto> Lines,
     string RowVersion,       // base64
     DateTime CreatedAtUtc,   // Audit
@@ -45,6 +46,7 @@ public record InvoiceListItemDto(
     string TotalNet,
     string TotalVat,
     string TotalGross,
+    string Balance,
     DateTime CreatedAtUtc,
     int BranchId,
     string BranchCode,

@@ -116,6 +116,9 @@ public class CreateInvoiceHandler
         invoice.TotalVat = Money.R2(invoice.TotalVat);
         invoice.TotalGross = Money.R2(invoice.TotalGross);
 
+        // Yeni fatura oluşturulurken balance = TotalGross (henüz ödeme yok)
+        invoice.Balance = invoice.TotalGross;
+
         // 5) Persist
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync(ct);

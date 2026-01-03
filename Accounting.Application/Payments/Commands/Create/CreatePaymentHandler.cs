@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Utils;
+using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using MediatR;
 using System.Globalization;
@@ -9,7 +10,12 @@ namespace Accounting.Application.Payments.Commands.Create;
 public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, CreatePaymentResult>
 {
     private readonly IAppDbContext _db;
-    public CreatePaymentHandler(IAppDbContext db) => _db = db;
+    private readonly IInvoiceBalanceService _balanceService;
+    public CreatePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService)
+    {
+        _db = db;
+        _balanceService = balanceService;
+    }
 
     public async Task<CreatePaymentResult> Handle(CreatePaymentCommand req, CancellationToken ct)
     {
@@ -43,6 +49,12 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
         };
 
         _db.Payments.Add(entity);
+
+        if (entity.LinkedInvoiceId.HasValue)
+        {
+            await _balanceService.RecalculateBalanceAsync(entity.LinkedInvoiceId.Value, ct);
+        }
+
         await _db.SaveChangesAsync(ct);
 
         var inv = CultureInfo.InvariantCulture;

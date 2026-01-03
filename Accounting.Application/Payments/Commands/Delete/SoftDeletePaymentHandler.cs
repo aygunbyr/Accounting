@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
+using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,13 @@ using Microsoft.EntityFrameworkCore;
 public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand>
 {
     private readonly IAppDbContext _db;
-    public SoftDeletePaymentHandler(IAppDbContext db) => _db = db;
+    private readonly IInvoiceBalanceService _balanceService;
+
+    public SoftDeletePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService)
+    {
+        _db = db;
+        _balanceService = balanceService;
+    }
 
     public async Task Handle(SoftDeletePaymentCommand req, CancellationToken ct)
     {
@@ -29,6 +36,11 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
         p.IsDeleted = true;
         p.DeletedAtUtc = DateTime.UtcNow;
         p.UpdatedAtUtc = DateTime.UtcNow;
+
+        if (p.LinkedInvoiceId.HasValue)
+        {
+            await _balanceService.RecalculateBalanceAsync(p.LinkedInvoiceId.Value, ct);
+        }
 
         try
         {

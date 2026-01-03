@@ -100,6 +100,7 @@ public class UpdateInvoiceHeaderHandler
             Money.S2(fresh.TotalNet),
             Money.S2(fresh.TotalVat),
             Money.S2(fresh.TotalGross),
+            Money.S2(fresh.Balance),
             lines,
             Convert.ToBase64String(fresh.RowVersion),
             fresh.CreatedAtUtc,

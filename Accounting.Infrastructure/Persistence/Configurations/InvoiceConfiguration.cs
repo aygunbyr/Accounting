@@ -17,6 +17,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         b.Property(x => x.TotalNet).HasColumnType("decimal(18,2)");
         b.Property(x => x.TotalVat).HasColumnType("decimal(18,2)");
         b.Property(x => x.TotalGross).HasColumnType("decimal(18,2)");
+        b.Property(x => x.Balance).HasColumnType("decimal(18,2)");
 
         // ✅ Aggregate tutarlılığı: hard delete'i önlemek için Restrict
         b.HasMany(x => x.Lines)

@@ -50,6 +50,7 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
             Money.S2(inv.TotalNet),
             Money.S2(inv.TotalVat),
             Money.S2(inv.TotalGross),
+            Money.S2(inv.Balance),
             lines,
             Convert.ToBase64String(inv.RowVersion),
             inv.CreatedAtUtc,

@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Services;
 using Accounting.Infrastructure.Persistence;
 using Accounting.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public static class DependencyInjection
 
         services.AddScoped<AuditSaveChangesInterceptor>();
 
+        services.AddScoped<IInvoiceBalanceService, InvoiceBalanceService>();
 
         return services;
     }

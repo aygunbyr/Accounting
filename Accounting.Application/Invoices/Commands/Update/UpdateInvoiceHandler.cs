@@ -2,6 +2,7 @@
 using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Invoices.Queries.Dto;
+using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,9 +10,13 @@ using Microsoft.EntityFrameworkCore;
 public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand, InvoiceDto>
 {
     private readonly IAppDbContext _ctx;
+    private readonly IInvoiceBalanceService _balanceService;
 
-    public UpdateInvoiceHandler(IAppDbContext ctx)
-    { _ctx = ctx; }
+    public UpdateInvoiceHandler(IAppDbContext ctx, IInvoiceBalanceService balanceService)
+    {
+        _ctx = ctx;
+        _balanceService = balanceService;
+    }
 
     public async Task<InvoiceDto> Handle(UpdateInvoiceCommand r, CancellationToken ct)
     {
@@ -135,6 +140,9 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         inv.TotalVat = Money.R2(inv.Lines.Sum(x => x.Vat));
         inv.TotalGross = Money.R2(inv.Lines.Sum(x => x.Gross));
 
+        // Toplamlar değişince bakiyeyi yeniden hesapla
+        await _balanceService.RecalculateBalanceAsync(inv.Id, ct);
+
         // 5) Save + concurrency
         try { await _ctx.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException)
@@ -177,6 +185,7 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             Money.S2(fresh.TotalNet),
             Money.S2(fresh.TotalVat),
             Money.S2(fresh.TotalGross),
+            Money.S2(fresh.Balance),
             linesDto,
             Convert.ToBase64String(fresh.RowVersion),
             fresh.CreatedAtUtc,

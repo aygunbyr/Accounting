@@ -22,6 +22,7 @@ public class Invoice : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranc
     public decimal TotalNet { get; set; }
     public decimal TotalVat { get; set; }
     public decimal TotalGross { get; set; }
+    public decimal Balance { get; set; }
 
     public List<InvoiceLine> Lines { get; set; } = new();
 
