@@ -8,8 +8,11 @@ public record PostExpenseListToBillCommand(
     int SupplierId,
     string Currency,
     int ItemId,
-    string? DateUtc = null    
-    ) : IRequest<PostExpenseListToBillResult>, ITransactionalRequest; 
+    bool CreatePayment,  // Otomatik ödeme oluştursun mu?
+    int? PaymentAccountId = null,  // CreatePayment=true ise zorunlu
+    string? PaymentDateUtc = null,
+    string? DateUtc = null
+    ) : IRequest<PostExpenseListToBillResult>, ITransactionalRequest;
 
 public record PostExpenseListToBillResult(
     int CreatedInvoiceId,

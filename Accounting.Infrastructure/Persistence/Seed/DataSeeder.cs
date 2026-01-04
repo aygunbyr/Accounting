@@ -378,7 +378,7 @@ public static class DataSeeder
             // Balance'ları güncelle (sadece linked payment'lar için)
             var linkedInvoiceIds = payments
                 .Where(p => p.LinkedInvoiceId.HasValue)
-                .Select(p => p.LinkedInvoiceId.Value)
+                .Select(p => p.LinkedInvoiceId!.Value)
                 .Distinct();
 
             foreach (var invoiceId in linkedInvoiceIds)
