@@ -411,7 +411,7 @@ public static class DataSeeder
                 var amount = R2(50m + i * 12.4m);
                 var vatRate = (i % 5 == 0) ? 1 : 20;
 
-                list.Lines.Add(new Expense
+                list.Lines.Add(new ExpenseLine
                 {
                     DateUtc = now.AddDays(-i).AddHours(-2),
                     SupplierId = supplierId,

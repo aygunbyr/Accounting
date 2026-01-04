@@ -23,7 +23,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<CashBankAccount> CashBankAccounts => Set<CashBankAccount>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<ExpenseList> ExpenseLists => Set<ExpenseList>();
-    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<ExpenseLine> ExpenseLines => Set<ExpenseLine>();
     public DbSet<ExpenseDefinition> ExpenseDefinitions { get; set; } = null!;
     public DbSet<FixedAsset> FixedAssets { get; set; } = null!;
     public DbSet<Branch> Branches => Set<Branch>();

@@ -1,0 +1,70 @@
+﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Models;
+using Accounting.Application.ExpenseLists.Dto;
+using Accounting.Domain.Entities;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace Accounting.Application.ExpenseLists.Queries.List;
+
+public class ListExpenseListsHandler : IRequestHandler<ListExpenseListsQuery, PagedResult<ExpenseListDto>>
+{
+    private readonly IAppDbContext _db;
+    public ListExpenseListsHandler(IAppDbContext db) => _db = db;
+
+    public async Task<PagedResult<ExpenseListDto>> Handle(ListExpenseListsQuery q, CancellationToken ct)
+    {
+        var query = _db.ExpenseLists
+            .Where(x => !x.IsDeleted)
+            .AsNoTracking();
+
+        // Filters
+        if (q.BranchId.HasValue)
+            query = query.Where(x => x.BranchId == q.BranchId.Value);
+
+        if (!string.IsNullOrWhiteSpace(q.Status))
+        {
+            if (Enum.TryParse<ExpenseListStatus>(q.Status, true, out var status))
+                query = query.Where(x => x.Status == status);
+        }
+
+        // Sort
+        var sort = (q.Sort ?? "createdAtUtc:desc").Split(':');
+        var field = sort[0].ToLowerInvariant();
+        var dir = sort.Length > 1 ? sort[1].ToLowerInvariant() : "desc";
+
+        query = (field, dir) switch
+        {
+            ("createdat" or "createdatutc", "asc") => query.OrderBy(x => x.CreatedAtUtc),
+            ("createdat" or "createdatutc", _) => query.OrderByDescending(x => x.CreatedAtUtc),
+            ("name", "asc") => query.OrderBy(x => x.Name),
+            ("name", _) => query.OrderByDescending(x => x.Name),
+            ("status", "asc") => query.OrderBy(x => x.Status),
+            ("status", _) => query.OrderByDescending(x => x.Status),
+            _ => query.OrderByDescending(x => x.CreatedAtUtc)
+        };
+
+        // Count
+        var total = await query.CountAsync(ct);
+
+        // Page
+        var items = await query
+            .Skip((q.PageNumber - 1) * q.PageSize)
+            .Take(q.PageSize)
+            .Select(x => new ExpenseListDto(
+                x.Id,
+                x.BranchId,
+                x.Name,
+                x.Status.ToString(),
+                x.CreatedAtUtc
+            ))
+            .ToListAsync(ct);
+
+        return new PagedResult<ExpenseListDto>(
+            Items: items,
+            Total: total,
+            PageNumber: q.PageNumber,
+            PageSize: q.PageSize
+        );
+    }
+}

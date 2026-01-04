@@ -17,7 +17,7 @@ public class ExpenseList : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasB
     public ExpenseListStatus Status { get; set; } = ExpenseListStatus.Draft;
     public int? PostedInvoiceId { get; set; }
 
-    public ICollection<Expense> Lines { get; set; } = new List<Expense>();
+    public ICollection<ExpenseLine> Lines { get; set; } = new List<ExpenseLine>();
 
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
