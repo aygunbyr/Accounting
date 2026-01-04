@@ -2,6 +2,7 @@
 using Accounting.Application.Common.Utils;
 using Accounting.Application.ExpenseLists.Dto;
 using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 using System.Globalization;
 

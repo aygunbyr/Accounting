@@ -27,6 +27,10 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<ExpenseDefinition> ExpenseDefinitions { get; set; } = null!;
     public DbSet<FixedAsset> FixedAssets { get; set; } = null!;
     public DbSet<Branch> Branches => Set<Branch>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<Stock> Stocks => Set<Stock>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

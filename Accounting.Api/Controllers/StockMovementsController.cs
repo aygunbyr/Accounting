@@ -1,0 +1,42 @@
+﻿using Accounting.Application.Common.Models;
+using Accounting.Application.StockMovements.Commands.Create;
+using Accounting.Application.StockMovements.Queries.Dto;
+using Accounting.Application.StockMovements.Queries.GetById;
+using Accounting.Application.StockMovements.Queries.List;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Accounting.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class StockMovementsController(IMediator mediator) : ControllerBase
+{
+    private readonly IMediator _mediator = mediator;
+
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<StockMovementDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult> List([FromQuery] ListStockMovementsQuery q, CancellationToken ct)
+    {
+        var res = await _mediator.Send(q, ct);
+        return Ok(res);
+    }
+
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(StockMovementDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> GetById([FromRoute] int id, CancellationToken ct)
+    {
+        var res = await _mediator.Send(new GetStockMovementByIdQuery(id), ct);
+        return Ok(res);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(StockMovementDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> Create([FromBody] CreateStockMovementCommand cmd, CancellationToken ct)
+    {
+        var res = await _mediator.Send(cmd, ct);
+        return CreatedAtAction(nameof(GetById), new { id = res.Id }, res);
+    }
+}

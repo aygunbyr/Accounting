@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Validation;
 using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using FluentValidation;
 using System;
 using System.Linq;

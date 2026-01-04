@@ -6,6 +6,7 @@ using Accounting.Application.Contacts.Queries.Dto;
 using Accounting.Application.Contacts.Queries.GetById;
 using Accounting.Application.Contacts.Queries.List;
 using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

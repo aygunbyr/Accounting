@@ -3,6 +3,7 @@ using Accounting.Application.Payments.Commands.Create;
 using Accounting.Application.Payments.Queries.Dto;
 using Accounting.Application.Payments.Queries.GetById;
 using Accounting.Application.Payments.Queries.List;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -48,7 +49,7 @@ public class PaymentsController : ControllerBase
         CancellationToken ct = default)
     {
         var dirEnum = direction is null ? null
-            : (Accounting.Domain.Entities.PaymentDirection?)direction;
+            : (PaymentDirection?)direction;
 
         var res = await _mediator.Send(new ListPaymentsQuery(
             pageNumber, pageSize, sort,

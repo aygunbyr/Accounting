@@ -20,6 +20,9 @@ public interface IAppDbContext
     DbSet<ExpenseDefinition> ExpenseDefinitions { get; }
     DbSet<FixedAsset> FixedAssets { get; }
     DbSet<Branch> Branches { get; }
+    DbSet<Warehouse> Warehouses { get; }
+    DbSet<Stock> Stocks { get; }
+    DbSet<StockMovement> StockMovements { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

@@ -1,7 +1,7 @@
 ﻿using Accounting.Application.CashBankAccounts.Queries.Dto;
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Models;
-using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

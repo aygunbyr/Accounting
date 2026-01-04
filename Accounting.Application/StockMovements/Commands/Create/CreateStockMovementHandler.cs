@@ -1,0 +1,119 @@
+﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Utils;
+using Accounting.Application.StockMovements.Queries.Dto;
+using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace Accounting.Application.StockMovements.Commands.Create;
+
+public class CreateStockMovementHandler(IAppDbContext db) : IRequestHandler<CreateStockMovementCommand, StockMovementDto>
+{
+    public async Task<StockMovementDto> Handle(CreateStockMovementCommand r, CancellationToken ct)
+    {
+        // qty parse (FE string) -> decimal
+        if (!Money.TryParse4(r.Quantity, out var parsed))
+            throw new BusinessRuleException("Quantity formatı geçersiz.");
+
+        // stokta 3 ondalık yeterli (kg/lt)
+        var qty = Money.R3(parsed);
+        if (qty <= 0) throw new BusinessRuleException("Quantity 0'dan büyük olmalı.");
+
+        // Warehouse kontrolü (şube uyumu da dahil)
+        var wh = await db.Warehouses.FirstOrDefaultAsync(x =>
+            x.Id == r.WarehouseId && !x.IsDeleted && x.BranchId == r.BranchId, ct);
+
+        if (wh is null) throw new NotFoundException("Warehouse", r.WarehouseId);
+
+        // Item kontrolü (şube uyumu)
+        var item = await db.Items.FirstOrDefaultAsync(x =>
+            x.Id == r.ItemId && !x.IsDeleted && x.BranchId == r.BranchId, ct);
+
+        if (item is null) throw new NotFoundException("Item", r.ItemId);
+
+        // snapshot (Stock) bul/yoksa oluştur
+        var stock = await db.Stocks.FirstOrDefaultAsync(x =>
+            x.BranchId == r.BranchId &&
+            x.WarehouseId == r.WarehouseId &&
+            x.ItemId == r.ItemId &&
+            !x.IsDeleted, ct);
+
+        if (stock is null)
+        {
+            stock = new Stock
+            {
+                BranchId = r.BranchId,
+                WarehouseId = r.WarehouseId,
+                ItemId = r.ItemId,
+                Quantity = 0m
+            };
+            db.Stocks.Add(stock);
+        }
+
+        // yön belirle: In => +qty, Out => -qty
+        var signedQty = IsIn(r.Type) ? qty : -qty;
+
+        // business rule: stok negatife düşemez
+        var newQty = Money.R3(stock.Quantity + signedQty);
+        if (newQty < 0m)
+            throw new BusinessRuleException("Yetersiz stok.");
+
+        var trxDate = r.TransactionDateUtc ?? DateTime.UtcNow;
+
+        var movement = new StockMovement
+        {
+            BranchId = r.BranchId,
+            WarehouseId = r.WarehouseId,
+            ItemId = r.ItemId,
+            Type = r.Type,
+            Quantity = qty,
+            TransactionDateUtc = trxDate,
+            Note = string.IsNullOrWhiteSpace(r.Note) ? null : r.Note.Trim()
+        };
+
+        db.StockMovements.Add(movement);
+
+        // snapshot güncelle
+        stock.Quantity = newQty;
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // aynı anda hareket girildiyse stock rowversion çakışabilir
+            throw new ConcurrencyConflictException("Stok güncellenirken eşzamanlılık hatası oluştu. Lütfen tekrar deneyin.");
+        }
+
+        // fresh read (DTO için join'li)
+        var saved = await db.StockMovements
+            .AsNoTracking()
+            .Include(x => x.Warehouse)
+            .Include(x => x.Item)
+            .FirstAsync(x => x.Id == movement.Id, ct);
+
+        return new StockMovementDto(
+            saved.Id,
+            saved.BranchId,
+            saved.WarehouseId,
+            saved.Warehouse.Code,
+            saved.ItemId,
+            saved.Item.Code,
+            saved.Item.Name,
+            saved.Item.Unit,
+            saved.Type,
+            Money.S3(saved.Quantity),
+            saved.TransactionDateUtc,
+            saved.Note,
+            Convert.ToBase64String(saved.RowVersion),
+            saved.CreatedAtUtc,
+            saved.UpdatedAtUtc
+        );
+    }
+
+    private static bool IsIn(StockMovementType t) =>
+        t is StockMovementType.PurchaseIn or StockMovementType.AdjustmentIn;
+}

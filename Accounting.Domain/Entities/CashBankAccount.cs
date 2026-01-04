@@ -1,8 +1,7 @@
 ﻿using Accounting.Domain.Common;
+using Accounting.Domain.Enums;
 
 namespace Accounting.Domain.Entities;
-
-public enum CashBankAccountType { Cash = 1, Bank = 2 }
 
 public class CashBankAccount : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {

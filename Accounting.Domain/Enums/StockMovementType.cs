@@ -1,0 +1,9 @@
+﻿namespace Accounting.Domain.Enums;
+
+public enum StockMovementType
+{
+    PurchaseIn = 1,     // Alış / giriş
+    SalesOut = 2,       // Satış / çıkış
+    AdjustmentIn = 3,   // Sayım fazlası
+    AdjustmentOut = 4   // Sayım eksiği
+}

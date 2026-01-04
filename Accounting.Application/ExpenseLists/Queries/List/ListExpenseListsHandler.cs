@@ -2,6 +2,7 @@
 using Accounting.Application.Common.Models;
 using Accounting.Application.ExpenseLists.Dto;
 using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 

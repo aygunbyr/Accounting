@@ -1,8 +1,7 @@
 ﻿using Accounting.Domain.Common;
+using Accounting.Domain.Enums;
 
 namespace Accounting.Domain.Entities;
-
-public enum ContactType { Customer = 1, Vendor = 2 }
 
 public class Contact : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {

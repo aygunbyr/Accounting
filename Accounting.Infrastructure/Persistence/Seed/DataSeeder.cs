@@ -1,6 +1,7 @@
 ﻿using Accounting.Domain.Entities;
 using Accounting.Application.Services;  // ✅ EKLE
 using Microsoft.EntityFrameworkCore;
+using Accounting.Domain.Enums;
 namespace Accounting.Infrastructure.Persistence.Seed;
 
 public static class DataSeeder

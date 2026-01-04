@@ -1,0 +1,40 @@
+﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Utils;
+using Accounting.Application.StockMovements.Queries.Dto;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+
+namespace Accounting.Application.StockMovements.Queries.GetById;
+
+public class GetStockMovementByIdHandler(IAppDbContext db) : IRequestHandler<GetStockMovementByIdQuery, StockMovementDto>
+{
+    public async Task<StockMovementDto> Handle(GetStockMovementByIdQuery r, CancellationToken ct)
+    {
+        var e = await db.StockMovements
+            .AsNoTracking()
+            .Include(x => x.Warehouse)
+            .Include(x => x.Item)
+            .FirstOrDefaultAsync(x => x.Id == r.Id && !x.IsDeleted, ct);
+
+        if (e is null) throw new NotFoundException("StockMovement", r.Id);
+
+        return new StockMovementDto(
+            e.Id,
+            e.BranchId,
+            e.WarehouseId,
+            e.Warehouse.Code,
+            e.ItemId,
+            e.Item.Code,
+            e.Item.Name,
+            e.Item.Unit,
+            e.Type,
+            Money.S3(e.Quantity),
+            e.TransactionDateUtc,
+            e.Note,
+            Convert.ToBase64String(e.RowVersion),
+            e.CreatedAtUtc,
+            e.UpdatedAtUtc
+        );
+    }
+}

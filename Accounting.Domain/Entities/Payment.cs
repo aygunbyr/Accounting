@@ -1,8 +1,7 @@
 ﻿using Accounting.Domain.Common;
+using Accounting.Domain.Enums;
 
 namespace Accounting.Domain.Entities;
-
-public enum PaymentDirection { In = 1, Out = 2 }
 
 public class Payment : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {

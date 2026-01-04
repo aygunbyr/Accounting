@@ -1,6 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Payments.Queries.Dto;
-using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 
 public record UpdatePaymentCommand(

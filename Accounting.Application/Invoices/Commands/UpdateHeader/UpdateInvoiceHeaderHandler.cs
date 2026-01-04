@@ -4,6 +4,7 @@ using Accounting.Application.Common.Errors;  // ConcurrencyConflictException
 using Accounting.Application.Common.Utils;   // Money.*
 using Accounting.Application.Invoices.Queries.Dto;
 using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 

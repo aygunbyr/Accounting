@@ -3,7 +3,7 @@ using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Invoices.Commands.Create;
 using Accounting.Application.Payments.Commands.Create;
-using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;

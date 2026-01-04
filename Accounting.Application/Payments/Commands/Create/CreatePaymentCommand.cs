@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 
 namespace Accounting.Application.Payments.Commands.Create;

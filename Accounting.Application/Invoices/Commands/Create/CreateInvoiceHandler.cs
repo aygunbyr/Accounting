@@ -2,6 +2,7 @@
 using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;                 // Money helper
 using Accounting.Domain.Entities;                          // Invoice, InvoiceLine, InvoiceType
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
