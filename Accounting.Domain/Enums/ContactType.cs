@@ -3,5 +3,6 @@
 public enum ContactType 
 { 
     Customer = 1,
-    Vendor = 2 
+    Vendor = 2,
+    Employee = 3
 }
