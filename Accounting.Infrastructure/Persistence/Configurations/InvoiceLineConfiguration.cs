@@ -37,6 +37,18 @@ public class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
             t.HasCheckConstraint("CK_InvoiceLine_VatRate_Range", "[VatRate] BETWEEN 0 AND 100");
             t.HasCheckConstraint("CK_InvoiceLine_Qty_Positive", "[Qty] >= 0");
             t.HasCheckConstraint("CK_InvoiceLine_UnitPrice_Positive", "[UnitPrice] >= 0");
+            // Validation: ya ItemId ya da ExpenseDefinitionId dolu olmalı (ikisi aynı anda boş/dolu olamaz kısıtlaması business logic'te, DB'de check constraint eklenebilir ama opsiyonel)
         });
+
+        // Relations
+        b.HasOne(x => x.Item)
+            .WithMany()
+            .HasForeignKey(x => x.ItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasOne(x => x.ExpenseDefinition)
+            .WithMany()
+            .HasForeignKey(x => x.ExpenseDefinitionId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -12,11 +12,13 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
 {
     private readonly IAppDbContext _ctx;
     private readonly IInvoiceBalanceService _balanceService;
+    private readonly IMediator _mediator;
 
-    public UpdateInvoiceHandler(IAppDbContext ctx, IInvoiceBalanceService balanceService)
+    public UpdateInvoiceHandler(IAppDbContext ctx, IInvoiceBalanceService balanceService, IMediator mediator)
     {
         _ctx = ctx;
         _balanceService = balanceService;
+        _mediator = mediator;
     }
 
     public async Task<InvoiceDto> Handle(UpdateInvoiceCommand r, CancellationToken ct)
@@ -41,14 +43,20 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         // ---- Satır diff senkronu ----
         var now = DateTime.UtcNow;
 
-        // sign: iade faturalarında -1, diğerlerinde +1
-        decimal sign = (inv.Type == InvoiceType.SalesReturn || inv.Type == InvoiceType.PurchaseReturn) ? -1m : 1m;
+        // sign: removed (All positive)
+        
+        // Snapshot için gerekli Item'ları ve Expense'leri tek seferde çek
+        var allItemIds = r.Lines.Where(x => x.ItemId.HasValue).Select(x => x.ItemId!.Value).Distinct().ToList();
+        var allExpenseIds = r.Lines.Where(x => x.ExpenseDefinitionId.HasValue).Select(x => x.ExpenseDefinitionId!.Value).Distinct().ToList();
 
-        // Snapshot için gerekli Item'ları tek seferde çek
-        var allItemIds = r.Lines.Select(x => x.ItemId).Distinct().ToList();
         var itemsMap = await _ctx.Items
             .Where(i => allItemIds.Contains(i.Id))
             .Select(i => new { i.Id, i.Code, i.Name, i.Unit, i.VatRate })
+            .ToDictionaryAsync(i => i.Id, ct);
+
+        var expensesMap = await _ctx.ExpenseDefinitions
+            .Where(i => allExpenseIds.Contains(i.Id))
+            .Select(i => new { i.Id, i.Code, i.Name })
             .ToDictionaryAsync(i => i.Id, ct);
 
         var incomingById = r.Lines.Where(x => x.Id > 0).ToDictionary(x => x.Id);
@@ -67,70 +75,122 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         {
             if (incomingById.TryGetValue(line.Id, out var dto))
             {
-                var itemChanged = line.ItemId != dto.ItemId;
-
                 // ✅ String → decimal parse
                 if (!Money.TryParse4(dto.Qty, out var qty))
                     throw new BusinessRuleException($"Line {line.Id}: Invalid Qty format.");
                 if (!Money.TryParse4(dto.UnitPrice, out var unitPrice))
                     throw new BusinessRuleException($"Line {line.Id}: Invalid UnitPrice format.");
 
-                line.ItemId = dto.ItemId;
-                line.Qty = Money.R3(qty * sign);           // ✅ parsed qty
-                line.UnitPrice = Money.R4(unitPrice);      // ✅ parsed unitPrice
+                // Qty logic: DB Positive
+                var absQty = Math.Abs(qty);
+
+                line.Qty = Money.R3(absQty);           // ✅ Positive for DB
+                line.UnitPrice = Money.R4(unitPrice);
                 line.VatRate = dto.VatRate;
                 line.UpdatedAtUtc = now;
 
-                // Snapshot tazele (Item değişmişse ya da eksikse)
-                if (itemsMap.TryGetValue(line.ItemId, out var it) && (itemChanged || string.IsNullOrWhiteSpace(line.ItemCode)))
+                // Type'a göre logic
+                if (inv.Type == InvoiceType.Expense)
                 {
-                    line.ItemCode = it.Code;
-                    line.ItemName = it.Name;
-                    line.Unit = it.Unit;
+                    if (dto.ItemId.HasValue) throw new BusinessRuleException("Masraf faturasında ItemId olamaz.");
+                    if (!dto.ExpenseDefinitionId.HasValue) throw new BusinessRuleException("Masraf faturasında ExpenseDefinitionId zorunludur.");
+                    
+                    var expChanged = line.ExpenseDefinitionId != dto.ExpenseDefinitionId;
+                    line.ExpenseDefinitionId = dto.ExpenseDefinitionId;
+                    line.ItemId = null; // Ensure null
+
+                    // Snapshot
+                    if (expensesMap.TryGetValue(line.ExpenseDefinitionId.Value, out var exp) && (expChanged || string.IsNullOrWhiteSpace(line.ItemCode)))
+                    {
+                        line.ItemCode = exp.Code;
+                        line.ItemName = exp.Name;
+                        line.Unit = "adet";
+                    }
+                }
+                else
+                {
+                    if (dto.ExpenseDefinitionId.HasValue) throw new BusinessRuleException("Stok faturasında ExpenseDefinitionId olamaz.");
+                    if (!dto.ItemId.HasValue) throw new BusinessRuleException("Stok faturasında ItemId zorunludur.");
+                    
+                    var itemChanged = line.ItemId != dto.ItemId;
+                    line.ItemId = dto.ItemId;
+                    line.ExpenseDefinitionId = null;
+
+                    // Snapshot
+                    if (itemsMap.TryGetValue(line.ItemId.Value, out var it) && (itemChanged || string.IsNullOrWhiteSpace(line.ItemCode)))
+                    {
+                        line.ItemCode = it.Code;
+                        line.ItemName = it.Name;
+                        line.Unit = it.Unit;
+                    }
                 }
 
                 // Hesaplar (AwayFromZero)
-                var net = Money.R2(unitPrice * qty);       // ✅ parsed values
+                var net = Money.R2(unitPrice * absQty);
                 var vat = Money.R2(net * line.VatRate / 100m);
                 var gross = Money.R2(net + vat);
 
-                line.Net = Money.R2(net * sign);
-                line.Vat = Money.R2(vat * sign);
-                line.Gross = Money.R2(gross * sign);
+                line.Net = Money.R2(net); // Positive
+                line.Vat = Money.R2(vat); // Positive
+                line.Gross = Money.R2(gross); // Positive
             }
         }
 
         // c) Yeni satırlar
         foreach (var dto in r.Lines.Where(x => x.Id == 0))
         {
-            // Snapshot: Item zorunlu
-            if (!itemsMap.TryGetValue(dto.ItemId, out var it))
-                throw new BusinessRuleException($"Item {dto.ItemId} bulunamadı.");
-
             // ✅ String → decimal parse
             if (!Money.TryParse4(dto.Qty, out var qty))
                 throw new BusinessRuleException($"New line: Invalid Qty format.");
             if (!Money.TryParse4(dto.UnitPrice, out var unitPrice))
                 throw new BusinessRuleException($"New line: Invalid UnitPrice format.");
 
-            var net = Money.R2(unitPrice * qty);        // ✅ parsed values
+            // Qty Logic
+            var absQty = Math.Abs(qty);
+
+            var net = Money.R2(unitPrice * absQty);
             var vat = Money.R2(net * dto.VatRate / 100m);
             var gross = Money.R2(net + vat);
 
             var nl = new InvoiceLine
             {
                 ItemId = dto.ItemId,
-                ItemCode = it.Code,
-                ItemName = it.Name,
-                Unit = it.Unit,
-                Qty = Money.R3(qty * sign),             // ✅ parsed qty
-                UnitPrice = Money.R4(unitPrice),        // ✅ parsed unitPrice
+                ExpenseDefinitionId = dto.ExpenseDefinitionId,
+                Qty = Money.R3(absQty),             // ✅ Positive for DB
+                UnitPrice = Money.R4(unitPrice),
                 VatRate = dto.VatRate,
-                Net = Money.R2(net * sign),
-                Vat = Money.R2(vat * sign),
-                Gross = Money.R2(gross * sign),
+                Net = Money.R2(net),
+                Vat = Money.R2(vat),
+                Gross = Money.R2(gross),
                 CreatedAtUtc = now
             };
+            
+             if (inv.Type == InvoiceType.Expense)
+            {
+                if (dto.ItemId.HasValue) throw new BusinessRuleException("Masraf faturasında ItemId olamaz.");
+                if (!dto.ExpenseDefinitionId.HasValue) throw new BusinessRuleException("Masraf faturasında ExpenseDefinitionId zorunludur.");
+                 
+                if (expensesMap.TryGetValue(dto.ExpenseDefinitionId.Value, out var exp))
+                {
+                    nl.ItemCode = exp.Code;
+                    nl.ItemName = exp.Name;
+                    nl.Unit = "adet";
+                }
+                else throw new BusinessRuleException("Masraf tanımı bulunamadı.");
+            }
+            else
+            {
+                if (dto.ExpenseDefinitionId.HasValue) throw new BusinessRuleException("Stok faturasında ExpenseDefinitionId olamaz.");
+                if (!dto.ItemId.HasValue) throw new BusinessRuleException("Stok faturasında ItemId zorunludur.");
+
+                if (itemsMap.TryGetValue(dto.ItemId.Value, out var it))
+                {
+                    nl.ItemCode = it.Code;
+                    nl.ItemName = it.Name;
+                    nl.Unit = it.Unit;
+                }
+                else throw new BusinessRuleException("Stok kartı bulunamadı.");
+            }
 
             inv.Lines.Add(nl);
         }
@@ -149,6 +209,9 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         catch (DbUpdateConcurrencyException)
         { throw new ConcurrencyConflictException(); }
 
+        // 5.5) Stok Hareketlerini Senkronize Et (Reset yöntemi)
+        await SyncStockMovements(inv, ct);
+
         // 6) Fresh read (AsNoTracking + Contact + Lines)
         var fresh = await _ctx.Invoices
             .AsNoTracking()
@@ -163,6 +226,7 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             .Select(l => new InvoiceLineDto(
                 l.Id,
                 l.ItemId,
+                l.ExpenseDefinitionId, // Added new field
                 l.ItemCode,
                 l.ItemName,
                 l.Unit,
@@ -215,5 +279,58 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             "purchasereturn" => InvoiceType.PurchaseReturn,
             _ => fallback
         };
+    }
+
+    private async Task SyncStockMovements(Invoice invoice, CancellationToken ct)
+    {
+        // 1. Stok hareketi gerekmeyen durum (Expense)
+        if (invoice.Type == InvoiceType.Expense) return;
+
+        // 2. Mevcut hareketleri bul ve sil (Reset)
+        // Note pattern: "Fatura Ref: {Id}"
+        var refNote = $"Fatura Ref: {invoice.Id}";
+        var existingMovements = await _ctx.StockMovements
+            .Where(m => m.Note == refNote && !m.IsDeleted)
+            .ToListAsync(ct);
+            
+        foreach(var move in existingMovements)
+        {
+            move.IsDeleted = true;
+            move.DeletedAtUtc = DateTime.UtcNow;
+        }
+        await _ctx.SaveChangesAsync(ct);
+
+        // 3. Yeni hareketleri oluştur
+        StockMovementType? movementType = invoice.Type switch
+        {
+            InvoiceType.Sales => StockMovementType.SalesOut,
+            InvoiceType.SalesReturn => StockMovementType.SalesReturn,
+            InvoiceType.Purchase => StockMovementType.PurchaseIn,
+            InvoiceType.PurchaseReturn => StockMovementType.PurchaseReturn,
+            _ => null
+        };
+
+        if (movementType == null) return; 
+
+        foreach (var line in invoice.Lines)
+        {
+            if (line.ItemId == null) continue;
+
+            var absQty = line.Qty; // DB'de zaten pozitif (+)
+            if (absQty == 0) continue;
+
+            // Create command
+             var cmd = new Accounting.Application.StockMovements.Commands.Create.CreateStockMovementCommand(
+                BranchId: invoice.BranchId,
+                WarehouseId: 1, 
+                ItemId: line.ItemId.Value,
+                Type: movementType.Value,
+                Quantity: Money.S3(absQty),
+                TransactionDateUtc: invoice.DateUtc,
+                Note: refNote // Aynı note formatı
+            );
+
+            await _mediator.Send(cmd, ct);
+        }
     }
 }

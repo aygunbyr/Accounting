@@ -426,7 +426,6 @@ public static class DataSeeder
             var vat = R2(net * vatRate / 100m);
             var gross = R2(net + vat);
 
-            var sign = (invType == InvoiceType.SalesReturn || invType == InvoiceType.PurchaseReturn) ? -1m : 1m;
             var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
 
             invoices.Add(new Invoice
@@ -436,10 +435,10 @@ public static class DataSeeder
                 Type = invType,
                 DateUtc = now.AddDays(-i),
                 Currency = (i % 4 == 0) ? "USD" : "TRY",
-                TotalNet = R2(sign * net),
-                TotalVat = R2(sign * vat),
-                TotalGross = R2(sign * gross),
-                Balance = R2(sign * gross),
+                TotalNet = R2(net),
+                TotalVat = R2(vat),
+                TotalGross = R2(gross),
+                Balance = R2(gross),
                 Lines = new List<InvoiceLine>
                 {
                     new()
@@ -448,7 +447,7 @@ public static class DataSeeder
                         ItemCode = item.Code,
                         ItemName = item.Name,
                         Unit = item.Unit,
-                        Qty = qty,
+                        Qty = qty, 
                         UnitPrice = unitPrice,
                         VatRate = vatRate,
                         Net = net,

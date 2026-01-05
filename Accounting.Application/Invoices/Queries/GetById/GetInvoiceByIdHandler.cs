@@ -28,6 +28,7 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
             .Select(l => new InvoiceLineDto(
                 l.Id,
                 l.ItemId,
+                l.ExpenseDefinitionId, // Added
                 l.ItemCode,   // snapshot
                 l.ItemName,   // snapshot
                 l.Unit,       // snapshot

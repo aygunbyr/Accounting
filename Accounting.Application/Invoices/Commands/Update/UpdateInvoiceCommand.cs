@@ -14,7 +14,8 @@ public sealed record UpdateInvoiceCommand(
 
 public sealed record UpdateInvoiceLineDto(
     int Id,          // 0 = new
-    int ItemId,
+    int? ItemId,
+    int? ExpenseDefinitionId,
     string Qty,
     string UnitPrice,
     int VatRate

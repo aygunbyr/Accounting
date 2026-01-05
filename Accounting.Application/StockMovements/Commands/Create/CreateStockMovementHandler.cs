@@ -115,5 +115,5 @@ public class CreateStockMovementHandler(IAppDbContext db) : IRequestHandler<Crea
     }
 
     private static bool IsIn(StockMovementType t) =>
-        t is StockMovementType.PurchaseIn or StockMovementType.AdjustmentIn;
+        t is StockMovementType.PurchaseIn or StockMovementType.AdjustmentIn or StockMovementType.SalesReturn;
 }

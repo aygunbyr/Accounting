@@ -70,6 +70,11 @@ public class PostExpenseListToBillHandler
         // CreateInvoiceCommand (yeniden kullanım)
         var lines = list.Lines.Select(l => new CreateInvoiceLineDto(
             ItemId: req.ItemId,
+            ExpenseDefinitionId: null,      // Normalde bu Item-based gider mi? Yoksa Expense-based mi? 
+                                            // Handle'ın mevcut mantığı ItemId alıyor (req.ItemId).
+                                            // Demek ki 'Stok' faturası gibi davranıyor.
+                                            // Eğer kullanıcı 'Masraf' faturası istiyorsa burayı değiştirmeli.
+                                            // Şimdilik existing logic korunuyor: ItemId var, ExpenseDefinitionId null.
             Qty: "1.000",
             UnitPrice: Money.S2(l.Amount),  // ✅ F2 kullan (Amount decimal(18,2))
             VatRate: l.VatRate

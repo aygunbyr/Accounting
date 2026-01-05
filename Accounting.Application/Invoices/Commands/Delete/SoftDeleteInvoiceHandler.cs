@@ -50,6 +50,20 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
         inv.DeletedAtUtc = DateTime.UtcNow;
         inv.UpdatedAtUtc = DateTime.UtcNow;
 
+        // ---------------------------------------------------------
+        // Stok hareketlerini de iptal et (Soft Delete)
+        // ---------------------------------------------------------
+        var refNote = $"Fatura Ref: {inv.Id}";
+        var existingMovements = await _db.StockMovements
+            .Where(m => m.Note == refNote && !m.IsDeleted)
+            .ToListAsync(ct);
+
+        foreach (var move in existingMovements)
+        {
+            move.IsDeleted = true;
+            move.DeletedAtUtc = DateTime.UtcNow;
+        }
+
         try
         {
             await _db.SaveChangesAsync(ct);

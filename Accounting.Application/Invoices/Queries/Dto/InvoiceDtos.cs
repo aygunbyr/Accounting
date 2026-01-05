@@ -2,7 +2,8 @@
 
 public record InvoiceLineDto(
     int Id,
-    int ItemId,
+    int? ItemId,
+    int? ExpenseDefinitionId,
     string ItemCode,
     string ItemName,
     string Unit,

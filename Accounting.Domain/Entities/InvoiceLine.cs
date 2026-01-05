@@ -8,7 +8,8 @@ public class InvoiceLine : IHasTimestamps
 
     // FK'ler
     public int InvoiceId { get; set; }
-    public int ItemId { get; set; }
+    public int? ItemId { get; set; }
+    public int? ExpenseDefinitionId { get; set; }
 
     // ✅ Snapshot alanlar (o anın kopyası)
     public string ItemCode { get; set; } = null!;
@@ -30,5 +31,6 @@ public class InvoiceLine : IHasTimestamps
 
     // Navigations
     public Invoice Invoice { get; set; } = null!;
-    public Item Item { get; set; } = null!;
+    public Item? Item { get; set; }
+    public ExpenseDefinition? ExpenseDefinition { get; set; }
 }

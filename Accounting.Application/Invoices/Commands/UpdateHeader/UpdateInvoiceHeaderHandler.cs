@@ -36,27 +36,24 @@ public class UpdateInvoiceHeaderHandler
         inv.ContactId = req.ContactId;
         inv.Type = req.Type;
 
-        var ccy = (req.Currency ?? "TRY").Trim().ToUpperInvariant();
-        if (ccy.Length != 3) throw new ArgumentException("Currency 3 karakter olmalıdır (ISO 4217).");
-        inv.Currency = ccy;
-
-        if (!DateTime.TryParse(req.DateUtc, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal, out var dt))
-            throw new ArgumentException("DateUtc is invalid.");
-        inv.DateUtc = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
+        if (req.Type != inv.Type)
+        {
+             // Fatura türü değişirse (Sales -> SalesReturn) eski satırlar pozitif kalır ama mantık değişir mi?
+             // "All Positive" kuralında Sales ve SalesReturn verileri farksızdır (hepsi pozitif).
+             // Sadece header Type farklıdır.
+             // Dolayısıyla Type değiştirmek artık DAHA GÜVENLİ ama yine de accounting açısından riskli.
+             // Biz yine de değiştirmeye izin vermeyelim.
+             throw new BusinessRuleException("Fatura türü değiştirilemez. Lütfen faturayı silip yeniden oluşturun.");
+        }
 
         // 4) Audit
         inv.UpdatedAtUtc = DateTime.UtcNow;
 
         // 5) Header toplamlarını Type'a göre yeniden işaretle (satırlar değişmedi)
-        var lineNet = inv.Lines.Sum(x => x.Net);
-        var lineVat = inv.Lines.Sum(x => x.Vat);
-        var lineGross = inv.Lines.Sum(x => x.Gross);
-
-        decimal sign = (inv.Type == InvoiceType.SalesReturn || inv.Type == InvoiceType.PurchaseReturn) ? -1m : 1m;
-
-        inv.TotalNet = Money.R2(sign * lineNet);
-        inv.TotalVat = Money.R2(sign * lineVat);
-        inv.TotalGross = Money.R2(sign * lineGross);
+        // Satırlar zaten positive. Toplamlar da positive.
+        inv.TotalNet = Money.R2(inv.Lines.Sum(x => x.Net));
+        inv.TotalVat = Money.R2(inv.Lines.Sum(x => x.Vat));
+        inv.TotalGross = Money.R2(inv.Lines.Sum(x => x.Gross));
 
         // 6) Persist
         try { await _db.SaveChangesAsync(ct); }
@@ -79,6 +76,7 @@ public class UpdateInvoiceHeaderHandler
             .Select(l => new InvoiceLineDto(
                 l.Id,
                 l.ItemId,
+                l.ExpenseDefinitionId, // Added
                 l.ItemCode,     // snapshot
                 l.ItemName,     // snapshot
                 l.Unit,         // snapshot
