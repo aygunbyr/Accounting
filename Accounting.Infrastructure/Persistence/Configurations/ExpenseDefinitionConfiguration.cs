@@ -16,10 +16,20 @@ public sealed class ExpenseDefinitionConfiguration : IEntityTypeConfiguration<Ex
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedOnAdd();
 
+        // Branch relationship
+        b.Property(x => x.BranchId).IsRequired();
+        b.HasOne(x => x.Branch)
+            .WithMany()
+            .HasForeignKey(x => x.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         b.Property(x => x.Code)
             .HasMaxLength(32)
             .IsRequired();
-        b.HasIndex(x => x.Code).IsUnique();
+        // Unique per branch (not globally)
+        b.HasIndex(x => new { x.BranchId, x.Code })
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0");
 
         b.Property(x => x.Name)
             .HasMaxLength(128)
@@ -32,12 +42,20 @@ public sealed class ExpenseDefinitionConfiguration : IEntityTypeConfiguration<Ex
             .HasDefaultValue(true)
             .IsRequired();
 
+        // Timestamps
         b.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()")
             .IsRequired();
-
         b.Property(x => x.UpdatedAtUtc);
 
+        // Soft delete
+        b.Property(x => x.IsDeleted)
+            .HasDefaultValue(false)
+            .IsRequired();
+        b.Property(x => x.DeletedAtUtc);
+        b.HasQueryFilter(x => !x.IsDeleted);
+
+        // Concurrency
         b.Property(x => x.RowVersion)
             .IsRowVersion();
     }

@@ -20,15 +20,22 @@ public class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
         b.Property(x => x.Gross).HasColumnType("decimal(18,2)");
 
         // Snapshot kolonları
-        b.Property(x => x.ItemCode).IsRequired().HasMaxLength(64);     // Unicode: true (Türkçe kod kullanıyorsan)
+        b.Property(x => x.ItemCode).IsRequired().HasMaxLength(64);
         b.Property(x => x.ItemName).IsRequired().HasMaxLength(256);
         b.Property(x => x.Unit).IsRequired().HasMaxLength(16);
 
-        // timestamps
+        // Timestamps
         b.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()")
             .ValueGeneratedOnAdd()
             .IsRequired();
+
+        // Soft delete
+        b.Property(x => x.IsDeleted)
+            .HasDefaultValue(false)
+            .IsRequired();
+        b.Property(x => x.DeletedAtUtc);
+        b.HasQueryFilter(x => !x.IsDeleted);
 
         b.HasIndex(x => x.InvoiceId);
 
@@ -37,7 +44,6 @@ public class InvoiceLineConfiguration : IEntityTypeConfiguration<InvoiceLine>
             t.HasCheckConstraint("CK_InvoiceLine_VatRate_Range", "[VatRate] BETWEEN 0 AND 100");
             t.HasCheckConstraint("CK_InvoiceLine_Qty_Positive", "[Qty] >= 0");
             t.HasCheckConstraint("CK_InvoiceLine_UnitPrice_Positive", "[UnitPrice] >= 0");
-            // Validation: ya ItemId ya da ExpenseDefinitionId dolu olmalı (ikisi aynı anda boş/dolu olamaz kısıtlaması business logic'te, DB'de check constraint eklenebilir ama opsiyonel)
         });
 
         // Relations

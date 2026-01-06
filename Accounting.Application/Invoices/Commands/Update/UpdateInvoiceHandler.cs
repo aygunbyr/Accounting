@@ -66,7 +66,9 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         {
             if (!incomingById.ContainsKey(line.Id))
             {
-                _ctx.InvoiceLines.Remove(line); // MVP: hard delete
+                // Soft delete (audit trail korunur)
+                line.IsDeleted = true;
+                line.DeletedAtUtc = now;
             }
         }
 

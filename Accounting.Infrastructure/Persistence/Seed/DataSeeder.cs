@@ -33,7 +33,7 @@ public static class DataSeeder
         await SeedCashBankAccountsAsync(db, branchIds, ct);
 
         // 6) ExpenseDefinitions
-        await SeedExpenseDefinitionsAsync(db, ct);
+        await SeedExpenseDefinitionsAsync(db, branchIds, ct);
 
         // Lookup’lar (seed sonrası)
         var contactIds = await db.Contacts.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
@@ -257,18 +257,32 @@ public static class DataSeeder
         await db.SaveChangesAsync(ct);
     }
 
-    private static async Task SeedExpenseDefinitionsAsync(AppDbContext db, CancellationToken ct)
+    private static async Task SeedExpenseDefinitionsAsync(AppDbContext db, List<int> branchIds, CancellationToken ct)
     {
         if (await db.ExpenseDefinitions.AnyAsync(ct)) return;
 
-        db.ExpenseDefinitions.AddRange(new List<ExpenseDefinition>
-        {
-            new() { Code = "YOL",      Name = "Yol / Ulaşım",        DefaultVatRate = 20, IsActive = true },
-            new() { Code = "YEMEK",    Name = "Yemek / İkram",       DefaultVatRate = 10, IsActive = true },
-            new() { Code = "KIRTASIYE",Name = "Kırtasiye",           DefaultVatRate = 20, IsActive = true },
-            new() { Code = "YAZILIMABO",Name = "Yazılım Aboneliği",  DefaultVatRate = 20, IsActive = true }
-        });
+        var definitions = new List<ExpenseDefinition>();
+        var codes = new[] { "YOL", "YEMEK", "KIRTASIYE", "YAZILIMABO" };
+        var names = new[] { "Yol / Ulaşım", "Yemek / İkram", "Kırtasiye", "Yazılım Aboneliği" };
+        var vatRates = new[] { 20, 10, 20, 20 };
 
+        // Her şube için aynı tanımları oluştur
+        foreach (var branchId in branchIds)
+        {
+            for (int i = 0; i < codes.Length; i++)
+            {
+                definitions.Add(new ExpenseDefinition
+                {
+                    BranchId = branchId,
+                    Code = codes[i],
+                    Name = names[i],
+                    DefaultVatRate = vatRates[i],
+                    IsActive = true
+                });
+            }
+        }
+
+        db.ExpenseDefinitions.AddRange(definitions);
         await db.SaveChangesAsync(ct);
     }
 

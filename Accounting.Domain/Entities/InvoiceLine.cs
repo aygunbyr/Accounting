@@ -2,7 +2,7 @@
 
 namespace Accounting.Domain.Entities;
 
-public class InvoiceLine : IHasTimestamps
+public class InvoiceLine : IHasTimestamps, ISoftDeletable
 {
     public int Id { get; set; }
 
@@ -26,8 +26,13 @@ public class InvoiceLine : IHasTimestamps
     public decimal Vat { get; set; }        // 18,2
     public decimal Gross { get; set; }      // 18,2
 
+    // Timestamps
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
+
+    // Soft delete
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
 
     // Navigations
     public Invoice Invoice { get; set; } = null!;
