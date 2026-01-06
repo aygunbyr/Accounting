@@ -14,10 +14,16 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
     {
         var qry = _db.Contacts.AsNoTracking();
 
+        // BranchId filter (eğer belirtilmişse)
+        if (q.BranchId.HasValue)
+        {
+            qry = qry.Where(x => x.BranchId == q.BranchId.Value);
+        }
+
         if (!string.IsNullOrWhiteSpace(q.Search))
         {
             var s = q.Search.Trim();
-            qry = qry.Where(x => x.Name.Contains(s) || (x.Email != null && x.Email.Contains(s)));
+            qry = qry.Where(x => x.Name.Contains(s) || x.Code.Contains(s) || (x.Email != null && x.Email.Contains(s)));
         }
         if (q.Type.HasValue)
         {
@@ -31,7 +37,7 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
             .Skip((q.Page - 1) * q.PageSize)
             .Take(q.PageSize)
             .Select(x => new ContactListItemDto(
-                x.Id, x.Name, x.Type.ToString(), x.Email,
+                x.Id, x.BranchId, x.Code, x.Name, x.Type.ToString(), x.Email,
                 x.CreatedAtUtc
             ))
             .ToListAsync(ct);

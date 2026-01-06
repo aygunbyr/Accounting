@@ -2,6 +2,8 @@
 
 public record ContactDto(
     int Id,
+    int BranchId,
+    string Code,
     string Name,
     string Type,        // "Customer" | "Vendor"
     string? Email,
@@ -12,6 +14,8 @@ public record ContactDto(
 
 public record ContactListItemDto(
     int Id,
+    int BranchId,
+    string Code,
     string Name,
     string Type,
     string? Email,

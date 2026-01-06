@@ -20,7 +20,7 @@ public class GetContactByIdHandler : IRequestHandler<GetContactByIdQuery, Contac
             throw new KeyNotFoundException($"Contact {q.Id} not found");
 
         return new ContactDto(
-            c.Id, c.Name, c.Type.ToString(), c.Email,
+            c.Id, c.BranchId, c.Code, c.Name, c.Type.ToString(), c.Email,
             Convert.ToBase64String(c.RowVersion),
             c.CreatedAtUtc, c.UpdatedAtUtc
             );

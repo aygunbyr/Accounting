@@ -47,6 +47,8 @@ public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, Contac
         // 8) DTO
         return new ContactDto(
             fresh.Id,
+            fresh.BranchId,
+            fresh.Code,
             fresh.Name,
             fresh.Type.ToString(),
             fresh.Email,

@@ -6,6 +6,7 @@ using MediatR;
 namespace Accounting.Application.Contacts.Queries.List;
 
 public record ListContactsQuery(
+    int? BranchId,
     string? Search,
     ContactType? Type,
     int Page = 1,
