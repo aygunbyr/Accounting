@@ -310,7 +310,29 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             _ => null
         };
 
-        if (movementType == null) return; 
+        if (movementType == null) return;
+
+        // ✅ FIX: Branch'in varsayılan deposunu bul (hardcoded 1 yerine)
+        var defaultWarehouse = await _ctx.Warehouses
+            .Where(w => w.BranchId == invoice.BranchId && w.IsDefault && !w.IsDeleted)
+            .Select(w => new { w.Id })
+            .FirstOrDefaultAsync(ct);
+
+        if (defaultWarehouse == null)
+        {
+            // Fallback: IsDefault olmasa bile şubenin ilk deposunu kullan
+            defaultWarehouse = await _ctx.Warehouses
+                .Where(w => w.BranchId == invoice.BranchId && !w.IsDeleted)
+                .OrderBy(w => w.Id)
+                .Select(w => new { w.Id })
+                .FirstOrDefaultAsync(ct);
+        }
+
+        if (defaultWarehouse == null)
+        {
+            // Şubenin deposu yoksa stok hareketi oluşturulamaz
+            return;
+        }
 
         foreach (var line in invoice.Lines)
         {
@@ -320,9 +342,9 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             if (absQty == 0) continue;
 
             // Create command
-             var cmd = new Accounting.Application.StockMovements.Commands.Create.CreateStockMovementCommand(
+            var cmd = new Accounting.Application.StockMovements.Commands.Create.CreateStockMovementCommand(
                 BranchId: invoice.BranchId,
-                WarehouseId: 1, 
+                WarehouseId: defaultWarehouse.Id, // ✅ Dinamik warehouse
                 ItemId: line.ItemId.Value,
                 Type: movementType.Value,
                 Quantity: Money.S3(absQty),

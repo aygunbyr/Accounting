@@ -178,9 +178,6 @@ public class CreateInvoiceHandler
         // 5.5) Stok Hareketlerini Oluştur
         await CreateStockMovements(invoice, ct);
 
-        // 5.5) Stok Hareketlerini Oluştur
-        await CreateStockMovements(invoice, ct);
-
         // 6) Sonuç (response’ta string)
         return new CreateInvoiceResult(
             Id: invoice.Id,
@@ -213,6 +210,29 @@ public class CreateInvoiceHandler
         // Expense (Masraf) Faturası ise stok hareketi OLUŞTURMA
         if (invoice.Type == InvoiceType.Expense) return;
 
+        // ✅ FIX: Branch'in varsayılan deposunu bul (hardcoded 1 yerine)
+        var defaultWarehouse = await _db.Warehouses
+            .Where(w => w.BranchId == invoice.BranchId && w.IsDefault && !w.IsDeleted)
+            .Select(w => new { w.Id })
+            .FirstOrDefaultAsync(ct);
+
+        if (defaultWarehouse == null)
+        {
+            // Fallback: IsDefault olmasa bile şubenin ilk deposunu kullan
+            defaultWarehouse = await _db.Warehouses
+                .Where(w => w.BranchId == invoice.BranchId && !w.IsDeleted)
+                .OrderBy(w => w.Id)
+                .Select(w => new { w.Id })
+                .FirstOrDefaultAsync(ct);
+        }
+
+        if (defaultWarehouse == null)
+        {
+            // Şubenin deposu yoksa stok hareketi oluşturulamaz
+            // Loglama yapılabilir veya BusinessRuleException fırlatılabilir
+            return;
+        }
+
         foreach (var line in invoice.Lines)
         {
             // Eğer yanlışlıkla satıra Item koyulmadıysa devam et (Validasyon zaten var ama defensive coding)
@@ -228,7 +248,7 @@ public class CreateInvoiceHandler
 
             var cmd = new Accounting.Application.StockMovements.Commands.Create.CreateStockMovementCommand(
                 BranchId: invoice.BranchId,
-                WarehouseId: 1, // Şimdilik varsayılan depo (bunu parametrik yapabiliriz veya faturada seçtiririz ama MVP için sabit)
+                WarehouseId: defaultWarehouse.Id, // ✅ Dinamik warehouse
                 ItemId: line.ItemId!.Value,
                 Type: movementType.Value,
                 Quantity: Money.S3(absQty), // String format
