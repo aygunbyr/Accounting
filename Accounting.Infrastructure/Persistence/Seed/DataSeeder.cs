@@ -26,13 +26,16 @@ public static class DataSeeder
         // 3) Contacts (Customer/Vendor/Employee)
         await SeedContactsAsync(db, branchIds, ct);
 
-        // 4) Items
+        // 4) Categories
+        await SeedCategoriesAsync(db, ct);
+
+        // 5) Items (with categories)
         await SeedItemsAsync(db, branchIds, R4, ct);
 
-        // 5) Cash/Bank Accounts
+        // 6) Cash/Bank Accounts
         await SeedCashBankAccountsAsync(db, branchIds, ct);
 
-        // 6) ExpenseDefinitions
+        // 7) ExpenseDefinitions
         await SeedExpenseDefinitionsAsync(db, branchIds, ct);
 
         // Lookup’lar (seed sonrası)
@@ -46,7 +49,7 @@ public static class DataSeeder
 
         var now = DateTime.UtcNow;
 
-        // 7) Stock MVP demo (movements + stocks) — istersen burada dursun (sen önce SRP istedin, SRP method yaptım)
+        // 8) Stock MVP demo (movements + stocks)
         await SeedStockMovementsAndStocksAsync(
             db,
             branchIds,
@@ -56,16 +59,19 @@ public static class DataSeeder
             R3,
             ct);
 
-        // 8) Invoices
+        // 9) Orders
+        await SeedOrdersAsync(db, branchIds, itemsAll, customerIds, vendorIds, now, R2, R3, ct);
+
+        // 10) Invoices
         await SeedInvoicesAsync(db, branchIds, itemsAll, customerIds, vendorIds, now, R2, R3, R4, ct);
 
-        // 9) Payments + balance recalc
+        // 11) Payments + balance recalc
         await SeedPaymentsAsync(db, branchIds, contactIds, accountIds, balanceService, now, R2, ct);
 
-        // 10) ExpenseLists
+        // 12) ExpenseLists
         await SeedExpenseListsAsync(db, branchIds, vendorIds, now, R2, ct);
 
-        // 11) FixedAssets
+        // 13) FixedAssets
         await SeedFixedAssetsAsync(db, branchIds, now, R2, R4, ct);
 
         await db.SaveChangesAsync(ct);
@@ -200,9 +206,28 @@ public static class DataSeeder
         await db.SaveChangesAsync(ct);
     }
 
+    private static async Task SeedCategoriesAsync(AppDbContext db, CancellationToken ct)
+    {
+        if (await db.Categories.AnyAsync(ct)) return;
+
+        var categories = new List<Category>
+        {
+            new() { Name = "Elektronik", Description = "Elektronik ürünler", Color = "#3B82F6" },
+            new() { Name = "Gıda", Description = "Gıda ürünleri", Color = "#22C55E" },
+            new() { Name = "Kırtasiye", Description = "Kırtasiye malzemeleri", Color = "#F59E0B" },
+            new() { Name = "Temizlik", Description = "Temizlik ürünleri", Color = "#8B5CF6" },
+            new() { Name = "Hizmet", Description = "Hizmet kalemleri", Color = "#EC4899" }
+        };
+
+        db.Categories.AddRange(categories);
+        await db.SaveChangesAsync(ct);
+    }
+
     private static async Task SeedItemsAsync(AppDbContext db, List<int> branchIds, Func<decimal, decimal> R4, CancellationToken ct)
     {
         if (await db.Items.AnyAsync(ct)) return;
+
+        var categoryIds = await db.Categories.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
 
         var units = new[] { "adet", "kg", "lt", "saat" };
         var items = new List<Item>();
@@ -212,6 +237,7 @@ public static class DataSeeder
             items.Add(new Item
             {
                 BranchId = branchIds[(i - 1) % branchIds.Count],
+                CategoryId = categoryIds.Count > 0 ? categoryIds[(i - 1) % categoryIds.Count] : null,
                 Code = $"ITEM{i:000}",
                 Name = $"Stok {i}",
                 Unit = units[(i - 1) % units.Length],
@@ -221,7 +247,7 @@ public static class DataSeeder
         }
 
         db.Items.AddRange(items);
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct); ;
     }
 
     private static async Task SeedCashBankAccountsAsync(AppDbContext db, List<int> branchIds, CancellationToken ct)
@@ -401,6 +427,136 @@ public static class DataSeeder
         }
     }
 
+    private static async Task SeedOrdersAsync(
+        AppDbContext db,
+        List<int> branchIds,
+        List<Item> itemsAll,
+        List<int> customerIds,
+        List<int> vendorIds,
+        DateTime now,
+        Func<decimal, decimal> R2,
+        Func<decimal, decimal> R3,
+        CancellationToken ct)
+    {
+        if (await db.Orders.AnyAsync(ct)) return;
+
+        var orders = new List<Order>();
+        var effectiveBranchIds = branchIds.Count > 0 ? branchIds : new List<int> { 1 };
+
+        // Satış Siparişleri (Draft, Approved, Invoiced çeşitliliği)
+        for (int i = 1; i <= 6; i++)
+        {
+            if (customerIds.Count == 0 || itemsAll.Count == 0) break;
+
+            var contactId = customerIds[(i - 1) % customerIds.Count];
+            var item = itemsAll[(i - 1) % itemsAll.Count];
+            var qty = R3(1m + i * 0.5m);
+            var unitPrice = item.DefaultUnitPrice ?? 100m;
+            var vatRate = item.VatRate;
+
+            var net = R2(qty * unitPrice);
+            var vat = R2(net * vatRate / 100m);
+            var gross = R2(net + vat);
+
+            var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
+
+            // Status çeşitliliği
+            var status = i switch
+            {
+                1 or 2 => OrderStatus.Draft,
+                3 or 4 => OrderStatus.Approved,
+                5 => OrderStatus.Invoiced,
+                _ => OrderStatus.Cancelled
+            };
+
+            orders.Add(new Order
+            {
+                BranchId = branchId,
+                ContactId = contactId,
+                OrderNumber = $"SO-{i:0000}",
+                Type = InvoiceType.Sales,
+                Status = status,
+                DateUtc = now.AddDays(-i * 2),
+                Currency = "TRY",
+                TotalNet = net,
+                TotalVat = vat,
+                TotalGross = gross,
+                Description = $"Satış Siparişi {i}",
+                Lines = new List<OrderLine>
+                {
+                    new()
+                    {
+                        ItemId = item.Id,
+                        Description = item.Name,
+                        Quantity = qty,
+                        UnitPrice = unitPrice,
+                        VatRate = vatRate,
+                        Total = net,
+                        CreatedAtUtc = now.AddDays(-i * 2)
+                    }
+                },
+                CreatedAtUtc = now.AddDays(-i * 2)
+            });
+        }
+
+        // Alış Siparişleri
+        for (int i = 1; i <= 4; i++)
+        {
+            if (vendorIds.Count == 0 || itemsAll.Count == 0) break;
+
+            var contactId = vendorIds[(i - 1) % vendorIds.Count];
+            var item = itemsAll[(i + 2) % itemsAll.Count];
+            var qty = R3(5m + i * 2m);
+            var unitPrice = item.DefaultUnitPrice ?? 100m;
+            var vatRate = item.VatRate;
+
+            var net = R2(qty * unitPrice);
+            var vat = R2(net * vatRate / 100m);
+            var gross = R2(net + vat);
+
+            var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
+
+            var status = i switch
+            {
+                1 => OrderStatus.Draft,
+                2 => OrderStatus.Approved,
+                _ => OrderStatus.Draft
+            };
+
+            orders.Add(new Order
+            {
+                BranchId = branchId,
+                ContactId = contactId,
+                OrderNumber = $"PO-{i:0000}",
+                Type = InvoiceType.Purchase,
+                Status = status,
+                DateUtc = now.AddDays(-i * 3),
+                Currency = "TRY",
+                TotalNet = net,
+                TotalVat = vat,
+                TotalGross = gross,
+                Description = $"Alış Siparişi {i}",
+                Lines = new List<OrderLine>
+                {
+                    new()
+                    {
+                        ItemId = item.Id,
+                        Description = item.Name,
+                        Quantity = qty,
+                        UnitPrice = unitPrice,
+                        VatRate = vatRate,
+                        Total = net,
+                        CreatedAtUtc = now.AddDays(-i * 3)
+                    }
+                },
+                CreatedAtUtc = now.AddDays(-i * 3)
+            });
+        }
+
+        db.Orders.AddRange(orders);
+        await db.SaveChangesAsync(ct);
+    }
+
     private static async Task SeedInvoicesAsync(
         AppDbContext db,
         List<int> branchIds,
@@ -442,10 +598,21 @@ public static class DataSeeder
 
             var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
 
+            // Invoice number prefix based on type
+            var prefix = invType switch
+            {
+                InvoiceType.Sales => "SLS",
+                InvoiceType.Purchase => "PUR",
+                InvoiceType.SalesReturn => "SRT",
+                InvoiceType.PurchaseReturn => "PRT",
+                _ => "INV"
+            };
+
             invoices.Add(new Invoice
             {
                 BranchId = branchId,
                 ContactId = contactId,
+                InvoiceNumber = $"{prefix}-{i:0000}",
                 Type = invType,
                 DateUtc = now.AddDays(-i),
                 Currency = (i % 4 == 0) ? "USD" : "TRY",
@@ -461,7 +628,7 @@ public static class DataSeeder
                         ItemCode = item.Code,
                         ItemName = item.Name,
                         Unit = item.Unit,
-                        Qty = qty, 
+                        Qty = qty,
                         UnitPrice = unitPrice,
                         VatRate = vatRate,
                         Net = net,
