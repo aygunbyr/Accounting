@@ -11,10 +11,14 @@ public class CreateCashBankAccountHandler(IAppDbContext db)
 {
     public async Task<CashBankAccountDetailDto> Handle(CreateCashBankAccountCommand r, CancellationToken ct)
     {
+        // Auto-generate Code: CBA-{BranchId}-{Sequence}
+        var code = await GenerateCodeAsync(r.BranchId, ct);
+
         var e = new CashBankAccount
         {
             BranchId = r.BranchId,
-            Type = r.Type,                               // <-- doğrudan enum
+            Code = code,
+            Type = r.Type,
             Name = r.Name.Trim(),
             Iban = string.IsNullOrWhiteSpace(r.Iban) ? null : r.Iban.Trim()
         };
@@ -26,6 +30,8 @@ public class CreateCashBankAccountHandler(IAppDbContext db)
 
         return new CashBankAccountDetailDto(
             fresh.Id,
+            fresh.BranchId,
+            fresh.Code,
             fresh.Type.ToString(),
             fresh.Name,
             fresh.Iban,
@@ -33,5 +39,28 @@ public class CreateCashBankAccountHandler(IAppDbContext db)
             fresh.CreatedAtUtc,
             fresh.UpdatedAtUtc
         );
+    }
+
+    private async Task<string> GenerateCodeAsync(int branchId, CancellationToken ct)
+    {
+        var lastCode = await db.CashBankAccounts
+            .IgnoreQueryFilters()
+            .Where(c => c.BranchId == branchId)
+            .OrderByDescending(c => c.Id)
+            .Select(c => c.Code)
+            .FirstOrDefaultAsync(ct);
+
+        int nextSequence = 1;
+
+        if (!string.IsNullOrEmpty(lastCode))
+        {
+            var parts = lastCode.Split('-');
+            if (parts.Length == 3 && int.TryParse(parts[2], out var lastSeq))
+            {
+                nextSequence = lastSeq + 1;
+            }
+        }
+
+        return $"CBA-{branchId}-{nextSequence:D5}";
     }
 }

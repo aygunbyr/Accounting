@@ -8,7 +8,8 @@ namespace Accounting.Application.CashBankAccounts.Queries.List;
 public enum CashBankAccountTypeFilter { Any = 0, Cash = 1, Bank = 2 }
 
 public record ListCashBankAccountsQuery(
-    int PageNumber = 1,
+    int? BranchId = null,
+    int PageNumber = PaginationConstants.DefaultPage,
     int PageSize = PaginationConstants.DefaultPageSize,
     string? Sort = "name:asc",
     CashBankAccountTypeFilter Type = CashBankAccountTypeFilter.Any,

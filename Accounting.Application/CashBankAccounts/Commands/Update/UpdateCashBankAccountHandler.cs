@@ -34,6 +34,8 @@ public class UpdateCashBankAccountHandler(IAppDbContext db)
 
         return new CashBankAccountDetailDto(
             fresh.Id,
+            fresh.BranchId,
+            fresh.Code,
             fresh.Type.ToString(),
             fresh.Name,
             fresh.Iban,

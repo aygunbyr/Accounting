@@ -16,6 +16,8 @@ public class GetCashBankAccountByIdHandler(IAppDbContext db)
 
         return new CashBankAccountDetailDto(
             x.Id,
+            x.BranchId,
+            x.Code,
             x.Type.ToString(),
             x.Name,
             x.Iban,

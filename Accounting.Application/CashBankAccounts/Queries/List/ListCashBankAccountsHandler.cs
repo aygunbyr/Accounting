@@ -1,5 +1,6 @@
 ﻿using Accounting.Application.CashBankAccounts.Queries.Dto;
 using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Constants;
 using Accounting.Application.Common.Models;
 using Accounting.Domain.Enums;
 using FluentValidation;
@@ -13,7 +14,15 @@ public class ListCashBankAccountsHandler(IAppDbContext db)
 {
     public async Task<PagedResult<CashBankAccountListItemDto>> Handle(ListCashBankAccountsQuery q, CancellationToken ct)
     {
+        // Normalize pagination
+        var pageNumber = PaginationConstants.NormalizePage(q.PageNumber);
+        var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
+
         var query = db.CashBankAccounts.AsNoTracking().Where(x => !x.IsDeleted);
+
+        // BranchId filter
+        if (q.BranchId.HasValue)
+            query = query.Where(x => x.BranchId == q.BranchId.Value);
 
         // Type filtresi: Any -> filtre yok; Cash/Bank -> eşitlik
         if (q.Type == CashBankAccountTypeFilter.Cash)
@@ -24,7 +33,8 @@ public class ListCashBankAccountsHandler(IAppDbContext db)
         if (!string.IsNullOrWhiteSpace(q.Search))
         {
             var s = q.Search.Trim().ToUpperInvariant();
-            query = query.Where(x => EF.Functions.Like(x.Name.ToUpper(), $"%{s}%"));
+            query = query.Where(x => EF.Functions.Like(x.Name.ToUpper(), $"%{s}%")
+                                  || EF.Functions.Like(x.Code.ToUpper(), $"%{s}%"));
         }
 
         if (!string.IsNullOrWhiteSpace(q.IbanStartsWith))
@@ -43,10 +53,12 @@ public class ListCashBankAccountsHandler(IAppDbContext db)
 
         var total = await query.CountAsync(ct);
 
-        var items = await query.Skip((q.PageNumber - 1) * q.PageSize)
-                               .Take(q.PageSize)
+        var items = await query.Skip((pageNumber - 1) * pageSize)
+                               .Take(pageSize)
                                .Select(x => new CashBankAccountListItemDto(
                                    x.Id,
+                                   x.BranchId,
+                                   x.Code,
                                    x.Type.ToString(),
                                    x.Name,
                                    x.Iban,
@@ -54,6 +66,6 @@ public class ListCashBankAccountsHandler(IAppDbContext db)
                                ))
                                .ToListAsync(ct);
 
-        return new PagedResult<CashBankAccountListItemDto>(total, q.PageNumber, q.PageSize, items, null);
+        return new PagedResult<CashBankAccountListItemDto>(total, pageNumber, pageSize, items, null);
     }
 }

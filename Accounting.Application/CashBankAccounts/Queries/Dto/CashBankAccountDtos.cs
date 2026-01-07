@@ -2,6 +2,8 @@
 
 public record CashBankAccountListItemDto(
     int Id,
+    int BranchId,
+    string Code,
     string Type,        // "Cash" | "Bank"
     string Name,
     string? Iban,
@@ -10,6 +12,8 @@ public record CashBankAccountListItemDto(
 
 public record CashBankAccountDetailDto(
     int Id,
+    int BranchId,
+    string Code,
     string Type,
     string Name,
     string? Iban,
