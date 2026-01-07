@@ -3,6 +3,7 @@ using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;   // ConcurrencyConflictException, BusinessRuleException
 using Accounting.Application.Common.Utils;    // Money.TryParse2 / Money.S2
 using Accounting.Application.Payments.Queries.Dto;
+using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -10,13 +11,22 @@ using Microsoft.EntityFrameworkCore;
 public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, PaymentDetailDto>
 {
     private readonly IAppDbContext _db;
-    public UpdatePaymentHandler(IAppDbContext db) => _db = db;
+    private readonly IInvoiceBalanceService _balanceService;
+
+    public UpdatePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService)
+    {
+        _db = db;
+        _balanceService = balanceService;
+    }
 
     public async Task<PaymentDetailDto> Handle(UpdatePaymentCommand req, CancellationToken ct)
     {
         // 1) Fetch (TRACKING)
         var p = await _db.Payments.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
         if (p is null) throw new KeyNotFoundException($"Payment {req.Id} not found.");
+
+        // Eski LinkedInvoiceId'yi sakla (balance recalc için)
+        var oldLinkedInvoiceId = p.LinkedInvoiceId;
 
         // 2) Business rules: (şimdilik yok)
 
@@ -58,13 +68,27 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
         catch (DbUpdateConcurrencyException)
         { throw new ConcurrencyConflictException("Ödeme başka biri tarafından güncellendi."); }
 
-        // 7) Fresh read
+        // 7) Recalculate balances (eski ve yeni invoice için)
+        var invoicesToRecalc = new HashSet<int>();
+        if (oldLinkedInvoiceId.HasValue) invoicesToRecalc.Add(oldLinkedInvoiceId.Value);
+        if (p.LinkedInvoiceId.HasValue) invoicesToRecalc.Add(p.LinkedInvoiceId.Value);
+
+        foreach (var invoiceId in invoicesToRecalc)
+        {
+            await _balanceService.RecalculateBalanceAsync(invoiceId, ct);
+        }
+        if (invoicesToRecalc.Count > 0)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+
+        // 8) Fresh read
         var fresh = await _db.Payments
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == p.Id, ct);
         if (fresh is null) throw new KeyNotFoundException($"Payment {p.Id} not found after update.");
 
-        // 8) DTO
+        // 9) DTO
         return new PaymentDetailDto(
             fresh.Id,
             fresh.AccountId,

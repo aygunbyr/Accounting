@@ -50,6 +50,10 @@ public class StockMovementConfiguration : IEntityTypeConfiguration<StockMovement
         b.HasIndex(x => x.WarehouseId).HasDatabaseName("IX_StockMovements_WarehouseId");
         b.HasIndex(x => x.ItemId).HasDatabaseName("IX_StockMovements_ItemId");
         b.HasIndex(x => x.TransactionDateUtc).HasDatabaseName("IX_StockMovements_TransactionDateUtc");
+        // Note arama performansı için (filtered index - sadece dolu olanlar)
+        b.HasIndex(x => x.Note)
+            .HasDatabaseName("IX_StockMovements_Note")
+            .HasFilter("[Note] IS NOT NULL");
 
         b.ToTable(t =>
         {

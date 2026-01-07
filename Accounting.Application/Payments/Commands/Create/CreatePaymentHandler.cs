@@ -49,13 +49,14 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
         };
 
         _db.Payments.Add(entity);
+        await _db.SaveChangesAsync(ct); // Önce Payment'ı kaydet
 
+        // Sonra balance hesapla (artık Payment DB'de var)
         if (entity.LinkedInvoiceId.HasValue)
         {
             await _balanceService.RecalculateBalanceAsync(entity.LinkedInvoiceId.Value, ct);
+            await _db.SaveChangesAsync(ct); // Balance güncellemesini kaydet
         }
-
-        await _db.SaveChangesAsync(ct);
 
         var inv = CultureInfo.InvariantCulture;
         return new CreatePaymentResult(
