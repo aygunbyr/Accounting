@@ -6,4 +6,4 @@ namespace Accounting.Application.Invoices.Commands.Delete;
 public record SoftDeleteInvoiceCommand(
     int Id,
     string RowVersion
-    ) : IRequest, ITransactionalRequest;
+    ) : IRequest;

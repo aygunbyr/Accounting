@@ -12,4 +12,4 @@ public record UpdateInvoiceHeaderCommand(
     string Currency,
     InvoiceType Type,
     string RowVersion // base64
-    ) : IRequest<InvoiceDto>, ITransactionalRequest;
+    ) : IRequest<InvoiceDto>;

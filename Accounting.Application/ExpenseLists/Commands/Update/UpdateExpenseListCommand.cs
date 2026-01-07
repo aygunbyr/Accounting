@@ -9,7 +9,7 @@ public record UpdateExpenseListCommand(
     string? Name,
     List<UpdateExpenseLineDto> Lines,
     string RowVersion
-) : IRequest<ExpenseListDetailDto>, ITransactionalRequest;
+) : IRequest<ExpenseListDetailDto>;
 
 public record UpdateExpenseLineDto(
     int? Id,  // null = yeni line, dolu = update existing

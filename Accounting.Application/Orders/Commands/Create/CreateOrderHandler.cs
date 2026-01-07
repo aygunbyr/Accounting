@@ -16,7 +16,7 @@ public record CreateOrderCommand(
     string Currency,
     string? Description,
     List<CreateOrderLineDto> Lines
-) : IRequest<OrderDto>, ITransactionalRequest;
+) : IRequest<OrderDto>;
 
 public record CreateOrderLineDto(
     int? ItemId,

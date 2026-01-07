@@ -10,4 +10,4 @@ public record CreateCashBankAccountCommand(
     CashBankAccountType Type,   // <-- enum (Cash|Bank)
     string Name,
     string? Iban
-) : IRequest<CashBankAccountDetailDto>, ITransactionalRequest;
+) : IRequest<CashBankAccountDetailDto>;

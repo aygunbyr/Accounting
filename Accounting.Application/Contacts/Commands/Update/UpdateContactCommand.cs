@@ -12,4 +12,4 @@ public record UpdateContactCommand(
     ContactType Type,
     string? Email,
     string RowVersion // base64
-    ) : IRequest<ContactDto>, ITransactionalRequest;
+    ) : IRequest<ContactDto>;

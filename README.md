@@ -25,6 +25,90 @@
 
 ---
 
+## 🔐 Transaction Yönetimi (ITransactionalRequest)
+
+### TransactionBehavior Nedir?
+
+MediatR pipeline'ında çalışan bir behavior. `ITransactionalRequest` interface'i ile işaretlenmiş command'ları otomatik olarak database transaction içinde çalıştırır.
+
+```csharp
+// Transaction içinde çalışır
+public record CreatePaymentCommand(...) : IRequest<Result>, ITransactionalRequest;
+
+// Transaction olmadan çalışır (EF Core'un default davranışı)
+public record CreateContactCommand(...) : IRequest<Result>;
+```
+
+### Ne Zaman Gerekli?
+
+`ITransactionalRequest` **SADECE** şu durumlarda kullanılmalıdır:
+
+| Durum | Örnek | Gerekli mi? |
+|-------|-------|-------------|
+| **2+ SaveChangesAsync çağrısı** | Payment → InvoiceBalance güncelleme | ✅ EVET |
+| **MediatR ile nested command** | PostToBill → CreateInvoice + CreatePayment | ✅ EVET |
+| **Tek SaveChangesAsync** | CreateContact, UpdateOrder | ❌ HAYIR |
+| **Parent + Child entity (aynı aggregate)** | Order + OrderLines | ❌ HAYIR |
+
+### Ne Zaman Gerekli DEĞİL?
+
+EF Core, tek `SaveChangesAsync()` çağrısını zaten **atomic** olarak çalıştırır. Yani:
+
+```csharp
+// Bu zaten atomic - ITransactionalRequest GEREKMEZ
+db.Orders.Add(order);
+order.Lines.Add(line1);
+order.Lines.Add(line2);
+await db.SaveChangesAsync(); // Tek çağrı = otomatik transaction
+```
+
+### Mevcut Kullanımlar
+
+**ITransactionalRequest KULLANAN (doğru):**
+```
+✓ CreatePaymentCommand      → 2x SaveChanges (Payment + InvoiceBalance)
+✓ UpdatePaymentCommand      → 2x SaveChanges
+✓ SoftDeletePaymentCommand  → 2x SaveChanges
+✓ CreateInvoiceCommand      → MediatR.Send (StockMovement)
+✓ PostExpenseListToBillCommand → 2x MediatR.Send (Invoice + Payment)
+```
+
+**ITransactionalRequest KULLANMAYAN (doğru):**
+```
+✓ CreateContactCommand      → Tek SaveChanges
+✓ CreateOrderCommand        → Order + Lines (aynı aggregate)
+✓ UpdateInvoiceHeaderCommand → Tek SaveChanges
+✓ Tüm basit CRUD işlemleri
+```
+
+### Nasıl Çalışır?
+
+```
+Request geldi
+    ↓
+TransactionBehavior kontrol eder
+    ↓
+ITransactionalRequest var mı?
+    ├─ HAYIR → Direkt handler'a geç
+    └─ EVET → 
+        ├─ BEGIN TRANSACTION
+        ├─ Handler çalış
+        ├─ Başarılı? → COMMIT
+        └─ Hata? → ROLLBACK
+```
+
+### Nested Transaction Koruması
+
+Aynı request içinde birden fazla `ITransactionalRequest` command çağrılırsa (örn: PostToBill → CreateInvoice), `TransactionContext.InTransaction` flag'i sayesinde nested transaction açılmaz.
+
+```csharp
+// PostExpenseListToBillHandler içinde:
+await _mediator.Send(new CreateInvoiceCommand(...));  // Yeni transaction AÇILMAZ
+await _mediator.Send(new CreatePaymentCommand(...));  // Aynı transaction içinde
+```
+
+---
+
 ## 📦 Domain Modülleri
 
 ### 1. **Contacts (Cariler)**

@@ -8,7 +8,7 @@ public record CreateExpenseListCommand(
     int BranchId,
     string? Name,
     List<CreateExpenseLineDto> Lines
-) : IRequest<ExpenseListDetailDto>, ITransactionalRequest;
+) : IRequest<ExpenseListDetailDto>;
 
 public record CreateExpenseLineDto(
     string DateUtc,

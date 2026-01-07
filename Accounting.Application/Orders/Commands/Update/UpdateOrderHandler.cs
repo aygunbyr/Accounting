@@ -16,7 +16,7 @@ public record UpdateOrderCommand(
     string? Description,
     List<UpdateOrderLineDto> Lines,
     string RowVersion
-) : IRequest<OrderDto>, ITransactionalRequest;
+) : IRequest<OrderDto>;
 
 public record UpdateOrderLineDto(
     int? Id, // Null = New Line

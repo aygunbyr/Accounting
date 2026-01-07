@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Orders.Commands.CreateInvoice;
 
-public record CreateInvoiceFromOrderCommand(int OrderId) : IRequest<int>, ITransactionalRequest;
+public record CreateInvoiceFromOrderCommand(int OrderId) : IRequest<int>;
 
 public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<CreateInvoiceFromOrderCommand, int>
 {

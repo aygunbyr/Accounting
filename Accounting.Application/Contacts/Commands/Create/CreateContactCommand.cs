@@ -11,4 +11,4 @@ public record CreateContactCommand(
     string Name,
     ContactType Type,
     string? Email
-    ) : IRequest<ContactDto>, ITransactionalRequest;
+    ) : IRequest<ContactDto>;

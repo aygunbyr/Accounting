@@ -11,4 +11,4 @@ public record UpdateCashBankAccountCommand(
     string Name,
     string? Iban,
     string RowVersion
-) : IRequest<CashBankAccountDetailDto>, ITransactionalRequest;
+) : IRequest<CashBankAccountDetailDto>;
