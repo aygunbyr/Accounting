@@ -28,6 +28,9 @@ public static class Money
     public static bool TryParse4(string? input, out decimal value) =>
         TryParseWithScale(input, 4, out value);
 
+    public static bool TryParse3(string? input, out decimal value) =>
+        TryParseWithScale(input, 3, out value);
+
     public static decimal Parse2(string input)
     {
         if (!TryParse2(input, out var v)) throw new FormatException("Invalid money(2) format.");
@@ -37,6 +40,12 @@ public static class Money
     public static decimal Parse4(string input)
     {
         if (!TryParse4(input, out var v)) throw new FormatException("Invalid money(4) format.");
+        return v;
+    }
+
+    public static decimal Parse3(string input)
+    {
+        if (!TryParse3(input, out var v)) throw new FormatException("Invalid money(3) format.");
         return v;
     }
 

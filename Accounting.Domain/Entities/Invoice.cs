@@ -8,8 +8,10 @@ public class Invoice : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranc
     public int Id { get; set; }
     public int BranchId { get; set; }
     public int ContactId { get; set; }
+    public int? OrderId { get; set; } // Link to Order
     public InvoiceType Type { get; set; } = InvoiceType.Sales;
     public DateTime DateUtc { get; set; } = DateTime.UtcNow;
+    public string InvoiceNumber { get; set; } = null!;
     public string Currency { get; set; } = "TRY";
 
     public decimal TotalNet { get; set; }

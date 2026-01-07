@@ -16,6 +16,8 @@ public interface IAppDbContext
     DbSet<InvoiceLine> InvoiceLines { get; }
     DbSet<CashBankAccount> CashBankAccounts { get; }
     DbSet<Payment> Payments { get; }
+    DbSet<Order> Orders { get; }
+    DbSet<OrderLine> OrderLines { get; }
     DbSet<ExpenseList> ExpenseLists { get; }
     DbSet<ExpenseLine> ExpenseLines { get; }
     DbSet<ExpenseDefinition> ExpenseDefinitions { get; }
