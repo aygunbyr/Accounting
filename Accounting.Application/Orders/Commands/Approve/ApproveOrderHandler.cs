@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Orders.Commands.Approve;
 
-public record ApproveOrderCommand(int Id, string RowVersion) : IRequest<bool>;
+public record ApproveOrderCommand(int Id, string RowVersion) : IRequest<bool>, ITransactionalRequest;
 
 public class ApproveOrderHandler(IAppDbContext db) : IRequestHandler<ApproveOrderCommand, bool>
 {

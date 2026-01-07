@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Orders.Commands.Cancel;
 
-public record CancelOrderCommand(int Id, string RowVersion) : IRequest<bool>;
+public record CancelOrderCommand(int Id, string RowVersion) : IRequest<bool>, ITransactionalRequest;
 
 public class CancelOrderHandler(IAppDbContext db) : IRequestHandler<CancelOrderCommand, bool>
 {

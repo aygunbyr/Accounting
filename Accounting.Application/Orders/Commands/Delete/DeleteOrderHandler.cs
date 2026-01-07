@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Orders.Commands.Delete;
 
-public record DeleteOrderCommand(int Id, string RowVersion) : IRequest<bool>;
+public record DeleteOrderCommand(int Id, string RowVersion) : IRequest<bool>, ITransactionalRequest;
 
 public class DeleteOrderHandler(IAppDbContext db) : IRequestHandler<DeleteOrderCommand, bool>
 {

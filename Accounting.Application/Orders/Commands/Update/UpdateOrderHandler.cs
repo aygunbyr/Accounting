@@ -16,7 +16,7 @@ public record UpdateOrderCommand(
     string? Description,
     List<UpdateOrderLineDto> Lines,
     string RowVersion
-) : IRequest<OrderDto>;
+) : IRequest<OrderDto>, ITransactionalRequest;
 
 public record UpdateOrderLineDto(
     int? Id, // Null = New Line
@@ -78,7 +78,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
             {
                 var existing = order.Lines.FirstOrDefault(x => x.Id == l.Id.Value && !x.IsDeleted);
                 if (existing == null) continue; // Skip if not found or deleted
-                
+
                 existing.ItemId = l.ItemId;
                 existing.Description = l.Description;
                 existing.Quantity = qty;

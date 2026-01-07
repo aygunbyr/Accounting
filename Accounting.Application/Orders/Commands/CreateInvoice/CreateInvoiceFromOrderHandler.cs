@@ -1,7 +1,6 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
-using Accounting.Application.Invoices.Queries.Dto;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -9,14 +8,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Orders.Commands.CreateInvoice;
 
-public record CreateInvoiceFromOrderCommand(int OrderId) : IRequest<int>;
+public record CreateInvoiceFromOrderCommand(int OrderId) : IRequest<int>, ITransactionalRequest;
 
 public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<CreateInvoiceFromOrderCommand, int>
 {
     public async Task<int> Handle(CreateInvoiceFromOrderCommand r, CancellationToken ct)
     {
         var order = await db.Orders
-            .Include(o => o.Lines)
+            .Include(o => o.Lines.Where(l => !l.IsDeleted))
                 .ThenInclude(l => l.Item)
             .FirstOrDefaultAsync(o => o.Id == r.OrderId && !o.IsDeleted, ct);
 
@@ -40,7 +39,7 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
             TotalVat = order.TotalVat,
             TotalGross = order.TotalGross,
             Balance = order.TotalGross, // Initially unpaid
-            InvoiceNumber = $"INV-{order.OrderNumber}", // Simple generation
+            InvoiceNumber = $"INV-{order.OrderNumber}",
             CreatedAtUtc = DateTime.UtcNow,
             RowVersion = []
         };
@@ -51,7 +50,7 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
             {
                 ItemId = ol.ItemId,
                 ItemName = ol.Item?.Name ?? ol.Description,
-                ItemCode = ol.Item?.Code ?? "-", // Fallback for non-item lines
+                ItemCode = ol.Item?.Code ?? "-",
                 Qty = ol.Quantity,
                 UnitPrice = ol.UnitPrice,
                 VatRate = ol.VatRate,
@@ -66,17 +65,18 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
         order.UpdatedAtUtc = DateTime.UtcNow;
 
         db.Invoices.Add(invoice);
-        await db.SaveChangesAsync(ct);
 
-        // Create StockMovements for item-based lines (Sales = Out, Purchase = In)
-        await CreateStockMovementsAsync(invoice, order.BranchId, ct);
+        // Create StockMovements (all in same transaction)
+        await AddStockMovementsAsync(invoice, order.BranchId, ct);
+
+        // Single SaveChanges for entire operation
+        await db.SaveChangesAsync(ct);
 
         return invoice.Id;
     }
 
-    private async Task CreateStockMovementsAsync(Invoice invoice, int branchId, CancellationToken ct)
+    private async Task AddStockMovementsAsync(Invoice invoice, int branchId, CancellationToken ct)
     {
-        // Only process lines with ItemId (physical products)
         var itemLines = invoice.Lines.Where(l => l.ItemId.HasValue).ToList();
         if (!itemLines.Any()) return;
 
@@ -87,33 +87,40 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
 
         if (defaultWarehouse == null)
         {
-            // Fallback: use first warehouse of branch
             defaultWarehouse = await db.Warehouses
                 .Where(w => w.BranchId == branchId && !w.IsDeleted)
                 .FirstOrDefaultAsync(ct);
         }
 
-        if (defaultWarehouse == null) return; // No warehouse, skip stock movements
+        if (defaultWarehouse == null) return;
 
-        // Determine movement type based on invoice type (consistent with CreateInvoiceHandler)
         StockMovementType? movementType = invoice.Type switch
         {
             InvoiceType.Sales => StockMovementType.SalesOut,
-            InvoiceType.SalesReturn => StockMovementType.SalesReturn,    // Giriş
+            InvoiceType.SalesReturn => StockMovementType.SalesReturn,
             InvoiceType.Purchase => StockMovementType.PurchaseIn,
-            InvoiceType.PurchaseReturn => StockMovementType.PurchaseReturn, // Çıkış
+            InvoiceType.PurchaseReturn => StockMovementType.PurchaseReturn,
             _ => null
         };
 
-        if (movementType == null) return; // Expense type has no stock movement
+        if (movementType == null) return;
 
         bool isOutgoing = invoice.Type == InvoiceType.Sales || invoice.Type == InvoiceType.PurchaseReturn;
+
+        // Get all item IDs to fetch stocks in one query
+        var itemIds = itemLines.Select(l => l.ItemId!.Value).Distinct().ToList();
+        var existingStocks = await db.Stocks
+            .Where(s => s.BranchId == branchId &&
+                        s.WarehouseId == defaultWarehouse.Id &&
+                        itemIds.Contains(s.ItemId) &&
+                        !s.IsDeleted)
+            .ToListAsync(ct);
 
         foreach (var line in itemLines)
         {
             var itemId = line.ItemId!.Value;
 
-            // Create movement
+            // Create movement (Invoice.Id will be set after SaveChanges, use navigation reference)
             var movement = new StockMovement
             {
                 BranchId = branchId,
@@ -122,18 +129,13 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
                 Type = movementType.Value,
                 Quantity = line.Qty,
                 TransactionDateUtc = invoice.DateUtc,
-                Note = $"Fatura Ref: {invoice.Id} (Sipariş: {invoice.OrderId})",
+                Note = $"Sipariş→Fatura: {invoice.OrderId}",
                 RowVersion = []
             };
             db.StockMovements.Add(movement);
 
-            // Update stock
-            var stock = await db.Stocks.FirstOrDefaultAsync(s =>
-                s.BranchId == branchId &&
-                s.WarehouseId == defaultWarehouse.Id &&
-                s.ItemId == itemId &&
-                !s.IsDeleted, ct);
-
+            // Update or create stock
+            var stock = existingStocks.FirstOrDefault(s => s.ItemId == itemId);
             if (stock == null)
             {
                 stock = new Stock
@@ -145,15 +147,12 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
                     RowVersion = []
                 };
                 db.Stocks.Add(stock);
+                existingStocks.Add(stock); // Track for potential duplicate items in lines
             }
 
-            // Update quantity
-            if (isOutgoing)
-                stock.Quantity = Money.R3(stock.Quantity - line.Qty);
-            else
-                stock.Quantity = Money.R3(stock.Quantity + line.Qty);
+            stock.Quantity = isOutgoing
+                ? Money.R3(stock.Quantity - line.Qty)
+                : Money.R3(stock.Quantity + line.Qty);
         }
-
-        await db.SaveChangesAsync(ct);
     }
 }

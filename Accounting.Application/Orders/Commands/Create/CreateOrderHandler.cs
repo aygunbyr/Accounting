@@ -16,7 +16,7 @@ public record CreateOrderCommand(
     string Currency,
     string? Description,
     List<CreateOrderLineDto> Lines
-) : IRequest<OrderDto>;
+) : IRequest<OrderDto>, ITransactionalRequest;
 
 public record CreateOrderLineDto(
     int? ItemId,
@@ -69,7 +69,7 @@ public class CreateOrderHandler(IAppDbContext db) : IRequestHandler<CreateOrderC
 
             var lineNet = Money.R2(qty * price);
             var vatAmount = Money.R2(lineNet * l.VatRate / 100m);
-            
+
             totalNet += lineNet;
             totalVat += vatAmount;
 

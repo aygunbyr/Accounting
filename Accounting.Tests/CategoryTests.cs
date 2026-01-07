@@ -33,7 +33,7 @@ public class CategoryTests
         Assert.NotEqual(0, result.Id);
         Assert.Equal("Electronics", result.Name);
         Assert.NotNull(result.RowVersion);
-        
+
         var inDb = await db.Categories.FindAsync(result.Id);
         Assert.NotNull(inDb);
         Assert.Equal("Electronics", inDb.Name);
@@ -43,9 +43,9 @@ public class CategoryTests
     public async Task UpdateCategory_ShouldSucceed()
     {
         var db = GetDbContext();
-        var category = new Category 
-        { 
-            Name = "Old Name", 
+        var category = new Category
+        {
+            Name = "Old Name",
             RowVersion = [1] // Dummy RowVersion for InMemory
         };
         db.Categories.Add(category);
@@ -53,17 +53,17 @@ public class CategoryTests
 
         var handler = new UpdateCategoryHandler(db);
         var cmd = new UpdateCategoryCommand(
-            category.Id, 
-            "New Name", 
-            "Desc", 
-            "#000", 
+            category.Id,
+            "New Name",
+            "Desc",
+            "#000",
             Convert.ToBase64String(category.RowVersion)
         );
 
         var result = await handler.Handle(cmd, CancellationToken.None);
 
         Assert.Equal("New Name", result.Name);
-        
+
         var inDb = await db.Categories.FindAsync(category.Id);
         Assert.Equal("New Name", inDb!.Name);
     }
@@ -94,13 +94,13 @@ public class CategoryTests
         var rowVer = new byte[] { 1 };
         var branch = new Branch { Id = 1, Name = "B1", Code = "B1", RowVersion = rowVer };
         var category = new Category { Id = 10, Name = "Used Cat", RowVersion = rowVer };
-        var item = new Item 
-        { 
-            BranchId = 1, 
-            CategoryId = 10, 
-            Name = "Item X", 
-            Code = "X", 
-            RowVersion = rowVer 
+        var item = new Item
+        {
+            BranchId = 1,
+            CategoryId = 10,
+            Name = "Item X",
+            Code = "X",
+            RowVersion = rowVer
         };
 
         db.Branches.Add(branch);
@@ -113,7 +113,7 @@ public class CategoryTests
 
         await Assert.ThrowsAsync<BusinessRuleException>(() => handler.Handle(cmd, CancellationToken.None));
     }
-    
+
     [Fact]
     public async Task GetCategories_ShouldListAllalphabetically()
     {
@@ -124,13 +124,14 @@ public class CategoryTests
             new Category { Name = "Beta", RowVersion = [1] }
         );
         await db.SaveChangesAsync();
-        
+
         var handler = new GetCategoriesHandler(db);
         var result = await handler.Handle(new GetCategoriesQuery(), CancellationToken.None);
-        
-        Assert.Equal(3, result.Count);
-        Assert.Equal("Alpha", result[0].Name);
-        Assert.Equal("Beta", result[1].Name);
-        Assert.Equal("Zebra", result[2].Name);
+
+        Assert.Equal(3, result.Total);
+        Assert.Equal(3, result.Items.Count);
+        Assert.Equal("Alpha", result.Items[0].Name);
+        Assert.Equal("Beta", result.Items[1].Name);
+        Assert.Equal("Zebra", result.Items[2].Name);
     }
 }

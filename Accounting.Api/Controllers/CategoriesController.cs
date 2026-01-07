@@ -3,6 +3,7 @@ using Accounting.Application.Categories.Commands.Delete;
 using Accounting.Application.Categories.Commands.Update;
 using Accounting.Application.Categories.Queries;
 using Accounting.Application.Categories.Queries.List;
+using Accounting.Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,9 +14,13 @@ namespace Accounting.Api.Controllers;
 public class CategoriesController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<CategoryDto>>> GetList(CancellationToken ct)
+    public async Task<ActionResult<PagedResult<CategoryDto>>> GetList(
+        [FromQuery] string? search,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
     {
-        return Ok(await mediator.Send(new GetCategoriesQuery(), ct));
+        return Ok(await mediator.Send(new GetCategoriesQuery(search, page, pageSize), ct));
     }
 
     [HttpPost]

@@ -46,6 +46,7 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
             .IsUnique()
             .HasFilter("[IsDeleted] = 0");
         b.HasIndex(x => x.BranchId).HasDatabaseName("IX_Items_BranchId");
+        b.HasIndex(x => x.CategoryId).HasDatabaseName("IX_Items_CategoryId");
 
         b.ToTable(t =>
         {
