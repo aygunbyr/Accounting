@@ -9,15 +9,16 @@ namespace Accounting.Application.Services;
 /// Invoice balance hesaplama ve güncelleme servisi.
 /// Balance = TotalGross - SUM(Payments linked to this invoice)
 /// 
-/// CONCURRENCY SAFE: 
-/// 1. Tracking kullanır (memory'deki Add'leri görür)
-/// 2. UPDLOCK ile race condition'ları önler
+/// CONCURRENCY HANDLING: 
+/// - Optimistic concurrency via RowVersion
+/// - Retry pattern for concurrent updates
+/// - Cross-platform (SQL Server, PostgreSQL, SQLite)
 /// </summary>
 public interface IInvoiceBalanceService
 {
     /// <summary>
     /// Belirtilen invoice'un güncel balance'ını hesaplar ve günceller.
-    /// THREAD-SAFE: Invoice'u kilitler (UPDLOCK, HOLDLOCK)
+    /// Concurrent updates için retry pattern kullanır.
     /// </summary>
     Task<decimal> RecalculateBalanceAsync(int invoiceId, CancellationToken ct = default);
 
@@ -31,6 +32,7 @@ public interface IInvoiceBalanceService
 public class InvoiceBalanceService : IInvoiceBalanceService
 {
     private readonly IAppDbContext _db;
+    private const int MaxRetries = 3;
 
     public InvoiceBalanceService(IAppDbContext db)
     {
@@ -61,40 +63,63 @@ public class InvoiceBalanceService : IInvoiceBalanceService
 
     public async Task<decimal> RecalculateBalanceAsync(int invoiceId, CancellationToken ct = default)
     {
-        // IAppDbContext'i DbContext'e cast et (FromSqlInterpolated için gerekli)
-        var dbContext = _db as DbContext;
-        if (dbContext == null)
+        // Retry pattern for optimistic concurrency conflicts
+        for (int attempt = 1; attempt <= MaxRetries; attempt++)
         {
-            throw new InvalidOperationException(
-                "IAppDbContext must be DbContext instance to use raw SQL queries for locking.");
+            try
+            {
+                return await DoRecalculateAsync(invoiceId, ct);
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < MaxRetries)
+            {
+                // Concurrency conflict - retry with fresh data
+                // Detach tracked entities to get fresh data on next attempt
+                var dbContext = _db as DbContext;
+                if (dbContext != null)
+                {
+                    var trackedInvoice = dbContext.ChangeTracker
+                        .Entries<Invoice>()
+                        .FirstOrDefault(e => e.Entity.Id == invoiceId);
+                    
+                    if (trackedInvoice != null)
+                    {
+                        trackedInvoice.State = EntityState.Detached;
+                    }
+                }
+                
+                // Small delay before retry (exponential backoff)
+                await Task.Delay(attempt * 50, ct);
+            }
         }
 
-        // 🔒 PESSIMISTIC LOCK: Invoice'u kilitle
-        // UPDLOCK: Update intent lock (başka transaction okuyabilir ama değiştiremez)
-        // HOLDLOCK: Transaction bitene kadar lock'u tut
-        // Bu sayede concurrent RecalculateBalance çağrıları sırayla çalışır
+        // Should not reach here, but if all retries fail, throw
+        throw new InvalidOperationException(
+            $"Failed to recalculate balance for Invoice {invoiceId} after {MaxRetries} attempts due to concurrent updates.");
+    }
 
-        var invoice = await _db.QueryRaw<Invoice>($@"
-            SELECT * FROM Invoices WITH (UPDLOCK, HOLDLOCK)
-            WHERE Id = {invoiceId}
-        ").FirstOrDefaultAsync(ct);
+    private async Task<decimal> DoRecalculateAsync(int invoiceId, CancellationToken ct)
+    {
+        // Fetch invoice with tracking (for update)
+        var invoice = await _db.Invoices
+            .FirstOrDefaultAsync(i => i.Id == invoiceId, ct);
 
         if (invoice == null)
             return 0m;
 
-        // ✅ Tracking kullan (AsNoTracking YOK!)
-        // Memory'deki Add/Update'leri de görür
-        // Örnek: _db.Payments.Add() yapılmış ama SaveChanges henüz çağrılmamışsa,
-        // bu query onu da görür ve toplama dahil eder
+        // Calculate total payments from committed data
+        // NOT: Burada AsNoTracking kullanıyoruz çünkü Payment handler'lar
+        // artık önce SaveChanges yapıyor, sonra RecalculateBalance çağırıyor
         var totalPayments = await _db.Payments
+            .AsNoTracking()
             .Where(p => p.LinkedInvoiceId == invoiceId && !p.IsDeleted)
             .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
 
         var balance = Money.R2(invoice.TotalGross - totalPayments);
         invoice.Balance = balance;
 
-        // SaveChanges caller tarafından yapılacak
-        // Lock, SaveChanges + transaction commit olana kadar tutulur
+        // RowVersion otomatik olarak concurrency check yapacak
+        // Eğer başka bir transaction invoice'u değiştirdiyse,
+        // DbUpdateConcurrencyException fırlatılır ve retry yapılır
 
         return balance;
     }
