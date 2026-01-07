@@ -498,13 +498,13 @@ Accounting.Infrastructure/
 
 ## 🎯 Next Steps (Future Features)
 
-- [ ] Invoice → Stock integration (otomatik stok hareketi)
-- [ ] Multi-branch stock transfer
+- [x] Invoice → Stock integration (otomatik stok hareketi)
+- [x] Multi-branch stock transfer
 - [ ] Fixed Asset depreciation calculation
 - [ ] Reporting module (balance sheet, P&L)
-- [ ] Item Category support
+- [x] Item Category support
 - [ ] Excel export support
-- [ ] Order Management (Quotes/Orders -> Invoice flow)
+- [x] Order Management (Quotes/Orders -> Invoice flow)
 - [ ] User authentication & authorization
 - [ ] Audit log tracking
 - [ ] Email notifications
