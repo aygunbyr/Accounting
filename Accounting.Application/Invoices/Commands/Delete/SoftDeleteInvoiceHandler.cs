@@ -13,7 +13,9 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
 
     public async Task Handle(SoftDeleteInvoiceCommand req, CancellationToken ct)
     {
-        var inv = await _db.Invoices.FirstOrDefaultAsync(i => i.Id == req.Id, ct);
+        var inv = await _db.Invoices
+            .Include(i => i.Lines)
+            .FirstOrDefaultAsync(i => i.Id == req.Id && !i.IsDeleted, ct);
 
         if (inv is null)
             throw new NotFoundException("Invoice", req.Id);
@@ -49,6 +51,13 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
         inv.IsDeleted = true;
         inv.DeletedAtUtc = DateTime.UtcNow;
         inv.UpdatedAtUtc = DateTime.UtcNow;
+
+        // InvoiceLines soft delete
+        foreach (var line in inv.Lines.Where(l => !l.IsDeleted))
+        {
+            line.IsDeleted = true;
+            line.DeletedAtUtc = DateTime.UtcNow;
+        }
 
         // ---------------------------------------------------------
         // Stok hareketlerini de iptal et (Soft Delete)
