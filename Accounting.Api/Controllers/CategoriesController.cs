@@ -13,27 +13,27 @@ namespace Accounting.Api.Controllers;
 public class CategoriesController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<CategoryDto>>> GetList()
+    public async Task<ActionResult<List<CategoryDto>>> GetList(CancellationToken ct)
     {
-        return Ok(await mediator.Send(new GetCategoriesQuery()));
+        return Ok(await mediator.Send(new GetCategoriesQuery(), ct));
     }
 
     [HttpPost]
-    public async Task<ActionResult<CategoryDto>> Create(CreateCategoryCommand command)
+    public async Task<ActionResult<CategoryDto>> Create(CreateCategoryCommand command, CancellationToken ct)
     {
-        return Ok(await mediator.Send(command));
+        return Ok(await mediator.Send(command, ct));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<CategoryDto>> Update(int id, UpdateCategoryCommand command)
+    public async Task<ActionResult<CategoryDto>> Update(int id, UpdateCategoryCommand command, CancellationToken ct)
     {
         if (id != command.Id) return BadRequest("ID mismatch");
-        return Ok(await mediator.Send(command));
+        return Ok(await mediator.Send(command, ct));
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult<bool>> Delete(int id, [FromQuery] string rowVersion)
+    public async Task<ActionResult<bool>> Delete(int id, [FromQuery] string rowVersion, CancellationToken ct)
     {
-        return Ok(await mediator.Send(new DeleteCategoryCommand(id, rowVersion)));
+        return Ok(await mediator.Send(new DeleteCategoryCommand(id, rowVersion), ct));
     }
 }

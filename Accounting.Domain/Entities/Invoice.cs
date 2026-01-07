@@ -29,4 +29,5 @@ public class Invoice : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranc
 
     public Contact Contact { get; set; } = null!;
     public Branch Branch { get; set; } = null!;
+    public Order? Order { get; set; } // Sipariş kaynaklı faturalar için
 }

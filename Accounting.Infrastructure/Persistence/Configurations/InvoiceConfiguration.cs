@@ -53,7 +53,8 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
             .HasForeignKey(i => i.BranchId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        
+        // Order relationship (nullable - not all invoices come from orders)
+        b.HasIndex(x => x.OrderId).HasDatabaseName("IX_Invoices_OrderId");
 
     }
 }

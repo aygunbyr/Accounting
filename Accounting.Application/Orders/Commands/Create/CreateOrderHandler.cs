@@ -94,10 +94,10 @@ public class CreateOrderHandler(IAppDbContext db) : IRequestHandler<CreateOrderC
         // Return DTO
         return new OrderDto(
             order.Id,
-            null,
+            order.BranchId,
             order.OrderNumber,
             order.ContactId,
-            "", // Populate if needed
+            "", // Contact name - could be fetched if needed
             order.DateUtc,
             order.Status,
             order.TotalNet,

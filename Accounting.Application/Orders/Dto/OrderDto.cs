@@ -4,8 +4,8 @@ namespace Accounting.Application.Orders.Dto;
 
 public record OrderDto(
     int Id,
-    int? OrderNumber, // Derived or stored? Stored as string, but maybe simplified for DTO
-    string OrderNo,
+    int BranchId,
+    string OrderNumber,
     int ContactId,
     string ContactName,
     DateTime DateUtc,

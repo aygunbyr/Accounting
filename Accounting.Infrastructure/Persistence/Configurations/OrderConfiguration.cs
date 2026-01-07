@@ -13,7 +13,11 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         b.HasKey(x => x.Id);
 
         b.Property(x => x.OrderNumber).HasMaxLength(20).IsRequired();
-        b.HasIndex(x => x.OrderNumber).IsUnique();
+        
+        // OrderNumber unique per Branch + Type (aynı şubede aynı tipte tekrar edemez)
+        b.HasIndex(x => new { x.BranchId, x.Type, x.OrderNumber })
+            .IsUnique()
+            .HasDatabaseName("IX_Orders_BranchId_Type_OrderNumber");
 
         b.Property(x => x.Currency).HasMaxLength(3).IsRequired();
         b.Property(x => x.Description).HasMaxLength(200);
@@ -43,5 +47,11 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .WithOne(x => x.Order)
             .HasForeignKey(x => x.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Indexes for common queries
+        b.HasIndex(x => x.BranchId).HasDatabaseName("IX_Orders_BranchId");
+        b.HasIndex(x => x.ContactId).HasDatabaseName("IX_Orders_ContactId");
+        b.HasIndex(x => x.Status).HasDatabaseName("IX_Orders_Status");
+        b.HasIndex(x => x.DateUtc).HasDatabaseName("IX_Orders_DateUtc");
     }
 }

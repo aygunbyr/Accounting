@@ -2,7 +2,7 @@ using Accounting.Domain.Common;
 
 namespace Accounting.Domain.Entities;
 
-public class OrderLine : IHasTimestamps
+public class OrderLine : IHasTimestamps, ISoftDeletable
 {
     public int Id { get; set; }
     public int OrderId { get; set; }
@@ -12,11 +12,13 @@ public class OrderLine : IHasTimestamps
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public int VatRate { get; set; } // 0, 1, 10, 20
-    public decimal Total { get; set; } // Net + Vat ? No, usually Line Total is Net or Gross. Let's assume Net like InvoiceLine or strictly (Qty * Price)
+    public decimal Total { get; set; } // Net total (Qty * Price)
 
-    // Audit
+    // Audit + Soft Delete
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAtUtc { get; set; }
 
     // Navigations
     public Order Order { get; set; } = null!;

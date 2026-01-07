@@ -51,12 +51,13 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
         order.UpdatedAtUtc = DateTime.UtcNow;
 
         // Update Lines
-        // 1. Delete removed lines
+        // 1. Soft delete removed lines (hard delete yerine)
         var reqLineIds = r.Lines.Where(l => l.Id.HasValue).Select(l => l.Id!.Value).ToList();
-        var toRemove = order.Lines.Where(l => !reqLineIds.Contains(l.Id)).ToList();
+        var toRemove = order.Lines.Where(l => !l.IsDeleted && !reqLineIds.Contains(l.Id)).ToList();
         foreach (var rm in toRemove)
         {
-            db.OrderLines.Remove(rm);
+            rm.IsDeleted = true;
+            rm.DeletedAtUtc = DateTime.UtcNow;
         }
 
         // 2. Add/Update lines
@@ -75,7 +76,9 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
 
             if (l.Id.HasValue)
             {
-                var existing = order.Lines.First(x => x.Id == l.Id.Value);
+                var existing = order.Lines.FirstOrDefault(x => x.Id == l.Id.Value && !x.IsDeleted);
+                if (existing == null) continue; // Skip if not found or deleted
+                
                 existing.ItemId = l.ItemId;
                 existing.Description = l.Description;
                 existing.Quantity = qty;
@@ -113,7 +116,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
 
         return new OrderDto(
             order.Id,
-            null,
+            order.BranchId,
             order.OrderNumber,
             order.ContactId,
             "",
@@ -124,7 +127,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
             order.TotalGross,
             order.Currency,
             order.Description,
-            order.Lines.Select(x => new OrderLineDto(x.Id, x.ItemId, null, x.Description, x.Quantity, x.UnitPrice, x.VatRate, x.Total)).ToList(),
+            order.Lines.Where(x => !x.IsDeleted).Select(x => new OrderLineDto(x.Id, x.ItemId, null, x.Description, x.Quantity, x.UnitPrice, x.VatRate, x.Total)).ToList(),
             order.CreatedAtUtc,
             Convert.ToBase64String(order.RowVersion)
         );

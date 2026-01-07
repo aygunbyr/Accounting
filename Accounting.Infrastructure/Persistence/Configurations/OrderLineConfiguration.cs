@@ -17,13 +17,17 @@ public class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
         b.Property(x => x.UnitPrice).HasPrecision(18, 2);
         b.Property(x => x.Total).HasPrecision(18, 2);
 
-        // Audit
+        // Audit + Soft Delete
         b.Property(x => x.CreatedAtUtc).HasDefaultValueSql("GETUTCDATE()");
+        b.ApplySoftDelete();
 
         // Relationships
         b.HasOne(x => x.Item)
             .WithMany()
             .HasForeignKey(x => x.ItemId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Indexes
+        b.HasIndex(x => x.OrderId).HasDatabaseName("IX_OrderLines_OrderId");
     }
 }

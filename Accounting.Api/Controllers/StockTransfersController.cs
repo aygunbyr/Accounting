@@ -9,9 +9,9 @@ namespace Accounting.Api.Controllers;
 public class StockTransfersController(IMediator mediator) : ControllerBase
 {
     [HttpPost]
-    public async Task<ActionResult<StockTransferDto>> Transfer(TransferStockCommand command)
+    public async Task<ActionResult<StockTransferDto>> Transfer(TransferStockCommand command, CancellationToken ct)
     {
-        var result = await mediator.Send(command);
+        var result = await mediator.Send(command, ct);
         return Ok(result);
     }
 }

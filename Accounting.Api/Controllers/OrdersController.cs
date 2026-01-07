@@ -1,3 +1,4 @@
+using Accounting.Application.Common.Models;
 using Accounting.Application.Orders.Commands.Approve;
 using Accounting.Application.Orders.Commands.Create;
 using Accounting.Application.Orders.Commands.CreateInvoice;
@@ -5,6 +6,7 @@ using Accounting.Application.Orders.Commands.Delete;
 using Accounting.Application.Orders.Commands.Update;
 using Accounting.Application.Orders.Dto;
 using Accounting.Application.Orders.Queries;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,42 +17,46 @@ namespace Accounting.Api.Controllers;
 public class OrdersController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<OrderDto>>> GetList()
+    public async Task<ActionResult<PagedResult<OrderDto>>> GetList(
+        [FromQuery] int? branchId,
+        [FromQuery] int? contactId,
+        [FromQuery] OrderStatus? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
     {
-        return Ok(await mediator.Send(new GetOrdersQuery()));
+        var query = new GetOrdersQuery(branchId, contactId, status, page, pageSize);
+        return Ok(await mediator.Send(query, ct));
     }
 
     [HttpPost]
-    public async Task<ActionResult<OrderDto>> Create(CreateOrderCommand command)
+    public async Task<ActionResult<OrderDto>> Create(CreateOrderCommand command, CancellationToken ct)
     {
-        return Ok(await mediator.Send(command));
+        return Ok(await mediator.Send(command, ct));
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<OrderDto>> Update(int id, UpdateOrderCommand command)
+    public async Task<ActionResult<OrderDto>> Update(int id, UpdateOrderCommand command, CancellationToken ct)
     {
         if (id != command.Id) return BadRequest("ID mismatch");
-        return Ok(await mediator.Send(command));
+        return Ok(await mediator.Send(command, ct));
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult<bool>> Delete(int id, [FromQuery] string rowVersion)
+    public async Task<ActionResult<bool>> Delete(int id, [FromQuery] string rowVersion, CancellationToken ct)
     {
-        return Ok(await mediator.Send(new DeleteOrderCommand(id, rowVersion)));
+        return Ok(await mediator.Send(new DeleteOrderCommand(id, rowVersion), ct));
     }
 
     [HttpPut("{id}/approve")]
-    public async Task<ActionResult<bool>> Approve(int id, [FromQuery] string rowVersion)
+    public async Task<ActionResult<bool>> Approve(int id, [FromQuery] string rowVersion, CancellationToken ct)
     {
-        return Ok(await mediator.Send(new ApproveOrderCommand(id, rowVersion)));
+        return Ok(await mediator.Send(new ApproveOrderCommand(id, rowVersion), ct));
     }
 
     [HttpPost("{id}/create-invoice")]
-    public async Task<ActionResult<int>> CreateInvoice(int id)
+    public async Task<ActionResult<int>> CreateInvoice(int id, CancellationToken ct)
     {
-        // rowVersion check might be needed if we want to ensure order hasn't changed, 
-        // but CreateInvoiceFromOrderHandler checks Status=Approved, so it's relatively safe.
-        // For strictness, we could add rowVersion to the command too.
-        return Ok(await mediator.Send(new CreateInvoiceFromOrderCommand(id)));
+        return Ok(await mediator.Send(new CreateInvoiceFromOrderCommand(id), ct));
     }
 }

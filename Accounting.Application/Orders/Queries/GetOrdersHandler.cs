@@ -1,27 +1,55 @@
 using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Constants;
+using Accounting.Application.Common.Models;
 using Accounting.Application.Orders.Dto;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Orders.Queries;
 
-public record GetOrdersQuery() : IRequest<List<OrderDto>>;
+public record GetOrdersQuery(
+    int? BranchId = null,
+    int? ContactId = null,
+    OrderStatus? Status = null,
+    int Page = PaginationConstants.DefaultPage,
+    int PageSize = PaginationConstants.DefaultPageSize
+) : IRequest<PagedResult<OrderDto>>;
 
-public class GetOrdersHandler(IAppDbContext db) : IRequestHandler<GetOrdersQuery, List<OrderDto>>
+public class GetOrdersHandler(IAppDbContext db) : IRequestHandler<GetOrdersQuery, PagedResult<OrderDto>>
 {
-    public async Task<List<OrderDto>> Handle(GetOrdersQuery request, CancellationToken cancellationToken)
+    public async Task<PagedResult<OrderDto>> Handle(GetOrdersQuery q, CancellationToken ct)
     {
-        var orders = await db.Orders
+        var page = PaginationConstants.NormalizePage(q.Page);
+        var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
+
+        var query = db.Orders
             .AsNoTracking()
             .Include(o => o.Lines)
             .Include(o => o.Contact)
-            .Where(x => !x.IsDeleted)
-            .OrderByDescending(x => x.DateUtc)
-            .ToListAsync(cancellationToken);
+            .Where(x => !x.IsDeleted);
 
-        return orders.Select(o => new OrderDto(
+        // Filters
+        if (q.BranchId.HasValue)
+            query = query.Where(x => x.BranchId == q.BranchId.Value);
+
+        if (q.ContactId.HasValue)
+            query = query.Where(x => x.ContactId == q.ContactId.Value);
+
+        if (q.Status.HasValue)
+            query = query.Where(x => x.Status == q.Status.Value);
+
+        var total = await query.CountAsync(ct);
+
+        var orders = await query
+            .OrderByDescending(x => x.DateUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        var items = orders.Select(o => new OrderDto(
             o.Id,
-            null,
+            o.BranchId,
             o.OrderNumber,
             o.ContactId,
             o.Contact.Name,
@@ -32,9 +60,13 @@ public class GetOrdersHandler(IAppDbContext db) : IRequestHandler<GetOrdersQuery
             o.TotalGross,
             o.Currency,
             o.Description,
-            o.Lines.Select(l => new OrderLineDto(l.Id, l.ItemId, null, l.Description, l.Quantity, l.UnitPrice, l.VatRate, l.Total)).ToList(),
+            o.Lines.Where(l => !l.IsDeleted).Select(l => new OrderLineDto(
+                l.Id, l.ItemId, l.Item?.Name, l.Description, l.Quantity, l.UnitPrice, l.VatRate, l.Total
+            )).ToList(),
             o.CreatedAtUtc,
             Convert.ToBase64String(o.RowVersion)
         )).ToList();
+
+        return new PagedResult<OrderDto>(total, page, pageSize, items, null);
     }
 }
