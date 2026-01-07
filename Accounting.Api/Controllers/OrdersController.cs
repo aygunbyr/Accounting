@@ -1,11 +1,13 @@
 using Accounting.Application.Common.Models;
 using Accounting.Application.Orders.Commands.Approve;
+using Accounting.Application.Orders.Commands.Cancel;
 using Accounting.Application.Orders.Commands.Create;
 using Accounting.Application.Orders.Commands.CreateInvoice;
 using Accounting.Application.Orders.Commands.Delete;
 using Accounting.Application.Orders.Commands.Update;
 using Accounting.Application.Orders.Dto;
 using Accounting.Application.Orders.Queries;
+using Accounting.Application.Orders.Queries.GetById;
 using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -29,10 +31,17 @@ public class OrdersController(IMediator mediator) : ControllerBase
         return Ok(await mediator.Send(query, ct));
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<OrderDto>> GetById(int id, CancellationToken ct)
+    {
+        return Ok(await mediator.Send(new GetOrderByIdQuery(id), ct));
+    }
+
     [HttpPost]
     public async Task<ActionResult<OrderDto>> Create(CreateOrderCommand command, CancellationToken ct)
     {
-        return Ok(await mediator.Send(command, ct));
+        var result = await mediator.Send(command, ct);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
     [HttpPut("{id}")]
@@ -52,6 +61,12 @@ public class OrdersController(IMediator mediator) : ControllerBase
     public async Task<ActionResult<bool>> Approve(int id, [FromQuery] string rowVersion, CancellationToken ct)
     {
         return Ok(await mediator.Send(new ApproveOrderCommand(id, rowVersion), ct));
+    }
+
+    [HttpPut("{id}/cancel")]
+    public async Task<ActionResult<bool>> Cancel(int id, [FromQuery] string rowVersion, CancellationToken ct)
+    {
+        return Ok(await mediator.Send(new CancelOrderCommand(id, rowVersion), ct));
     }
 
     [HttpPost("{id}/create-invoice")]

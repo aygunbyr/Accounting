@@ -10,6 +10,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         b.ToTable("Invoices");
         b.HasKey(x => x.Id);
 
+        b.Property(x => x.InvoiceNumber).HasMaxLength(50).IsRequired();
         b.Property(x => x.Type).HasConversion<int>().IsRequired();
         b.Property(x => x.Currency).IsRequired().HasMaxLength(3).IsUnicode(false);
         b.Property(x => x.DateUtc).IsRequired();

@@ -95,9 +95,19 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
 
         if (defaultWarehouse == null) return; // No warehouse, skip stock movements
 
-        // Determine movement type based on invoice type
+        // Determine movement type based on invoice type (consistent with CreateInvoiceHandler)
+        StockMovementType? movementType = invoice.Type switch
+        {
+            InvoiceType.Sales => StockMovementType.SalesOut,
+            InvoiceType.SalesReturn => StockMovementType.SalesReturn,    // Giriş
+            InvoiceType.Purchase => StockMovementType.PurchaseIn,
+            InvoiceType.PurchaseReturn => StockMovementType.PurchaseReturn, // Çıkış
+            _ => null
+        };
+
+        if (movementType == null) return; // Expense type has no stock movement
+
         bool isOutgoing = invoice.Type == InvoiceType.Sales || invoice.Type == InvoiceType.PurchaseReturn;
-        var movementType = isOutgoing ? StockMovementType.SalesOut : StockMovementType.PurchaseIn;
 
         foreach (var line in itemLines)
         {
@@ -109,7 +119,7 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
                 BranchId = branchId,
                 WarehouseId = defaultWarehouse.Id,
                 ItemId = itemId,
-                Type = movementType,
+                Type = movementType.Value,
                 Quantity = line.Qty,
                 TransactionDateUtc = invoice.DateUtc,
                 Note = $"Fatura Ref: {invoice.Id} (Sipariş: {invoice.OrderId})",
