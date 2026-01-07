@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Contacts.Queries.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,7 @@ public class GetContactByIdHandler : IRequestHandler<GetContactByIdQuery, Contac
             .FirstOrDefaultAsync(x => x.Id == q.Id, ct);
 
         if (c is null)
-            throw new KeyNotFoundException($"Contact {q.Id} not found");
+            throw new NotFoundException("Contact", q.Id);
 
         return new ContactDto(
             c.Id, c.BranchId, c.Code, c.Name, c.Type.ToString(), c.Email,

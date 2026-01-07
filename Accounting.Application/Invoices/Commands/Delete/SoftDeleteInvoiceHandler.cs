@@ -16,7 +16,7 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
         var inv = await _db.Invoices.FirstOrDefaultAsync(i => i.Id == req.Id, ct);
 
         if (inv is null)
-            throw new KeyNotFoundException($"Invoice {req.Id} not found.");
+            throw new NotFoundException("Invoice", req.Id);
 
         // Payment kontrolü
         var hasPayments = await _db.Payments

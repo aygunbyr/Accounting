@@ -1,4 +1,5 @@
 ﻿using System;
+using Accounting.Application.Common.Errors;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,7 @@ public sealed class GetFixedAssetByIdHandler
 
         if (x is null)
         {
-            throw new KeyNotFoundException("Fixed asset not found.");
+            throw new NotFoundException("FixedAsset", r.Id);
         }
 
         return new FixedAssetDetailDto(

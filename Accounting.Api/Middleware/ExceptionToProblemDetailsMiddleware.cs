@@ -56,6 +56,27 @@ public sealed class ExceptionToProblemDetailsMiddleware
                 cancellationToken: ct
             );
         }
+        catch (NotFoundException nfex)
+        {
+            // Domain NotFoundException -> 404 + ProblemDetails
+            var pd = new ProblemDetails
+            {
+                Title = "Kaynak bulunamadı",
+                Status = StatusCodes.Status404NotFound,
+                Detail = nfex.Message
+            };
+            pd.Extensions["code"] = nfex.Code; // "not_found"
+            pd.Extensions["traceId"] = context.TraceIdentifier;
+
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            context.Response.ContentType = "application/problem+json";
+
+            await JsonSerializer.SerializeAsync(
+                context.Response.Body, pd,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase },
+                cancellationToken: ct
+            );
+        }
         catch (KeyNotFoundException knf)
         {
             var pd = new ProblemDetails

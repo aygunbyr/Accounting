@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils; // Money.S2/S3/S4
 using Accounting.Application.Invoices.Queries.Dto;
 using MediatR;
@@ -11,17 +12,17 @@ public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, Invoic
     private readonly IAppDbContext _db;
     public GetInvoiceByIdHandler(IAppDbContext db) => _db = db;
 
-    public async Task<InvoiceDto> Handle(GetInvoiceByIdQuery request, CancellationToken cancellationToken)
+    public async Task<InvoiceDto> Handle(GetInvoiceByIdQuery q, CancellationToken cancellationToken)
     {
         var inv = await _db.Invoices
             .AsNoTracking()
             .Include(i => i.Contact)
             .Include(i => i.Branch)
             .Include(i => i.Lines)
-            .FirstOrDefaultAsync(i => i.Id == request.Id, cancellationToken);
+            .FirstOrDefaultAsync(i => i.Id == q.Id, cancellationToken);
 
         if (inv is null)
-            throw new KeyNotFoundException($"Invoice {request.Id} not found.");
+            throw new NotFoundException("Invoice", q.Id);
 
         var lines = inv.Lines
             .OrderBy(l => l.Id)

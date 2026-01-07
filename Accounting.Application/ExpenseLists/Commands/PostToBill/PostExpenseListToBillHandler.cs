@@ -32,7 +32,7 @@ public class PostExpenseListToBillHandler
             .FirstOrDefaultAsync(x => x.Id == req.ExpenseListId, ct);
 
         if (list is null)
-            throw new KeyNotFoundException($"ExpenseList {req.ExpenseListId} not found.");
+            throw new NotFoundException("ExpenseList");
 
         if (list.Status != ExpenseListStatus.Reviewed)
             throw new BusinessRuleException("Only Reviewed lists can be posted to bill.");

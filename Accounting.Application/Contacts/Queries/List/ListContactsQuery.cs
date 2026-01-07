@@ -1,4 +1,5 @@
-﻿using Accounting.Application.Contacts.Queries.Dto;
+﻿using Accounting.Application.Common.Constants;
+using Accounting.Application.Contacts.Queries.Dto;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -9,6 +10,6 @@ public record ListContactsQuery(
     int? BranchId,
     string? Search,
     ContactType? Type,
-    int Page = 1,
-    int PageSize = 20
+    int Page = PaginationConstants.DefaultPage,
+    int PageSize = PaginationConstants.DefaultPageSize
     ) : IRequest<ContactListResult>;

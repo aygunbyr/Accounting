@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.ExpenseDefinitions.Queries.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,7 @@ public sealed class GetExpenseDefinitionByIdHandler
 
         if (x is null)
         {
-            throw new KeyNotFoundException("Expense definition not found.");
+            throw new NotFoundException("ExpenseDefinition", r.Id);
         }
 
         return new ExpenseDefinitionDetailDto(

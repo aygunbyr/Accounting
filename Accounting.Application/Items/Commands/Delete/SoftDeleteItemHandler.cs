@@ -14,7 +14,7 @@ public class SoftDeleteItemHandler : IRequestHandler<SoftDeleteItemCommand, bool
     public async Task<bool> Handle(SoftDeleteItemCommand r, CancellationToken ct)
     {
         var e = await _db.Items.FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
-        if (e is null) throw new KeyNotFoundException("Item not found.");
+        if (e is null) throw new NotFoundException("Item", r.Id);
 
         _db.Entry(e).Property(nameof(Item.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
 

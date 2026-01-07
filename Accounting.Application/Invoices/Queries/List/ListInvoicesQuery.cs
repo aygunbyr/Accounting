@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Models;
+using Accounting.Application.Common.Constants;
 using Accounting.Application.Invoices.Queries.Dto;
 using MediatR;
 
@@ -14,8 +15,8 @@ public enum InvoiceTypeFilter
 }
 
 public record ListInvoicesQuery(
-    int PageNumber = 1,
-    int PageSize = 20,
+    int PageNumber = PaginationConstants.DefaultPage,
+    int PageSize = PaginationConstants.DefaultPageSize,
     string? Sort = "dateUtc:desc",
     int? BranchId = null, // (null = tüm şubeler)
     int? ContactId = null,

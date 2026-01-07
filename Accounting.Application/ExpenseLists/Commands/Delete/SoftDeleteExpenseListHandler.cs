@@ -19,7 +19,7 @@ public class SoftDeleteExpenseListHandler : IRequestHandler<SoftDeleteExpenseLis
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
 
         if (list is null)
-            throw new KeyNotFoundException($"ExpenseList {req.Id} not found.");
+            throw new NotFoundException("ExpenseList", req.Id);
 
         // Concurrency check
         byte[] originalBytes;

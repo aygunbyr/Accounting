@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Payments.Queries.Dto;
 using MediatR;
@@ -15,7 +16,7 @@ public class GetPaymentByIdHandler : IRequestHandler<GetPaymentByIdQuery, Paymen
     public async Task<PaymentDetailDto> Handle(GetPaymentByIdQuery q, CancellationToken ct)
     {
         var p = await _db.Payments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == q.Id, ct);
-        if (p is null) throw new KeyNotFoundException($"Payment {q.Id} not found.");
+        if (p is null) throw new NotFoundException("Payment", q.Id);
 
         var inv = CultureInfo.InvariantCulture;
 

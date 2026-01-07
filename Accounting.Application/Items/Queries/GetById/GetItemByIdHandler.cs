@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Items.Queries.Dto;
 using MediatR;
@@ -11,7 +12,7 @@ public class GetItemByIdHandler(IAppDbContext db) : IRequestHandler<GetItemByIdQ
     public async Task<ItemDetailDto> Handle(GetItemByIdQuery r, CancellationToken ct)
     {
         var x = await db.Items.AsNoTracking().FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
-        if (x is null) throw new KeyNotFoundException("Item not found.");
+        if (x is null) throw new NotFoundException("Item", r.Id);
 
         return new ItemDetailDto(
             x.Id, x.Name, x.Unit, x.VatRate,

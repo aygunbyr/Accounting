@@ -14,7 +14,7 @@ public class SoftDeleteContactHandler : IRequestHandler<SoftDeleteContactCommand
     public async Task Handle(SoftDeleteContactCommand req, CancellationToken ct)
     {
         var c = await _db.Contacts.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
-        if (c is null) throw new KeyNotFoundException($"Contact {req.Id} not found.");
+        if (c is null) throw new NotFoundException("Contact", req.Id);
 
         var original = Convert.FromBase64String(req.RowVersion);
         _db.Entry(c).Property(nameof(Contact.RowVersion)).OriginalValue = original;

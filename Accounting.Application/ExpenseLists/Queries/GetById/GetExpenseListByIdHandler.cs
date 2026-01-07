@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.ExpenseLists.Dto;
 using MediatR;
@@ -19,7 +20,7 @@ public class GetExpenseListByIdHandler : IRequestHandler<GetExpenseListByIdQuery
             .FirstOrDefaultAsync(x => x.Id == q.Id && !x.IsDeleted, ct);
 
         if (list is null)
-            throw new KeyNotFoundException($"ExpenseList {q.Id} not found.");
+            throw new NotFoundException("ExpenseList", q.Id);
 
         var lineDtos = list.Lines
             .OrderBy(l => l.DateUtc)

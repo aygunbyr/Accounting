@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Constants;
 using Accounting.Application.Common.Models;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Invoices.Queries.Dto;
@@ -17,6 +18,10 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
 
     public async Task<PagedResult<InvoiceListItemDto>> Handle(ListInvoicesQuery q, CancellationToken ct)
     {
+        // Normalize pagination
+        var pageNumber = PaginationConstants.NormalizePage(q.PageNumber);
+        var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
+
         var query = _db.Invoices.AsNoTracking();
 
         // Filtreler
@@ -60,8 +65,8 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
 
         // Sayfa verisi
         var pageData = await query
-            .Skip((q.PageNumber - 1) * q.PageSize)
-            .Take(q.PageSize)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(i => new {
                 i.Id,
                 i.ContactId,
@@ -114,7 +119,7 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
             FilteredTotalGross: Money.S2(filteredGross)
         );
 
-        return new PagedResult<InvoiceListItemDto>(total, q.PageNumber, q.PageSize, items, totals);
+        return new PagedResult<InvoiceListItemDto>(total, pageNumber, pageSize, items, totals);
     }
 
     private static bool TryParseUtc(string? s, out DateTime value)

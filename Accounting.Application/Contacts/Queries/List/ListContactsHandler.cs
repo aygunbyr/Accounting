@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Constants;
 using Accounting.Application.Contacts.Queries.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,10 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
 
     public async Task<ContactListResult> Handle(ListContactsQuery q, CancellationToken ct)
     {
+        // Normalize pagination
+        var page = PaginationConstants.NormalizePage(q.Page);
+        var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
+
         var qry = _db.Contacts.AsNoTracking();
 
         // BranchId filter (eğer belirtilmişse)
@@ -34,8 +39,8 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
 
         var items = await qry
             .OrderBy(x => x.Name)
-            .Skip((q.Page - 1) * q.PageSize)
-            .Take(q.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(x => new ContactListItemDto(
                 x.Id, x.BranchId, x.Code, x.Name, x.Type.ToString(), x.Email,
                 x.CreatedAtUtc

@@ -18,7 +18,7 @@ public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, ItemDetailDt
     {
         // (1) fetch (tracking)
         var e = await _db.Items.FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
-        if (e is null) throw new KeyNotFoundException("Item not found.");
+        if (e is null) throw new NotFoundException("Item", r.Id);
 
         // (3) original rowversion
         var original = Convert.FromBase64String(r.RowVersion);

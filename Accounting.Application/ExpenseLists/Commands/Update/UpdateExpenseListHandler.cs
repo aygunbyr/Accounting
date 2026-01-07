@@ -22,7 +22,7 @@ public class UpdateExpenseListHandler : IRequestHandler<UpdateExpenseListCommand
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
 
         if (list is null)
-            throw new KeyNotFoundException($"ExpenseList {req.Id} not found.");
+            throw new NotFoundException("ExpenseList", req.Id);
 
         // Only Draft lists can be updated
         if (list.Status != ExpenseListStatus.Draft)
@@ -80,7 +80,7 @@ public class UpdateExpenseListHandler : IRequestHandler<UpdateExpenseListCommand
                 // ✅ GÜNCELLE (mevcut line)
                 var existingLine = list.Lines.FirstOrDefault(l => l.Id == lineDto.Id.Value);
                 if (existingLine is null)
-                    throw new KeyNotFoundException($"Expense line {lineDto.Id.Value} not found in list.");
+                    throw new NotFoundException("ExpenseLine", lineDto.Id.Value);
 
                 existingLine.DateUtc = dateUtc;
                 existingLine.SupplierId = lineDto.SupplierId;

@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.FixedAssets.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -25,7 +26,7 @@ public sealed class UpdateFixedAssetHandler
 
         if (entity is null)
         {
-            throw new KeyNotFoundException("Fixed asset not found.");
+            throw new NotFoundException("FixedAsset", r.Id);
         }
 
         if (entity.IsDeleted)
@@ -78,7 +79,7 @@ public sealed class UpdateFixedAssetHandler
 
         if (fresh is null)
         {
-            throw new KeyNotFoundException("Fixed asset not found after update.");
+            throw new NotFoundException("FixedAsset", r.Id);
         }
 
         return new FixedAssetDetailDto(

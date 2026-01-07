@@ -13,7 +13,7 @@ public class UpdateCashBankAccountHandler(IAppDbContext db)
     public async Task<CashBankAccountDetailDto> Handle(UpdateCashBankAccountCommand r, CancellationToken ct)
     {
         var e = await db.CashBankAccounts.FirstOrDefaultAsync(a => a.Id == r.Id && !a.IsDeleted, ct);
-        if (e is null) throw new KeyNotFoundException($"CashBankAccount {r.Id} not found.");
+        if (e is null) throw new NotFoundException("CashBankAccount", r.Id);
 
         db.Entry(e).Property(nameof(CashBankAccount.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
 

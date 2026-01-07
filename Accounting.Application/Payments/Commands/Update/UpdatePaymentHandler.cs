@@ -23,7 +23,7 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
     {
         // 1) Fetch (TRACKING)
         var p = await _db.Payments.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
-        if (p is null) throw new KeyNotFoundException($"Payment {req.Id} not found.");
+        if (p is null) throw new NotFoundException("Payment", req.Id);
 
         // Eski LinkedInvoiceId'yi sakla (balance recalc için)
         var oldLinkedInvoiceId = p.LinkedInvoiceId;
@@ -86,7 +86,7 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
         var fresh = await _db.Payments
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == p.Id, ct);
-        if (fresh is null) throw new KeyNotFoundException($"Payment {p.Id} not found after update.");
+        if (fresh is null) throw new NotFoundException("Payment", req.Id);
 
         // 9) DTO
         return new PaymentDetailDto(

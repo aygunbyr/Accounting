@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.CashBankAccounts.Queries.Dto;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Abstractions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ public class GetCashBankAccountByIdHandler(IAppDbContext db)
     public async Task<CashBankAccountDetailDto> Handle(GetCashBankAccountByIdQuery r, CancellationToken ct)
     {
         var x = await db.CashBankAccounts.AsNoTracking().FirstOrDefaultAsync(a => a.Id == r.Id && !a.IsDeleted, ct);
-        if (x is null) throw new KeyNotFoundException($"CashBankAccount {r.Id} not found.");
+        if (x is null) throw new NotFoundException("CashBankAccount", r.Id);
 
         return new CashBankAccountDetailDto(
             x.Id,

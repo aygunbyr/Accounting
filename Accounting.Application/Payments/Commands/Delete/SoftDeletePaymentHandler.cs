@@ -19,7 +19,7 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
     public async Task Handle(SoftDeletePaymentCommand req, CancellationToken ct)
     {
         var p = await _db.Payments.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
-        if (p is null) throw new KeyNotFoundException($"Payment {req.Id} not found.");
+        if (p is null) throw new NotFoundException("Payment", req.Id);
 
         byte[] originalBytes;
         try

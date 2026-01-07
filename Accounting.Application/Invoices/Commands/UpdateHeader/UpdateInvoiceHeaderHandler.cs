@@ -24,7 +24,7 @@ public class UpdateInvoiceHeaderHandler
             .FirstOrDefaultAsync(i => i.Id == req.Id, ct);
 
         if (inv is null)
-            throw new KeyNotFoundException($"Invoice {req.Id} not found.");
+            throw new NotFoundException("Invoice", req.Id);
 
         // 2) Concurrency (parent RowVersion)
         byte[] rv;
@@ -68,7 +68,7 @@ public class UpdateInvoiceHeaderHandler
             .FirstOrDefaultAsync(i => i.Id == req.Id, ct);
 
         if (fresh is null)
-            throw new KeyNotFoundException($"Invoice {req.Id} not found after update.");
+            throw new NotFoundException("Invoice", req.Id);
 
         // 8) Lines → DTO (SNAPSHOT KULLAN)
         var lines = fresh.Lines

@@ -20,7 +20,7 @@ public class ReviewExpenseListHandler : IRequestHandler<ReviewExpenseListCommand
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
 
         if (list is null)
-            throw new KeyNotFoundException($"ExpenseList {req.Id} not found.");
+            throw new NotFoundException("ExpenseList", req.Id);
 
         if (list.Status != ExpenseListStatus.Draft)
             throw new BusinessRuleException("Only Draft expense lists can be reviewed.");

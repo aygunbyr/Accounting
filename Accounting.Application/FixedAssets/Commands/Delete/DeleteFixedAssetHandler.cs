@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +23,7 @@ public sealed class DeleteFixedAssetHandler
 
         if (entity is null)
         {
-            throw new KeyNotFoundException("Fixed asset not found.");
+            throw new NotFoundException("FixedAsset", r.Id);
         }
 
         // Concurrency: RowVersion

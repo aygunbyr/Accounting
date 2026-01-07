@@ -16,7 +16,7 @@ public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, Contac
     {
         // 1) Fetch (TRACKING)
         var c = await _db.Contacts.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
-        if (c is null) throw new KeyNotFoundException($"Contact {req.Id} not found.");
+        if (c is null) throw new NotFoundException("Contact", req.Id);
 
         // 2) Business rules: (şimdilik yok)
 
@@ -42,7 +42,7 @@ public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, Contac
         // 7) Fresh read
         var fresh = await _db.Contacts.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
-        if (fresh is null) throw new KeyNotFoundException($"Contact {req.Id} not found after update.");
+        if (fresh is null) throw new NotFoundException("Contact", req.Id);
 
         // 8) DTO
         return new ContactDto(

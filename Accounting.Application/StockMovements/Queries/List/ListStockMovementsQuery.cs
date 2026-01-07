@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Models;
+using Accounting.Application.Common.Constants;
 using Accounting.Application.StockMovements.Queries.Dto;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -13,6 +14,6 @@ public record ListStockMovementsQuery(
     DateTime? FromUtc = null,
     DateTime? ToUtc = null,
     int PageNumber = 1,
-    int PageSize = 20,
+    int PageSize = PaginationConstants.DefaultPageSize,
     string? Sort = "date:desc" // date/created/item
 ) : IRequest<PagedResult<StockMovementDto>>;
