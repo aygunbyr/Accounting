@@ -25,6 +25,7 @@ public class CreateItemHandler : IRequestHandler<CreateItemCommand, ItemDetailDt
         var e = new Item
         {
             BranchId = r.BranchId,
+            CategoryId = r.CategoryId,
             Name = r.Name.Trim(),
             Unit = r.Unit.Trim(),
             VatRate = r.VatRate,
@@ -38,8 +39,18 @@ public class CreateItemHandler : IRequestHandler<CreateItemCommand, ItemDetailDt
         // Fresh read
         var saved = await _db.Items.AsNoTracking().FirstAsync(x => x.Id == e.Id, ct);
 
+        // Kategori ismi
+        string? catName = null;
+        if (e.CategoryId.HasValue)
+        {
+             var cat = await _db.Categories.FindAsync(new object[] { e.CategoryId.Value }, ct);
+             catName = cat?.Name;
+        }
+
         return new ItemDetailDto(
             saved.Id,
+            saved.CategoryId,
+            catName,
             saved.Name,
             saved.Unit,
             saved.VatRate,

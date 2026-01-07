@@ -1,0 +1,136 @@
+using Accounting.Application.Categories.Commands.Create;
+using Accounting.Application.Categories.Commands.Delete;
+using Accounting.Application.Categories.Commands.Update;
+using Accounting.Application.Categories.Queries.List;
+using Accounting.Application.Common.Errors;
+using Accounting.Domain.Entities;
+using Accounting.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Xunit;
+
+namespace Accounting.Tests;
+
+public class CategoryTests
+{
+    private AppDbContext GetDbContext()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        return new AppDbContext(options, null!);
+    }
+
+    [Fact]
+    public async Task CreateCategory_ShouldSucceed()
+    {
+        var db = GetDbContext();
+        var handler = new CreateCategoryHandler(db);
+        var cmd = new CreateCategoryCommand("Electronics", "All gadgets", "#FF0000");
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        Assert.NotEqual(0, result.Id);
+        Assert.Equal("Electronics", result.Name);
+        Assert.NotNull(result.RowVersion);
+        
+        var inDb = await db.Categories.FindAsync(result.Id);
+        Assert.NotNull(inDb);
+        Assert.Equal("Electronics", inDb.Name);
+    }
+
+    [Fact]
+    public async Task UpdateCategory_ShouldSucceed()
+    {
+        var db = GetDbContext();
+        var category = new Category 
+        { 
+            Name = "Old Name", 
+            RowVersion = [1] // Dummy RowVersion for InMemory
+        };
+        db.Categories.Add(category);
+        await db.SaveChangesAsync();
+
+        var handler = new UpdateCategoryHandler(db);
+        var cmd = new UpdateCategoryCommand(
+            category.Id, 
+            "New Name", 
+            "Desc", 
+            "#000", 
+            Convert.ToBase64String(category.RowVersion)
+        );
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        Assert.Equal("New Name", result.Name);
+        
+        var inDb = await db.Categories.FindAsync(category.Id);
+        Assert.Equal("New Name", inDb!.Name);
+    }
+
+    [Fact]
+    public async Task DeleteCategory_ShouldSucceed_WhenNotUsed()
+    {
+        var db = GetDbContext();
+        var category = new Category { Name = "To Delete", RowVersion = [1] };
+        db.Categories.Add(category);
+        await db.SaveChangesAsync();
+
+        var handler = new DeleteCategoryHandler(db);
+        var cmd = new DeleteCategoryCommand(category.Id, Convert.ToBase64String(category.RowVersion));
+
+        var result = await handler.Handle(cmd, CancellationToken.None);
+
+        Assert.True(result);
+        var inDb = await db.Categories.FindAsync(category.Id);
+        // Soft deleted?
+        Assert.True(inDb!.IsDeleted);
+    }
+
+    [Fact]
+    public async Task DeleteCategory_ShouldFail_WhenUsedByItem()
+    {
+        var db = GetDbContext();
+        var rowVer = new byte[] { 1 };
+        var branch = new Branch { Id = 1, Name = "B1", Code = "B1", RowVersion = rowVer };
+        var category = new Category { Id = 10, Name = "Used Cat", RowVersion = rowVer };
+        var item = new Item 
+        { 
+            BranchId = 1, 
+            CategoryId = 10, 
+            Name = "Item X", 
+            Code = "X", 
+            RowVersion = rowVer 
+        };
+
+        db.Branches.Add(branch);
+        db.Categories.Add(category);
+        db.Items.Add(item);
+        await db.SaveChangesAsync();
+
+        var handler = new DeleteCategoryHandler(db);
+        var cmd = new DeleteCategoryCommand(category.Id, Convert.ToBase64String(category.RowVersion));
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => handler.Handle(cmd, CancellationToken.None));
+    }
+    
+    [Fact]
+    public async Task GetCategories_ShouldListAllalphabetically()
+    {
+        var db = GetDbContext();
+        db.Categories.AddRange(
+            new Category { Name = "Zebra", RowVersion = [1] },
+            new Category { Name = "Alpha", RowVersion = [1] },
+            new Category { Name = "Beta", RowVersion = [1] }
+        );
+        await db.SaveChangesAsync();
+        
+        var handler = new GetCategoriesHandler(db);
+        var result = await handler.Handle(new GetCategoriesQuery(), CancellationToken.None);
+        
+        Assert.Equal(3, result.Count);
+        Assert.Equal("Alpha", result[0].Name);
+        Assert.Equal("Beta", result[1].Name);
+        Assert.Equal("Zebra", result[2].Name);
+    }
+}

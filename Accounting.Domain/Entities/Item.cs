@@ -6,6 +6,7 @@ public class Item : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 {
     public int Id { get; set; }
     public int BranchId { get; set; }
+    public int? CategoryId { get; set; } // Optional category
     public string Name { get; set; } = null!;
     public string Code { get; set; } = null!;
     public string Unit { get; set; } = "adet";
@@ -21,4 +22,5 @@ public class Item : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
 
     // Navigations
     public Branch Branch { get; set; } = null!;
+    public Category? Category { get; set; }
 }

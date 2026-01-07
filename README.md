@@ -418,6 +418,9 @@ Accounting.Infrastructure/
 - [ ] Multi-branch stock transfer
 - [ ] Fixed Asset depreciation calculation
 - [ ] Reporting module (balance sheet, P&L)
+- [ ] Item Category support
+- [ ] Excel export support
+- [ ] Order Management (Quotes/Orders -> Invoice flow)
 - [ ] User authentication & authorization
 - [ ] Audit log tracking
 - [ ] Email notifications

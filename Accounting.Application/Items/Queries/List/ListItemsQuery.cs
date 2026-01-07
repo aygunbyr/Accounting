@@ -11,6 +11,7 @@ public record ListItemsQuery(
     int PageSize = PaginationConstants.DefaultPageSize,
     string? Search = null,         // Name contains (case-insensitive)
     string? Unit = null,           // eşleşirse filtre
+    int? CategoryId = null,        // filtre
     int? VatRate = null,           // 0..100
     string? Sort = "name:asc"      // "name:asc|desc", "vatRate:asc|desc", "price:asc|desc"
 ) : IRequest<PagedResult<ItemListItemDto>>;

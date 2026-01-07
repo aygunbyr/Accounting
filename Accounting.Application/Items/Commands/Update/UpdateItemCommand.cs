@@ -6,6 +6,7 @@ namespace Accounting.Application.Items.Commands.Update;
 
 public record UpdateItemCommand(
     int Id,
+    int? CategoryId,
     string Name,
     string Unit,
     int VatRate,

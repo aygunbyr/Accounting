@@ -11,7 +11,10 @@ public class ListItemsHandler(IAppDbContext db) : IRequestHandler<ListItemsQuery
 {
     public async Task<PagedResult<ItemListItemDto>> Handle(ListItemsQuery r, CancellationToken ct)
     {
-        var q = db.Items.AsNoTracking().Where(x => !x.IsDeleted);
+        var q = db.Items.AsNoTracking().Include(x => x.Category).Where(x => !x.IsDeleted);
+
+        if (r.CategoryId.HasValue)
+            q = q.Where(x => x.CategoryId == r.CategoryId);
 
         if (!string.IsNullOrWhiteSpace(r.Search))
         {
@@ -46,7 +49,10 @@ public class ListItemsHandler(IAppDbContext db) : IRequestHandler<ListItemsQuery
         var items = await q.Skip((r.PageNumber - 1) * r.PageSize)
                            .Take(r.PageSize)
                            .Select(x => new ItemListItemDto(
-                               x.Id, x.Code, x.Name, x.Unit, x.VatRate,
+                               x.Id, 
+                               x.CategoryId,
+                               x.Category == null ? null : x.Category.Name,
+                               x.Code, x.Name, x.Unit, x.VatRate,
                                x.DefaultUnitPrice == null ? null : Money.S2(x.DefaultUnitPrice.Value),
                                x.CreatedAtUtc))
                            .ToListAsync(ct);

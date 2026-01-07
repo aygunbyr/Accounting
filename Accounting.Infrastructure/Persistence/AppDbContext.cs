@@ -16,6 +16,7 @@ public class AppDbContext : DbContext, IAppDbContext
         _audit = audit;
     }
 
+    public DbSet<Category> Categories => Set<Category>();
     public DbSet<Contact> Contacts => Set<Contact>();
     public DbSet<Item> Items => Set<Item>();
     public DbSet<Invoice> Invoices => Set<Invoice>();

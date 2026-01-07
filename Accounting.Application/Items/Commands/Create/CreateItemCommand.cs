@@ -5,6 +5,7 @@ namespace Accounting.Application.Items.Commands.Create;
 
 public record CreateItemCommand(
     int BranchId,
+    int? CategoryId,
     string Name,
     string Unit,
     int VatRate,             // 0..100

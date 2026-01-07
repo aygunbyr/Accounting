@@ -10,6 +10,7 @@ namespace Accounting.Application.Common.Abstractions;
 public interface IAppDbContext
 {
     DbSet<Contact> Contacts { get; }
+    DbSet<Category> Categories { get; }
     DbSet<Item> Items { get; }
     DbSet<Invoice> Invoices { get; }
     DbSet<InvoiceLine> InvoiceLines { get; }

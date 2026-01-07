@@ -25,6 +25,7 @@ public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, ItemDetailDt
         _db.Entry(e).Property(nameof(Item.RowVersion)).OriginalValue = original;
 
         // (4) normalize + parse
+        e.CategoryId = r.CategoryId;
         e.Name = r.Name.Trim();
         e.Unit = r.Unit.Trim();
         e.VatRate = r.VatRate;
@@ -50,11 +51,17 @@ public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, ItemDetailDt
         }
 
         // (7) fresh read
-        var fresh = await _db.Items.AsNoTracking().FirstAsync(x => x.Id == e.Id, ct);
+        // (7) fresh read
+        var fresh = await _db.Items
+            .AsNoTracking()
+            .Include(x => x.Category)
+            .FirstAsync(x => x.Id == e.Id, ct);
 
         // (8) dto
         return new ItemDetailDto(
             fresh.Id,
+            fresh.CategoryId,
+            fresh.Category?.Name, // Include in query below
             fresh.Name,
             fresh.Unit,
             fresh.VatRate,

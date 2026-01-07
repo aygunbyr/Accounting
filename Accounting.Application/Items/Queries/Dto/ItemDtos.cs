@@ -2,6 +2,8 @@
 
 public record ItemListItemDto(
     int Id,
+    int? CategoryId,
+    string? CategoryName,
     string Code,
     string Name,
     string Unit,
@@ -12,6 +14,8 @@ public record ItemListItemDto(
 
 public record ItemDetailDto(
     int Id,
+    int? CategoryId,
+    string? CategoryName,
     string Name,
     string Unit,
     int VatRate,

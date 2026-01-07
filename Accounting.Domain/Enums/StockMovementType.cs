@@ -7,5 +7,7 @@ public enum StockMovementType
     AdjustmentIn = 3,    // Sayım fazlası
     AdjustmentOut = 4,   // Sayım eksiği
     SalesReturn = 5,     // Satış iadesi (Giriş)
-    PurchaseReturn = 6   // Alış iadesi (Çıkış)
+    PurchaseReturn = 6,   // Alış iadesi (Çıkış)
+    TransferOut = 7,     // Transfer çıkışı
+    TransferIn = 8       // Transfer girişi
 }
