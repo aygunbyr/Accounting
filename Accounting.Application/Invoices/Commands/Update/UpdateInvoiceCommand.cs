@@ -1,4 +1,3 @@
-﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Invoices.Queries.Dto;
 using MediatR;
 
@@ -11,7 +10,7 @@ public sealed record UpdateInvoiceCommand(
     string Type,
     int BranchId,
     IReadOnlyList<UpdateInvoiceLineDto> Lines
-) : IRequest<InvoiceDto>, ITransactionalRequest;
+) : IRequest<InvoiceDto>;
 
 public sealed record UpdateInvoiceLineDto(
     int Id,          // 0 = new

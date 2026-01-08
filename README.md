@@ -62,25 +62,6 @@ order.Lines.Add(line2);
 await db.SaveChangesAsync(); // Tek çağrı = otomatik transaction
 ```
 
-### Mevcut Kullanımlar
-
-**ITransactionalRequest KULLANAN (doğru):**
-```
-✓ CreatePaymentCommand      → 2x SaveChanges (Payment + InvoiceBalance)
-✓ UpdatePaymentCommand      → 2x SaveChanges
-✓ SoftDeletePaymentCommand  → 2x SaveChanges
-✓ CreateInvoiceCommand      → MediatR.Send (StockMovement)
-✓ PostExpenseListToBillCommand → 2x MediatR.Send (Invoice + Payment)
-```
-
-**ITransactionalRequest KULLANMAYAN (doğru):**
-```
-✓ CreateContactCommand      → Tek SaveChanges
-✓ CreateOrderCommand        → Order + Lines (aynı aggregate)
-✓ UpdateInvoiceHeaderCommand → Tek SaveChanges
-✓ Tüm basit CRUD işlemleri
-```
-
 ### Nasıl Çalışır?
 
 ```

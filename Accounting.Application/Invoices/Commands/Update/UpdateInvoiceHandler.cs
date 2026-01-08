@@ -206,13 +206,25 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         // Toplamlar değişince bakiyeyi yeniden hesapla
         await _balanceService.RecalculateBalanceAsync(inv.Id, ct);
 
-        // 5) Save + concurrency
-        try { await _ctx.SaveChangesAsync(ct); }
-        catch (DbUpdateConcurrencyException)
-        { throw new ConcurrencyConflictException(); }
+        // Transaction: Invoice update + StockMovements birlikte commit
+        await using var tx = await _ctx.BeginTransactionAsync(ct);
+        try
+        {
+            // 5) Save + concurrency
+            try { await _ctx.SaveChangesAsync(ct); }
+            catch (DbUpdateConcurrencyException)
+            { throw new ConcurrencyConflictException(); }
 
-        // 5.5) Stok Hareketlerini Senkronize Et (Reset yöntemi)
-        await SyncStockMovements(inv, ct);
+            // 5.5) Stok Hareketlerini Senkronize Et (Reset yöntemi)
+            await SyncStockMovements(inv, ct);
+
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
 
         // 6) Fresh read (AsNoTracking + Contact + Lines)
         var fresh = await _ctx.Invoices

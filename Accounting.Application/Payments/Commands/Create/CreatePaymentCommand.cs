@@ -1,4 +1,3 @@
-﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -14,7 +13,7 @@ public record CreatePaymentCommand(
     PaymentDirection Direction,
     string Amount,
     string Currency
-) : IRequest<CreatePaymentResult>, ITransactionalRequest;
+) : IRequest<CreatePaymentResult>;
 
 public record CreatePaymentResult(
     int Id,

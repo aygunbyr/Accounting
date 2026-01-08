@@ -1,4 +1,3 @@
-﻿using Accounting.Application.Common.Abstractions;
 using MediatR;
 
 namespace Accounting.Application.ExpenseLists.Commands.PostToBill;
@@ -12,7 +11,7 @@ public record PostExpenseListToBillCommand(
     int? PaymentAccountId = null,
     string? PaymentDateUtc = null,
     string? DateUtc = null
-) : IRequest<PostExpenseListToBillResult>, ITransactionalRequest;
+) : IRequest<PostExpenseListToBillResult>;
 
 public record PostExpenseListToBillResult(
     int CreatedInvoiceId,

@@ -40,20 +40,31 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
         // LinkedInvoiceId'yi sakla (SaveChanges sonrası kullanacağız)
         var linkedInvoiceId = p.LinkedInvoiceId;
 
+        // Transaction: Payment delete + Invoice Balance birlikte commit
+        await using var tx = await _db.BeginTransactionAsync(ct);
         try
         {
-            await _db.SaveChangesAsync(ct); // Önce soft delete'i kaydet
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            throw new ConcurrencyConflictException("Ödeme başka biri tarafından güncellendi/silindi.");
-        }
+            try
+            {
+                await _db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new ConcurrencyConflictException("Ödeme başka biri tarafından güncellendi/silindi.");
+            }
 
-        // Sonra balance hesapla (artık Payment soft-deleted)
-        if (linkedInvoiceId.HasValue)
+            if (linkedInvoiceId.HasValue)
+            {
+                await _balanceService.RecalculateBalanceAsync(linkedInvoiceId.Value, ct);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+        }
+        catch
         {
-            await _balanceService.RecalculateBalanceAsync(linkedInvoiceId.Value, ct);
-            await _db.SaveChangesAsync(ct);
+            await tx.RollbackAsync(ct);
+            throw;
         }
     }
 }

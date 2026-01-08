@@ -63,23 +63,35 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
         // 5) Audit
         p.UpdatedAtUtc = DateTime.UtcNow;
 
-        // 6) Persist
-        try { await _db.SaveChangesAsync(ct); }
-        catch (DbUpdateConcurrencyException)
-        { throw new ConcurrencyConflictException("Ödeme başka biri tarafından güncellendi."); }
-
-        // 7) Recalculate balances (eski ve yeni invoice için)
-        var invoicesToRecalc = new HashSet<int>();
-        if (oldLinkedInvoiceId.HasValue) invoicesToRecalc.Add(oldLinkedInvoiceId.Value);
-        if (p.LinkedInvoiceId.HasValue) invoicesToRecalc.Add(p.LinkedInvoiceId.Value);
-
-        foreach (var invoiceId in invoicesToRecalc)
+        // Transaction: Payment update + Invoice Balance birlikte commit
+        await using var tx = await _db.BeginTransactionAsync(ct);
+        try
         {
-            await _balanceService.RecalculateBalanceAsync(invoiceId, ct);
+            // 6) Persist
+            try { await _db.SaveChangesAsync(ct); }
+            catch (DbUpdateConcurrencyException)
+            { throw new ConcurrencyConflictException("Ödeme başka biri tarafından güncellendi."); }
+
+            // 7) Recalculate balances (eski ve yeni invoice için)
+            var invoicesToRecalc = new HashSet<int>();
+            if (oldLinkedInvoiceId.HasValue) invoicesToRecalc.Add(oldLinkedInvoiceId.Value);
+            if (p.LinkedInvoiceId.HasValue) invoicesToRecalc.Add(p.LinkedInvoiceId.Value);
+
+            foreach (var invoiceId in invoicesToRecalc)
+            {
+                await _balanceService.RecalculateBalanceAsync(invoiceId, ct);
+            }
+            if (invoicesToRecalc.Count > 0)
+            {
+                await _db.SaveChangesAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
         }
-        if (invoicesToRecalc.Count > 0)
+        catch
         {
-            await _db.SaveChangesAsync(ct);
+            await tx.RollbackAsync(ct);
+            throw;
         }
 
         // 8) Fresh read

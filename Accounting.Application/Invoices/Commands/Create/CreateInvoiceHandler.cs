@@ -171,12 +171,23 @@ public class CreateInvoiceHandler
         // Yeni fatura oluşturulurken balance = TotalGross (henüz ödeme yok)
         invoice.Balance = invoice.TotalGross;
 
-        // 5) Persist
-        _db.Invoices.Add(invoice);
-        await _db.SaveChangesAsync(ct);
+        // Transaction: Invoice + StockMovements birlikte commit
+        await using var tx = await _db.BeginTransactionAsync(ct);
+        try
+        {
+            _db.Invoices.Add(invoice);
+            await _db.SaveChangesAsync(ct);
 
-        // 5.5) Stok Hareketlerini Oluştur
-        await CreateStockMovements(invoice, ct);
+            // Stok Hareketlerini Oluştur
+            await CreateStockMovements(invoice, ct);
+
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
 
         // 6) Sonuç (response’ta string)
         return new CreateInvoiceResult(

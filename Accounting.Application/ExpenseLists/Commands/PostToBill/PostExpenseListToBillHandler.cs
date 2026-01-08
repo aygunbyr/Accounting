@@ -89,40 +89,51 @@ public class PostExpenseListToBillHandler
             Type: InvoiceType.Purchase.ToString()
         );
 
-        var created = await _mediator.Send(createCmd, ct);
-
-        // ✅ YENİ: CreatePayment ise otomatik ödeme oluştur
-        if (req.CreatePayment)
+        // Transaction: Invoice + Payment + ExpenseList status birlikte commit
+        await using var tx = await _db.BeginTransactionAsync(ct);
+        try
         {
-            if (!req.PaymentAccountId.HasValue)
-                throw new BusinessRuleException("PaymentAccountId is required when CreatePayment is true.");
+            var created = await _mediator.Send(createCmd, ct);
 
-            var paymentCmd = new CreatePaymentCommand(
-                BranchId: list.BranchId,
-                AccountId: req.PaymentAccountId.Value,
-                ContactId: req.SupplierId,
-                LinkedInvoiceId: created.Id,
-                Direction: PaymentDirection.Out,  // Purchase → Out (ödeme yapıyoruz)
-                Amount: created.TotalGross,  // Invoice total
-                Currency: req.Currency.ToUpperInvariant(),
-                DateUtc: req.PaymentDateUtc ?? dateUtc.ToString("o", CultureInfo.InvariantCulture)
+            if (req.CreatePayment)
+            {
+                if (!req.PaymentAccountId.HasValue)
+                    throw new BusinessRuleException("PaymentAccountId is required when CreatePayment is true.");
+
+                var paymentCmd = new CreatePaymentCommand(
+                    BranchId: list.BranchId,
+                    AccountId: req.PaymentAccountId.Value,
+                    ContactId: req.SupplierId,
+                    LinkedInvoiceId: created.Id,
+                    Direction: PaymentDirection.Out,
+                    Amount: created.TotalGross,
+                    Currency: req.Currency.ToUpperInvariant(),
+                    DateUtc: req.PaymentDateUtc ?? dateUtc.ToString("o", CultureInfo.InvariantCulture)
+                );
+
+                await _mediator.Send(paymentCmd, ct);
+            }
+
+            // Listeyi "Posted" işaretle ve satırlara InvoiceId yaz
+            list.Status = ExpenseListStatus.Posted;
+            list.PostedInvoiceId = created.Id;
+
+            foreach (var l in list.Lines)
+                l.PostedInvoiceId = created.Id;
+
+            await _db.SaveChangesAsync(ct);
+
+            await tx.CommitAsync(ct);
+
+            return new PostExpenseListToBillResult(
+                CreatedInvoiceId: created.Id,
+                PostedExpenseCount: list.Lines.Count
             );
-
-            await _mediator.Send(paymentCmd, ct);
         }
-
-        // Listeyi "Posted" işaretle ve satırlara InvoiceId yaz
-        list.Status = ExpenseListStatus.Posted;
-        list.PostedInvoiceId = created.Id;
-
-        foreach (var l in list.Lines)
-            l.PostedInvoiceId = created.Id;
-
-        await _db.SaveChangesAsync(ct);
-
-        return new PostExpenseListToBillResult(
-            CreatedInvoiceId: created.Id,
-            PostedExpenseCount: list.Lines.Count
-        );
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
     }
 }

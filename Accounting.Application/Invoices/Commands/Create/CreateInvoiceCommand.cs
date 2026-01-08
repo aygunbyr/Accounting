@@ -1,4 +1,3 @@
-﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Domain.Entities;
 using MediatR;
 
@@ -11,7 +10,7 @@ public record CreateInvoiceCommand(
     string Currency,
     List<CreateInvoiceLineDto> Lines,
     string Type // "Sales", "Purchase" vb.
-) : IRequest<CreateInvoiceResult>, ITransactionalRequest;
+) : IRequest<CreateInvoiceResult>;
 
 public record CreateInvoiceResult(
     int Id,

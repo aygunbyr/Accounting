@@ -1,4 +1,3 @@
-﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Payments.Queries.Dto;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -13,4 +12,4 @@ public record UpdatePaymentCommand(
     string Amount,     // string money, örn "1250.00"
     string Currency,   // "TRY"
     string RowVersion  // base64
-) : IRequest<PaymentDetailDto>, ITransactionalRequest;
+) : IRequest<PaymentDetailDto>;
