@@ -25,23 +25,18 @@
 
 ---
 
-## 🔐 Transaction Yönetimi (ITransactionalRequest)
+## 🔐 Transaction Yönetimi
 
-### TransactionBehavior Nedir?
+### Yaklaşım: Manuel Transaction
 
-MediatR pipeline'ında çalışan bir behavior. `ITransactionalRequest` interface'i ile işaretlenmiş command'ları otomatik olarak database transaction içinde çalıştırır.
+Projede transaction yönetimi **açık ve görünür** olması için handler'ların içinde manuel olarak yapılmaktadır. Bu sayede:
+- Transaction nerede başlıyor/bitiyor açıkça görülür
+- Debug ve bakım kolaylaşır
+- Junior developer'lar bile kodu kolayca anlayabilir
 
-```csharp
-// Transaction içinde çalışır
-public record CreatePaymentCommand(...) : IRequest<Result>, ITransactionalRequest;
+> **Not:** `TransactionBehavior` ve `ITransactionalRequest` projede mevcut ancak aktif olarak kullanılmıyor. İleride ihtiyaç olursa kullanılabilir.
 
-// Transaction olmadan çalışır (EF Core'un default davranışı)
-public record CreateContactCommand(...) : IRequest<Result>;
-```
-
-### Ne Zaman Gerekli?
-
-`ITransactionalRequest` **SADECE** şu durumlarda kullanılmalıdır:
+### Ne Zaman Transaction Gerekli?
 
 | Durum | Örnek | Gerekli mi? |
 |-------|-------|-------------|
@@ -52,41 +47,52 @@ public record CreateContactCommand(...) : IRequest<Result>;
 
 ### Ne Zaman Gerekli DEĞİL?
 
-EF Core, tek `SaveChangesAsync()` çağrısını zaten **atomic** olarak çalıştırır. Yani:
+EF Core, tek `SaveChangesAsync()` çağrısını zaten **atomic** olarak çalıştırır:
 
 ```csharp
-// Bu zaten atomic - ITransactionalRequest GEREKMEZ
+// Bu zaten atomic - Transaction GEREKMEZ
 db.Orders.Add(order);
 order.Lines.Add(line1);
 order.Lines.Add(line2);
 await db.SaveChangesAsync(); // Tek çağrı = otomatik transaction
 ```
 
-### Nasıl Çalışır?
-
-```
-Request geldi
-    ↓
-TransactionBehavior kontrol eder
-    ↓
-ITransactionalRequest var mı?
-    ├─ HAYIR → Direkt handler'a geç
-    └─ EVET → 
-        ├─ BEGIN TRANSACTION
-        ├─ Handler çalış
-        ├─ Başarılı? → COMMIT
-        └─ Hata? → ROLLBACK
-```
-
-### Nested Transaction Koruması
-
-Aynı request içinde birden fazla `ITransactionalRequest` command çağrılırsa (örn: PostToBill → CreateInvoice), `TransactionContext.InTransaction` flag'i sayesinde nested transaction açılmaz.
+### Manuel Transaction Pattern
 
 ```csharp
-// PostExpenseListToBillHandler içinde:
-await _mediator.Send(new CreateInvoiceCommand(...));  // Yeni transaction AÇILMAZ
-await _mediator.Send(new CreatePaymentCommand(...));  // Aynı transaction içinde
+public async Task Handle(CreatePaymentCommand req, CancellationToken ct)
+{
+    // ... validation ve entity hazırlama ...
+
+    await using var tx = await _db.BeginTransactionAsync(ct);
+    try
+    {
+        _db.Payments.Add(payment);
+        await _db.SaveChangesAsync(ct);
+
+        await _balanceService.RecalculateBalanceAsync(invoiceId, ct);
+        await _db.SaveChangesAsync(ct);
+
+        await tx.CommitAsync(ct);
+    }
+    catch
+    {
+        await tx.RollbackAsync(ct);
+        throw;
+    }
+}
 ```
+
+### Transaction Kullanan Handler'lar
+
+| Handler | Sebep |
+|---------|-------|
+| `CreatePaymentHandler` | 2x SaveChanges (Payment + InvoiceBalance) |
+| `UpdatePaymentHandler` | 2x SaveChanges |
+| `SoftDeletePaymentHandler` | 2x SaveChanges |
+| `CreateInvoiceHandler` | MediatR.Send (StockMovement) |
+| `UpdateInvoiceHandler` | 2x SaveChanges + MediatR.Send |
+| `PostExpenseListToBillHandler` | MediatR.Send (Invoice + Payment) |
 
 ---
 
