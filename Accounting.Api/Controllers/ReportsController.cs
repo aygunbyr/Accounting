@@ -13,4 +13,14 @@ public class ReportsController(IMediator mediator) : ControllerBase
     {
         return Ok(await mediator.Send(new GetDashboardStatsQuery(branchId), ct));
     }
+
+    [HttpGet("contact/{contactId}/statement")]
+    public async Task<ActionResult<ContactStatementDto>> GetContactStatement(
+        int contactId,
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        CancellationToken ct = default)
+    {
+        return Ok(await mediator.Send(new GetContactStatementQuery(contactId, dateFrom, dateTo), ct));
+    }
 }
