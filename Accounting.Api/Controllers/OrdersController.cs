@@ -1,3 +1,4 @@
+using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Models;
 using Accounting.Application.Orders.Commands.Approve;
 using Accounting.Application.Orders.Commands.Cancel;
@@ -73,5 +74,19 @@ public class OrdersController(IMediator mediator) : ControllerBase
     public async Task<ActionResult<int>> CreateInvoice(int id, CancellationToken ct)
     {
         return Ok(await mediator.Send(new CreateInvoiceFromOrderCommand(id), ct));
+    }
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(
+        [FromServices] IExcelService excelService,
+        [FromQuery] int? branchId,
+        [FromQuery] int? contactId,
+        [FromQuery] OrderStatus? status,
+        CancellationToken ct)
+    {
+        var query = new GetOrdersQuery(branchId, contactId, status, 1, 10000); // 10k limit for export
+        var result = await mediator.Send(query, ct);
+        
+        var fileContent = await excelService.ExportAsync(result.Items, "Orders");
+        return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Orders_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx");
     }
 }

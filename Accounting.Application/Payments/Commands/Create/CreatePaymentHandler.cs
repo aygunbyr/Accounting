@@ -1,4 +1,4 @@
-﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Services;
 using Accounting.Domain.Entities;
@@ -11,10 +11,13 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
 {
     private readonly IAppDbContext _db;
     private readonly IInvoiceBalanceService _balanceService;
-    public CreatePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService)
+    private readonly IAccountBalanceService _accountBalanceService;
+
+    public CreatePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService, IAccountBalanceService accountBalanceService)
     {
         _db = db;
         _balanceService = balanceService;
+        _accountBalanceService = accountBalanceService;
     }
 
     public async Task<CreatePaymentResult> Handle(CreatePaymentCommand req, CancellationToken ct)
@@ -58,6 +61,13 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             if (entity.LinkedInvoiceId.HasValue)
             {
                 await _balanceService.RecalculateBalanceAsync(entity.LinkedInvoiceId.Value, ct);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            // Account Balance Update
+            if (entity.AccountId > 0)
+            {
+                await _accountBalanceService.RecalculateBalanceAsync(entity.AccountId, ct);
                 await _db.SaveChangesAsync(ct);
             }
 

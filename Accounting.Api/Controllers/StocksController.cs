@@ -1,4 +1,5 @@
-﻿using Accounting.Application.Common.Models;
+﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Models;
 using Accounting.Application.Stocks.Queries.Dto;
 using Accounting.Application.Stocks.Queries.GetById;
 using Accounting.Application.Stocks.Queries.List;
@@ -28,5 +29,19 @@ public class StocksController(IMediator mediator) : ControllerBase
     {
         var res = await _mediator.Send(new GetStockByIdQuery(id), ct);
         return Ok(res);
+    }
+
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(
+        [FromServices] IExcelService excelService,
+        [FromQuery] ListStocksQuery q,
+        CancellationToken ct)
+    {
+        // Force high limit for export
+        var exportQ = q with { PageNumber = 1, PageSize = 10000 };
+        var result = await _mediator.Send(exportQ, ct);
+        
+        var fileContent = await excelService.ExportAsync(result.Items, "Stocks");
+        return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Stocks_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx");
     }
 }

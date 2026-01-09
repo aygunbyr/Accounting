@@ -11,6 +11,7 @@ public class CashBankAccount : IHasTimestamps, ISoftDeletable, IHasRowVersion, I
     public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? Iban { get; set; }
+    public decimal Balance { get; set; }
 
     // audit + soft delete + concurrency
     public DateTime CreatedAtUtc { get; set; }

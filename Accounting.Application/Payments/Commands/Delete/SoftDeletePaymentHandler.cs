@@ -9,11 +9,13 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
 {
     private readonly IAppDbContext _db;
     private readonly IInvoiceBalanceService _balanceService;
+    private readonly IAccountBalanceService _accountBalanceService;
 
-    public SoftDeletePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService)
+    public SoftDeletePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService, IAccountBalanceService accountBalanceService)
     {
         _db = db;
         _balanceService = balanceService;
+        _accountBalanceService = accountBalanceService;
     }
 
     public async Task Handle(SoftDeletePaymentCommand req, CancellationToken ct)
@@ -56,6 +58,13 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
             if (linkedInvoiceId.HasValue)
             {
                 await _balanceService.RecalculateBalanceAsync(linkedInvoiceId.Value, ct);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            // Account Balance Update
+            if (p.AccountId > 0)
+            {
+                await _accountBalanceService.RecalculateBalanceAsync(p.AccountId, ct);
                 await _db.SaveChangesAsync(ct);
             }
 

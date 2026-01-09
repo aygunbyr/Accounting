@@ -22,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<AuditSaveChangesInterceptor>();
 
         services.AddScoped<IInvoiceBalanceService, InvoiceBalanceService>();
+        services.AddScoped<IExcelService, Accounting.Application.Common.Services.ExcelService>();
+        services.AddScoped<IAccountBalanceService, AccountBalanceService>();
 
         return services;
     }

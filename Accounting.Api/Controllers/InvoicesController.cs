@@ -1,4 +1,5 @@
-﻿using Accounting.Api.Contracts;
+﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Api.Contracts;
 using Accounting.Api.Contracts.Invoices;
 using Accounting.Application.Invoices.Commands.Create;
 using Accounting.Application.Invoices.Commands.Delete;
@@ -101,4 +102,28 @@ public class InvoicesController : ControllerBase
         return Ok(res);
     }
 
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(
+        [FromServices] IExcelService excelService,
+        [FromQuery] int? branchId,
+        [FromQuery] int? contactId,
+        [FromQuery] int? type,
+        [FromQuery] string? dateFromUtc,
+        [FromQuery] string? dateToUtc,
+        CancellationToken ct)
+    {
+         var typeEnum = Enum.IsDefined(typeof(InvoiceTypeFilter), type ?? 0)
+            ? (InvoiceTypeFilter)(type ?? 0)
+            : InvoiceTypeFilter.Any;
+
+        var query = new ListInvoicesQuery(
+            1, 10000, "dateUtc:desc", // 10k limit
+            branchId, contactId, typeEnum, 
+            dateFromUtc, dateToUtc
+        );
+        var result = await _mediator.Send(query, ct);
+        
+        var fileContent = await excelService.ExportAsync(result.Items, "Invoices");
+        return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Invoices_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx");
+    }
 }
