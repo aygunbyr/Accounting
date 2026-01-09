@@ -70,3 +70,8 @@ This document defines the coding standards, architectural patterns, and best pra
 ## 7. Migration & Database
 - **Schema**: Use `SnakeCase` naming for tables/columns (or preserve existing convention if Pascal).
 - **UTC**: All `DateTime` fields must be UTC (`DateTime.UtcNow`). suffix `AtUtc` (e.g., `CreatedAtUtc`).
+
+## 8. Project Scope & Vision
+- **Core Domain**: Pre-Accounting (Ön Muhasebe) and Stock Management.
+- **Reference Model**: Features and UX should take inspiration from **"Mikro Paraşüt"** SaaS application.
+- **Goal**: Provide a tailored, efficient backend that replaces Excel for SMEs (KOBİ), without over-engineering enterprise ERP features unless requested.
