@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceBalanceService, InvoiceBalanceService>();
         services.AddScoped<IExcelService, Accounting.Application.Common.Services.ExcelService>();
         services.AddScoped<IAccountBalanceService, AccountBalanceService>();
+        services.AddScoped<IStockService, StockService>();
 
         return services;
     }

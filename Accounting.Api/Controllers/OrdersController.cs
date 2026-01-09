@@ -61,7 +61,7 @@ public class OrdersController(IMediator mediator) : ControllerBase
     [HttpPut("{id}/approve")]
     public async Task<ActionResult<bool>> Approve(int id, [FromQuery] string rowVersion, CancellationToken ct)
     {
-        return Ok(await mediator.Send(new ApproveOrderCommand(id, rowVersion), ct));
+        return Ok(await mediator.Send(new ApproveOrderCommand(id, Convert.FromBase64String(rowVersion ?? "")), ct));
     }
 
     [HttpPut("{id}/cancel")]

@@ -1,4 +1,6 @@
+using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
+using Accounting.Application.Reports.Queries;
 using Accounting.Application.Orders.Commands.Approve;
 using Accounting.Application.Orders.Commands.Create;
 using Accounting.Application.Orders.Commands.CreateInvoice;
@@ -119,8 +121,8 @@ public class OrderTests
         db.Orders.Add(order);
         await db.SaveChangesAsync();
 
-        var handler = new ApproveOrderHandler(db);
-        var result = await handler.Handle(new ApproveOrderCommand(order.Id, Convert.ToBase64String(rowVer)), CancellationToken.None);
+        var handler = new ApproveOrderHandler(db, new FakeStockService());
+        var result = await handler.Handle(new ApproveOrderCommand(order.Id, rowVer), CancellationToken.None);
 
         Assert.True(result);
         var inDb = await db.Orders.FindAsync(order.Id);
@@ -169,4 +171,14 @@ public class OrderTests
         var updatedOrder = await db.Orders.FindAsync(order.Id);
         Assert.Equal(OrderStatus.Invoiced, updatedOrder!.Status);
     }
+}
+
+public class FakeStockService : IStockService
+{
+    public Task<List<ItemStockDto>> GetStockStatusAsync(List<int> itemIds, CancellationToken ct) 
+        => Task.FromResult(new List<ItemStockDto>());
+    public Task<ItemStockDto> GetItemStockAsync(int itemId, CancellationToken ct) 
+        => Task.FromResult(new ItemStockDto(itemId, 0, 0, 0, 0));
+    public Task ValidateStockAvailabilityAsync(int itemId, decimal quantityRequired, CancellationToken ct) 
+        => Task.CompletedTask;
 }

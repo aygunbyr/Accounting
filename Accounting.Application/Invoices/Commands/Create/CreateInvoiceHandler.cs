@@ -14,11 +14,13 @@ public class CreateInvoiceHandler
 {
     private readonly IAppDbContext _db;
     private readonly IMediator _mediator;
+    private readonly IStockService _stockService;
 
-    public CreateInvoiceHandler(IAppDbContext db, IMediator mediator)
+    public CreateInvoiceHandler(IAppDbContext db, IMediator mediator, IStockService stockService)
     {
         _db = db;
         _mediator = mediator;
+        _stockService = stockService;
     }
 
     public async Task<CreateInvoiceResult> Handle(CreateInvoiceCommand req, CancellationToken ct)
@@ -64,6 +66,22 @@ public class CreateInvoiceHandler
                 .Select(l => l.ItemId!.Value)
                 .Distinct()
                 .ToList();
+
+             // STOCK VALIDATION (Only for Sales)
+             if (invType == InvoiceType.Sales)
+             {
+                 foreach (var line in req.Lines)
+                 {
+                     if (line.ItemId.HasValue && decimal.TryParse(line.Qty, NumberStyles.Number, CultureInfo.InvariantCulture, out var qty))
+                     {
+                         var absQty = Math.Abs(qty);
+                         if (absQty > 0)
+                         {
+                             await _stockService.ValidateStockAvailabilityAsync(line.ItemId.Value, absQty, ct);
+                         }
+                     }
+                 }
+             }
 
              itemsMap = await _db.Items
                 .Where(i => itemIds.Contains(i.Id))

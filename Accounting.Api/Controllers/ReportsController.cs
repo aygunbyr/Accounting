@@ -23,4 +23,10 @@ public class ReportsController(IMediator mediator) : ControllerBase
     {
         return Ok(await mediator.Send(new GetContactStatementQuery(contactId, dateFrom, dateTo), ct));
     }
+
+    [HttpGet("stock-status")]
+    public async Task<ActionResult<List<StockStatusDto>>> GetStockStatus(CancellationToken ct)
+    {
+        return Ok(await mediator.Send(new GetStockStatusQuery(), ct));
+    }
 }

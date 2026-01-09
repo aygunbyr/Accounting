@@ -7,25 +7,38 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Orders.Commands.Approve;
 
-public record ApproveOrderCommand(int Id, string RowVersion) : IRequest<bool>;
+public record ApproveOrderCommand(int Id, byte[] RowVersion) : IRequest<bool>;
 
-public class ApproveOrderHandler(IAppDbContext db) : IRequestHandler<ApproveOrderCommand, bool>
+public class ApproveOrderHandler(IAppDbContext db, IStockService stockService) : IRequestHandler<ApproveOrderCommand, bool>
 {
-    public async Task<bool> Handle(ApproveOrderCommand r, CancellationToken ct)
+    public async Task<bool> Handle(ApproveOrderCommand request, CancellationToken ct)
     {
-        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == r.Id && !o.IsDeleted, ct);
-        if (order is null) throw new NotFoundException("Order", r.Id);
+        var order = await db.Orders
+            .Include(o => o.Lines)
+            .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+
+        if (order == null) throw new ApplicationException("Sipariş bulunamadı");
+
+        // Optimistic Concurrency Check
+        db.Entry(order).Property("RowVersion").OriginalValue = request.RowVersion;
 
         if (order.Status != OrderStatus.Draft)
+            throw new ApplicationException("Sadece 'Taslak' durumundaki siparişler onaylanabilir.");
+
+        // Validate Stock for Sales Orders
+        if (order.Type == InvoiceType.Sales)
         {
-            throw new BusinessRuleException("Sadece taslak durumundaki siparişler onaylanabilir.");
+            foreach (var line in order.Lines)
+            {
+                if (line.ItemId.HasValue)
+                {
+                    await stockService.ValidateStockAvailabilityAsync(line.ItemId.Value, line.Quantity, ct);
+                }
+            }
         }
 
-        db.Entry(order).Property(nameof(order.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
-
         order.Status = OrderStatus.Approved;
-        order.UpdatedAtUtc = DateTime.UtcNow;
-
+        
         try
         {
             await db.SaveChangesAsync(ct);
