@@ -33,6 +33,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<Stock> Stocks => Set<Stock>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<Cheque> Cheques => Set<Cheque>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

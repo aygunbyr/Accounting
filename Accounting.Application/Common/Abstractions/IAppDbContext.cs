@@ -26,6 +26,7 @@ public interface IAppDbContext
     DbSet<Warehouse> Warehouses { get; }
     DbSet<Stock> Stocks { get; }
     DbSet<StockMovement> StockMovements { get; }
+    DbSet<Cheque> Cheques { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
