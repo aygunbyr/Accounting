@@ -38,10 +38,10 @@ public class GetStockStatusHandler(IAppDbContext db, IStockService stockService)
                 item.Code,
                 item.Name,
                 item.Unit,
-                Money.S3(stats.QuantityIn),
-                Money.S3(stats.QuantityOut),
-                Money.S3(stats.QuantityReserved),
-                Money.S3(stats.QuantityAvailable)
+                stats.QuantityIn,
+                stats.QuantityOut,
+                stats.QuantityReserved,
+                stats.QuantityAvailable
             ));
         }
 

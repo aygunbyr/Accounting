@@ -5,8 +5,8 @@ public record StockStatusDto(
     string ItemCode,
     string ItemName,
     string Unit,
-    string QuantityIn,       // Giren
-    string QuantityOut,      // Çıkan
-    string QuantityReserved, // Rezerve
-    string QuantityAvailable // Mevcut
+    decimal QuantityIn,       // Giren
+    decimal QuantityOut,      // Çıkan
+    decimal QuantityReserved, // Rezerve
+    decimal QuantityAvailable // Mevcut
 );
