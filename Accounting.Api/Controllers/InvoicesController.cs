@@ -90,18 +90,6 @@ public class InvoicesController : ControllerBase
         return Ok(res);
     }
 
-    // SADECE HEADER
-    [HttpPatch("{id:int}/header")]
-    [ProducesResponseType(typeof(InvoiceDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> UpdateHeader([FromRoute] int id, [FromBody] UpdateInvoiceHeaderCommand body, CancellationToken ct)
-    {
-        if (id != body.Id) return BadRequest();
-        var res = await _mediator.Send(body, ct);
-        return Ok(res);
-    }
-
     [HttpGet("export")]
     public async Task<IActionResult> Export(
         [FromServices] IExcelService excelService,
