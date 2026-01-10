@@ -13,7 +13,7 @@ public class JwtTokenGenerator(IOptions<JwtSettings> jwtOptions) : IJwtTokenGene
 {
     private readonly JwtSettings _jwtSettings = jwtOptions.Value;
 
-    public string GenerateAccessToken(User user, List<string> permissions)
+public string GenerateAccessToken(User user, List<string> permissions)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.UTF8.GetBytes(_jwtSettings.Secret);
@@ -31,6 +31,12 @@ public class JwtTokenGenerator(IOptions<JwtSettings> jwtOptions) : IJwtTokenGene
         foreach (var permission in permissions)
         {
             claims.Add(new Claim("permission", permission));
+        }
+
+        // Roles - Add role claims for role-based authorization
+        foreach (var userRole in user.UserRoles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, userRole.Role.Name));
         }
 
         // Branch ID

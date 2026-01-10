@@ -96,6 +96,85 @@ public async Task Handle(CreatePaymentCommand req, CancellationToken ct)
 
 ---
 
+## 🔐 Kimlik Doğrulama & Yetkilendirme
+
+### Kimlik Doğrulama
+- **JWT-tabanlı** kimlik doğrulama (access & refresh token)
+- **Şifre Hashleme**: `IPasswordHasher` (Identity.Core)
+- **Özel** User/Role entity'leri (ASP.NET Identity framework kullanılmıyor)
+
+### Token Claims
+```csharp
+{
+  "id": "5",
+  "email": "user@example.com",
+  "permission": ["InvoiceCreate", "PaymentView"],
+  "role": "Admin",              // Rol bazlı yetkilendirme
+  "branchId": "2",              // Şube ataması
+  "isHeadquarters": "true"      // Merkez flag
+}
+```
+
+### Yetkilendirme Stratejileri
+
+#### 1. **Rol Bazlı** (Yönetim İşlemleri)
+```csharp
+[Authorize(Roles = "Admin")]  // Kullanıcı/Rol yönetimi
+public class UsersController : ControllerBase
+```
+
+#### 2. **İzin Bazlı** (İş Operasyonları)
+```csharp
+[RequirePermission("InvoiceCreate")]  // Gelecek: Granular kontrol
+```
+
+#### 3. **Şube Bazlı** (Veri İzolasyonu)
+Tüm sorgular otomatik olarak şubeye göre filtrelenir (Multi-Branch bölümüne bakınız)
+
+---
+
+## 🏢 Çok Şubeli Veri Görünürlüğü
+
+### Kurallar
+- **Admin** kullanıcılar → TÜM şubeleri görebilir
+- **Merkez** kullanıcılar → TÜM şubeleri görebilir  
+- **Normal** kullanıcılar → SADECE kendi şubelerini görebilir
+
+### Uygulama
+
+#### DRY Extension Method
+```csharp
+var invoices = await _db.Invoices
+    .ApplyBranchFilter(_currentUserService)  // 👈 Tek satır!
+    .ToListAsync();
+```
+
+#### Ne Yapar?
+```csharp
+public static IQueryable<T> ApplyBranchFilter<T>(
+    this IQueryable<T> query, 
+    ICurrentUserService currentUserService) where T : IHasBranch
+{
+    if (currentUserService.IsAdmin) return query;
+    if (currentUserService.IsHeadquarters) return query;
+    if (currentUserService.BranchId.HasValue)
+        return query.Where(e => e.BranchId == currentUserService.BranchId.Value);
+    return query.Where(e => false); // Şube yok = veri yok
+}
+```
+
+### Güvenlik Garantisi
+- ✅ **List handler'lar**: Otomatik filtreleme
+- ✅ **GetById handler'lar**: Çapraz şube ID erişimini engeller
+- ✅ **`IHasBranch` entity'ler**: Invoice, Payment, Item, Contact, Stock, Warehouse, vb.
+
+### Güvenli Hale Getirilen Entity'ler (18 handler)
+**List:** Invoices, Items, Contacts, Payments, ExpenseLists, FixedAssets, CashBankAccounts, Stocks, Warehouses, StockMovements
+
+**GetById:** Invoices, Items, Contacts, Payments, FixedAssets, CashBankAccounts, ExpenseLists, Warehouses
+
+---
+
 ## 📦 Domain Modülleri
 
 ### 1. **Contacts (Cariler)**

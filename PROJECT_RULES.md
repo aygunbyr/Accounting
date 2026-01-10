@@ -57,6 +57,17 @@ This document defines the coding standards, architectural patterns, and best pra
   - Use Optimistic Concurrency with `RowVersion` (byte[]).
   - Use the cross-platform retry pattern (not SQL locking hints).
   - In `Update` handlers, explicitly check `OriginalValue` of RowVersion.
+- **Branch Filtering** (Multi-Branch Security):
+  - **MANDATORY**: All `List` and `GetById` query handlers for entities implementing `IHasBranch` **MUST** use `ApplyBranchFilter()` extension.
+  - **Pattern**:
+    ```csharp
+    var query = _db.Entities
+        .AsNoTracking()
+        .ApplyBranchFilter(_currentUserService)  // 👈 REQUIRED
+        .Where(...);
+    ```
+  - **Why**: Ensures branch-level data isolation. Admin and HQ users see all branches; regular users see only their branch.
+  - **Exception**: User/Role management handlers (admin-only, no branch filtering needed).
 
 ## 5. API Rules
 - **Response Format**: Methods return DTOs or `Unit`.
