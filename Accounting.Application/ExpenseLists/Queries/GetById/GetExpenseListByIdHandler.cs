@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.ExpenseLists.Dto;
 using MediatR;
@@ -10,11 +12,18 @@ namespace Accounting.Application.ExpenseLists.Queries.GetById;
 public class GetExpenseListByIdHandler : IRequestHandler<GetExpenseListByIdQuery, ExpenseListDetailDto>
 {
     private readonly IAppDbContext _db;
-    public GetExpenseListByIdHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public GetExpenseListByIdHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<ExpenseListDetailDto> Handle(GetExpenseListByIdQuery q, CancellationToken ct)
     {
         var list = await _db.ExpenseLists
+            .ApplyBranchFilter(_currentUserService)
             .Include(x => x.Lines.Where(l => !l.IsDeleted))
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == q.Id && !x.IsDeleted, ct);

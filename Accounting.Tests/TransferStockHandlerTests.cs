@@ -3,8 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Accounting.Application.StockMovements.Commands.Transfer;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
+
 using Accounting.Infrastructure.Persistence;
+using Accounting.Infrastructure.Persistence.Interceptors; // Added this one explicitly as it was missing or implicit
 using Xunit;
+using Accounting.Tests.Common;
 
 namespace Accounting.Tests;
 
@@ -16,7 +19,8 @@ public class TransferStockHandlerTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()) // Unique DB per test
             .Options;
 
-        return new AppDbContext(options, null!);
+        var userService = new FakeCurrentUserService(1);
+        return new AppDbContext(options, new AuditSaveChangesInterceptor(userService), userService);
     }
 
     [Fact]

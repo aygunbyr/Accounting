@@ -1,4 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Models;
 using Accounting.Application.ExpenseLists.Dto;
 using Accounting.Domain.Entities;
@@ -11,13 +13,20 @@ namespace Accounting.Application.ExpenseLists.Queries.List;
 public class ListExpenseListsHandler : IRequestHandler<ListExpenseListsQuery, PagedResult<ExpenseListDto>>
 {
     private readonly IAppDbContext _db;
-    public ListExpenseListsHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public ListExpenseListsHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<PagedResult<ExpenseListDto>> Handle(ListExpenseListsQuery q, CancellationToken ct)
     {
         var query = _db.ExpenseLists
-            .Where(x => !x.IsDeleted)
-            .AsNoTracking();
+            .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService)
+            .Where(x => !x.IsDeleted);
 
         // Filters
         if (q.BranchId.HasValue)

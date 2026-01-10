@@ -1,4 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Models;
 using Accounting.Application.Warehouses.Dto;
 using Accounting.Domain.Entities;
@@ -7,14 +9,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Warehouses.Queries.List;
 
-public class ListWarehousesHandler(IAppDbContext db)
-    : IRequestHandler<ListWarehousesQuery, PagedResult<WarehouseDto>>
+public class ListWarehousesHandler : IRequestHandler<ListWarehousesQuery, PagedResult<WarehouseDto>>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public ListWarehousesHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
     public async Task<PagedResult<WarehouseDto>> Handle(ListWarehousesQuery r, CancellationToken ct)
     {
-        IQueryable<Warehouse> q = db.Warehouses
+        IQueryable<Warehouse> q = _db.Warehouses
             .AsNoTracking()
-            .Where(x => x.BranchId == r.BranchId);
+            .ApplyBranchFilter(_currentUserService);
 
         if (!string.IsNullOrWhiteSpace(r.Search))
         {

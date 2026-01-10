@@ -1,4 +1,5 @@
 using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Orders.Dto;
 using Accounting.Domain.Entities;
@@ -9,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 namespace Accounting.Application.Orders.Commands.Create;
 
 public record CreateOrderCommand(
-    int BranchId,
     int ContactId,
     DateTime DateUtc,
     InvoiceType Type,
@@ -26,14 +26,15 @@ public record CreateOrderLineDto(
     int VatRate
 );
 
-public class CreateOrderHandler(IAppDbContext db) : IRequestHandler<CreateOrderCommand, OrderDto>
+public class CreateOrderHandler(IAppDbContext db, ICurrentUserService currentUserService) : IRequestHandler<CreateOrderCommand, OrderDto>
 {
     public async Task<OrderDto> Handle(CreateOrderCommand r, CancellationToken ct)
     {
-        // 1. Generate Order Number (Simple max+1 logic for MVP)
-        // Usually should be DB sequence or specialized service
+        var branchId = currentUserService.BranchId ?? throw new UnauthorizedAccessException();
+
+        // 1. Generate Order Number
         var lastOrder = await db.Orders
-            .Where(o => o.BranchId == r.BranchId && o.Type == r.Type)
+            .Where(o => o.BranchId == branchId && o.Type == r.Type)
             .OrderByDescending(o => o.OrderNumber)
             .FirstOrDefaultAsync(ct);
 
@@ -47,7 +48,7 @@ public class CreateOrderHandler(IAppDbContext db) : IRequestHandler<CreateOrderC
         // 2. Create Order
         var order = new Order
         {
-            BranchId = r.BranchId,
+            BranchId = branchId,
             ContactId = r.ContactId,
             OrderNumber = orderNumber,
             DateUtc = r.DateUtc,

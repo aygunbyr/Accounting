@@ -4,7 +4,6 @@ using MediatR;
 namespace Accounting.Application.Cheques.Commands.Create;
 
 public record CreateChequeCommand(
-    int BranchId,
     int? ContactId,
     ChequeType Type,
     ChequeDirection Direction,

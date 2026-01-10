@@ -1,6 +1,8 @@
 ﻿using Accounting.Application.CashBankAccounts.Queries.Dto;
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Constants;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Models;
 using Accounting.Domain.Enums;
 using FluentValidation;
@@ -9,16 +11,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.CashBankAccounts.Queries.List;
 
-public class ListCashBankAccountsHandler(IAppDbContext db)
-    : IRequestHandler<ListCashBankAccountsQuery, PagedResult<CashBankAccountListItemDto>>
+public class ListCashBankAccountsHandler : IRequestHandler<ListCashBankAccountsQuery, PagedResult<CashBankAccountListItemDto>>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public ListCashBankAccountsHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
     public async Task<PagedResult<CashBankAccountListItemDto>> Handle(ListCashBankAccountsQuery q, CancellationToken ct)
     {
         // Normalize pagination
         var pageNumber = PaginationConstants.NormalizePage(q.PageNumber);
         var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
 
-        var query = db.CashBankAccounts.AsNoTracking().Where(x => !x.IsDeleted);
+        var query = _db.CashBankAccounts
+            .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService)
+            .Where(x => !x.IsDeleted);
 
         // BranchId filter
         if (q.BranchId.HasValue)

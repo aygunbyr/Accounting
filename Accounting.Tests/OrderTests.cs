@@ -8,8 +8,10 @@ using Accounting.Application.Orders.Commands.Update;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using Accounting.Infrastructure.Persistence;
+using Accounting.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using Accounting.Tests.Common;
 
 namespace Accounting.Tests;
 
@@ -21,17 +23,17 @@ public class OrderTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        return new AppDbContext(options, null!);
+        var userService = new FakeCurrentUserService(1);
+        return new AppDbContext(options, new AuditSaveChangesInterceptor(userService), userService);
     }
 
     [Fact]
     public async Task CreateOrder_ShouldSucceed()
     {
         var db = GetDbContext();
-        var handler = new CreateOrderHandler(db);
+        var handler = new CreateOrderHandler(db, new FakeCurrentUserService(1));
         var date = DateTime.UtcNow;
         var r = new CreateOrderCommand(
-            BranchId: 1,
             ContactId: 10,
             DateUtc: date,
             Type: InvoiceType.Sales,
@@ -153,7 +155,7 @@ public class OrderTests
         await db.SaveChangesAsync();
 
         // Act
-        var handler = new CreateInvoiceFromOrderHandler(db);
+        var handler = new CreateInvoiceFromOrderHandler(db, new FakeCurrentUserService(1));
         var invoiceId = await handler.Handle(new CreateInvoiceFromOrderCommand(order.Id), CancellationToken.None);
 
         // Assert

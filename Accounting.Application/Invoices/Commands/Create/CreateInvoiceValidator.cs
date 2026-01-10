@@ -1,4 +1,5 @@
-﻿using Accounting.Application.Common.Abstractions;
+﻿using Accounting.Application.Common.Interfaces;
+using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Validation;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
@@ -11,16 +12,15 @@ namespace Accounting.Application.Invoices.Commands.Create;
 public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
 
-    public CreateInvoiceValidator(IAppDbContext db)
+    public CreateInvoiceValidator(IAppDbContext db, ICurrentUserService currentUserService)
     {
         _db = db;
+        _currentUserService = currentUserService;
 
         // Temel alanlar
-        RuleFor(x => x.BranchId)
-            .GreaterThan(0)
-            .MustAsync(BranchExistsAsync)
-            .WithMessage("Şube bulunamadı.");
+        // BranchId check removed (using CurrentUser)
 
         RuleFor(x => x.ContactId)
             .GreaterThan(0);
@@ -40,7 +40,7 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
         RuleFor(x => x)
             .MustAsync(ContactBelongsToSameBranchAsync)
             .WithMessage("Cari (Contact) fatura ile aynı şubeye ait olmalıdır.")
-            .When(x => x.ContactId > 0 && x.BranchId > 0);
+            .When(x => x.ContactId > 0 && _currentUserService.BranchId.HasValue);
 
         // Satırlar
         RuleFor(x => x.Lines)
@@ -64,16 +64,14 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
         RuleFor(x => x)
             .MustAsync(AllItemsBelongToSameBranchAsync)
             .WithMessage("Fatura satırlarındaki ürünler (Item) fatura ile aynı şubeye ait olmalıdır.")
-            .When(x => x.BranchId > 0 && x.Lines != null && x.Lines.Any(l => l.ItemId.HasValue));
-    }
-
-    private async Task<bool> BranchExistsAsync(int branchId, CancellationToken ct)
-    {
-        return await _db.Branches.AnyAsync(b => b.Id == branchId && !b.IsDeleted, ct);
+            .When(x => x.Lines != null && x.Lines.Any(l => l.ItemId.HasValue) && _currentUserService.BranchId.HasValue);
     }
 
     private async Task<bool> ContactBelongsToSameBranchAsync(CreateInvoiceCommand cmd, CancellationToken ct)
     {
+        if (!_currentUserService.BranchId.HasValue) return false;
+        var currentBranchId = _currentUserService.BranchId.Value;
+
         var contact = await _db.Contacts
             .AsNoTracking()
             .Where(c => c.Id == cmd.ContactId && !c.IsDeleted)
@@ -83,11 +81,14 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
         if (contact == null)
             return false; // Contact bulunamadı - ayrı validasyonda yakalanabilir
 
-        return contact.BranchId == cmd.BranchId;
+        return contact.BranchId == currentBranchId;
     }
 
     private async Task<bool> AllItemsBelongToSameBranchAsync(CreateInvoiceCommand cmd, CancellationToken ct)
     {
+        if (!_currentUserService.BranchId.HasValue) return false;
+        var currentBranchId = _currentUserService.BranchId.Value;
+
         var itemIds = cmd.Lines
             .Where(l => l.ItemId.HasValue)
             .Select(l => l.ItemId!.Value)
@@ -99,7 +100,7 @@ public class CreateInvoiceValidator : AbstractValidator<CreateInvoiceCommand>
 
         var mismatchedItems = await _db.Items
             .AsNoTracking()
-            .Where(i => itemIds.Contains(i.Id) && !i.IsDeleted && i.BranchId != cmd.BranchId)
+            .Where(i => itemIds.Contains(i.Id) && !i.IsDeleted && i.BranchId != currentBranchId)
             .AnyAsync(ct);
 
         return !mismatchedItems;

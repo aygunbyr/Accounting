@@ -134,6 +134,24 @@ public sealed class ExceptionToProblemDetailsMiddleware
                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }, ct);
             return;
         }
+        catch (UnauthorizedAccessException uex)
+        {
+            var pd = new ProblemDetails
+            {
+                Title = "Yetkisiz Erişim",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = uex.Message,
+                Type = "about:blank"
+            };
+            pd.Extensions["code"] = "unauthorized";
+            pd.Extensions["traceId"] = context.TraceIdentifier;
+
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/problem+json";
+            await JsonSerializer.SerializeAsync(context.Response.Body, pd,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }, ct);
+            return;
+        }
         // 409 - EF concurrency doğrudan gelirse (fallback)
         catch (DbUpdateConcurrencyException)
         {

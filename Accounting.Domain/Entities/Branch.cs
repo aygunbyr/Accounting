@@ -16,6 +16,8 @@ public class Branch : IHasTimestamps, ISoftDeletable, IHasRowVersion
     /// </summary>
     public string Name { get; set; } = null!;
 
+    public bool IsHeadquarters { get; set; }
+
     // IHasTimestamps
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }

@@ -26,6 +26,14 @@ public static class DependencyInjection
         services.AddScoped<IAccountBalanceService, AccountBalanceService>();
         services.AddScoped<IContactBalanceService, ContactBalanceService>();
         services.AddScoped<IStockService, StockService>();
+        
+        services.AddHttpContextAccessor();
+
+        // Auth
+        services.Configure<Accounting.Infrastructure.Authentication.JwtSettings>(config.GetSection(Accounting.Infrastructure.Authentication.JwtSettings.SectionName));
+        services.AddSingleton<Accounting.Application.Common.Interfaces.IJwtTokenGenerator, Accounting.Infrastructure.Authentication.JwtTokenGenerator>();
+        services.AddSingleton<Accounting.Application.Common.Interfaces.IPasswordHasher, Accounting.Infrastructure.Authentication.PasswordHasher>();
+        services.AddSingleton<Accounting.Application.Common.Interfaces.ICurrentUserService, Accounting.Infrastructure.Services.CurrentUserService>();
 
         return services;
     }

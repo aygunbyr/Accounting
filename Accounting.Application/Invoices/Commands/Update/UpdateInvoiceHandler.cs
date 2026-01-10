@@ -8,17 +8,21 @@ using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
+using Accounting.Application.Common.Interfaces;
+
 public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand, InvoiceDto>
 {
     private readonly IAppDbContext _ctx;
     private readonly IInvoiceBalanceService _balanceService;
     private readonly IMediator _mediator;
+    private readonly ICurrentUserService _currentUserService;
 
-    public UpdateInvoiceHandler(IAppDbContext ctx, IInvoiceBalanceService balanceService, IMediator mediator)
+    public UpdateInvoiceHandler(IAppDbContext ctx, IInvoiceBalanceService balanceService, IMediator mediator, ICurrentUserService currentUserService)
     {
         _ctx = ctx;
         _balanceService = balanceService;
         _mediator = mediator;
+        _currentUserService = currentUserService;
     }
 
     public async Task<InvoiceDto> Handle(UpdateInvoiceCommand r, CancellationToken ct)
@@ -29,6 +33,11 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
             .FirstOrDefaultAsync(i => i.Id == r.Id, ct)
             ?? throw new NotFoundException(nameof(Invoice), r.Id);
 
+        // Security Check: Must be in same branch
+        var branchId = _currentUserService.BranchId ?? throw new UnauthorizedAccessException();
+        if (inv.BranchId != branchId)
+            throw new NotFoundException(nameof(Invoice), r.Id); // Hide cross-branch existence or Unauthorized
+
         // 2) Concurrency (RowVersion base64)
         _ctx.Entry(inv).Property(nameof(Invoice.RowVersion))
             .OriginalValue = Convert.FromBase64String(r.RowVersionBase64);
@@ -37,7 +46,7 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
         inv.Currency = (r.Currency ?? "TRY").Trim().ToUpperInvariant();
         inv.DateUtc = r.DateUtc;
         inv.ContactId = r.ContactId;
-        inv.BranchId = r.BranchId;
+        // inv.BranchId assignment removed - Branch cannot be changed
         inv.Type = NormalizeType(r.Type, inv.Type);
 
         // ---- Satır diff senkronu ----
@@ -355,7 +364,6 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
 
             // Create command
             var cmd = new Accounting.Application.StockMovements.Commands.Create.CreateStockMovementCommand(
-                BranchId: invoice.BranchId,
                 WarehouseId: defaultWarehouse.Id, // ✅ Dinamik warehouse
                 ItemId: line.ItemId.Value,
                 Type: movementType.Value,

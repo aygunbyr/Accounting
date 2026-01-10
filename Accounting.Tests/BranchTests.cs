@@ -6,8 +6,17 @@ using Accounting.Application.Common.Exceptions;
 using Accounting.Domain.Entities;
 using Accounting.Infrastructure.Persistence;
 using Accounting.Infrastructure.Persistence.Interceptors;
+using Accounting.Application.Branches.Commands.Create;
+using Accounting.Application.Branches.Commands.Delete;
+using Accounting.Application.Branches.Commands.Update;
+using Accounting.Application.Branches.Queries.GetById;
+using Accounting.Application.Common.Exceptions;
+using Accounting.Domain.Entities;
+using Accounting.Infrastructure.Persistence;
+using Accounting.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using Accounting.Tests.Common;
 
 namespace Accounting.Tests;
 
@@ -26,8 +35,9 @@ public class BranchTests
     [Fact]
     public async Task Create_ShouldCreateBranch_WhenValid()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             var handler = new CreateBranchHandler(db);
             var cmd = new CreateBranchCommand("TEST-CRE", "Test Branch");
@@ -46,8 +56,9 @@ public class BranchTests
     [Fact]
     public async Task Create_ShouldFailValidation_WhenCodeExists()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             db.Branches.Add(new Branch { Code = "DUPLICATE", Name = "Existing", RowVersion = new byte[] { 1 } });
             await db.SaveChangesAsync();
@@ -64,8 +75,9 @@ public class BranchTests
     [Fact]
     public async Task Update_ShouldUpdateBranch_WhenValid()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             var entity = new Branch { Code = "OLD", Name = "Old Name", RowVersion = new byte[] { 1 } };
             db.Branches.Add(entity);
@@ -88,8 +100,9 @@ public class BranchTests
     [Fact]
     public async Task Update_ShouldThrowConcurrency_WhenVersionMismatch()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             var entity = new Branch { Code = "CONC", Name = "C", RowVersion = new byte[] { 1 } };
             db.Branches.Add(entity);
@@ -106,8 +119,9 @@ public class BranchTests
     [Fact]
     public async Task Delete_ShouldSoftDelete()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             var entity = new Branch { Code = "DEL", Name = "Delete Me", RowVersion = new byte[] { 1 } };
             db.Branches.Add(entity);

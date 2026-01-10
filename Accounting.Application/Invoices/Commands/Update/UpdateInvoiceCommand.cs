@@ -8,7 +8,6 @@ public sealed record UpdateInvoiceCommand(
     string Currency,
     int ContactId,
     string Type,
-    int BranchId,
     IReadOnlyList<UpdateInvoiceLineDto> Lines
 ) : IRequest<InvoiceDto>;
 

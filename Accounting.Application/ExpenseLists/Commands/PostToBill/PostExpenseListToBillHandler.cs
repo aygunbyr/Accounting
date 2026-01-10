@@ -7,6 +7,7 @@ using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using Accounting.Application.Common.Interfaces;
 using System.Linq;
 
 namespace Accounting.Application.ExpenseLists.Commands.PostToBill;
@@ -16,11 +17,13 @@ public class PostExpenseListToBillHandler
 {
     private readonly IAppDbContext _db;
     private readonly IMediator _mediator;
+    private readonly ICurrentUserService _currentUserService;
 
-    public PostExpenseListToBillHandler(IAppDbContext db, IMediator mediator)
+    public PostExpenseListToBillHandler(IAppDbContext db, IMediator mediator, ICurrentUserService currentUserService)
     {
         _db = db;
         _mediator = mediator;
+        _currentUserService = currentUserService;
     }
 
     public async Task<PostExpenseListToBillResult> Handle(PostExpenseListToBillCommand req, CancellationToken ct)
@@ -33,6 +36,10 @@ public class PostExpenseListToBillHandler
 
         if (list is null)
             throw new NotFoundException("ExpenseList");
+
+        // Security Check: List must belong to current user's branch
+        var branchId = _currentUserService.BranchId ?? throw new UnauthorizedAccessException();
+        if (list.BranchId != branchId) throw new NotFoundException("ExpenseList");
 
         if (list.Status != ExpenseListStatus.Reviewed)
             throw new BusinessRuleException("Only Reviewed lists can be posted to bill.");
@@ -81,7 +88,6 @@ public class PostExpenseListToBillHandler
         )).ToList();
 
         var createCmd = new CreateInvoiceCommand(
-            BranchId: list.BranchId,
             ContactId: req.SupplierId,
             DateUtc: dateUtc.ToString("o", CultureInfo.InvariantCulture),
             Currency: req.Currency.ToUpperInvariant(),
@@ -101,7 +107,6 @@ public class PostExpenseListToBillHandler
                     throw new BusinessRuleException("PaymentAccountId is required when CreatePayment is true.");
 
                 var paymentCmd = new CreatePaymentCommand(
-                    BranchId: list.BranchId,
                     AccountId: req.PaymentAccountId.Value,
                     ContactId: req.SupplierId,
                     LinkedInvoiceId: created.Id,

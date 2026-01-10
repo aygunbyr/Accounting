@@ -6,19 +6,22 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
+using Accounting.Application.Common.Interfaces;
 
 namespace Accounting.Application.Invoices.Commands.Update
 {
     public sealed class UpdateInvoiceValidator : AbstractValidator<UpdateInvoiceCommand>
     {
         private readonly IAppDbContext _db;
+        private readonly ICurrentUserService _currentUserService;
 
-        public UpdateInvoiceValidator(IAppDbContext db)
+        public UpdateInvoiceValidator(IAppDbContext db, ICurrentUserService currentUserService)
         {
             _db = db;
+            _currentUserService = currentUserService;
 
             RuleFor(x => x.Id).GreaterThan(0);
-            RuleFor(x => x.BranchId).GreaterThan(0);
+            // RuleFor(x => x.BranchId).GreaterThan(0); // Removed
 
             RuleFor(x => x.RowVersionBase64).MustBeValidRowVersion();  // Extension
 
@@ -44,14 +47,12 @@ namespace Accounting.Application.Invoices.Commands.Update
             // ✅ Branch Tutarlılık Kontrolü: Contact aynı şubeye ait olmalı
             RuleFor(x => x)
                 .MustAsync(ContactBelongsToSameBranchAsync)
-                .WithMessage("Cari (Contact) fatura ile aynı şubeye ait olmalıdır.")
-                .When(x => x.ContactId > 0 && x.BranchId > 0);
+                .WithMessage("Cari (Contact) fatura ile aynı şubeye ait olmalıdır.");
 
             // ✅ Branch Tutarlılık Kontrolü: Item'lar aynı şubeye ait olmalı
             RuleFor(x => x)
                 .MustAsync(AllItemsBelongToSameBranchAsync)
-                .WithMessage("Fatura satırlarındaki ürünler (Item) fatura ile aynı şubeye ait olmalıdır.")
-                .When(x => x.BranchId > 0 && x.Lines != null && x.Lines.Any(l => l.ItemId.HasValue));
+                .WithMessage("Fatura satırlarındaki ürünler (Item) fatura ile aynı şubeye ait olmalıdır.");
 
             // Id>0 olan satırlarda tekrar kontrolü
             RuleFor(x => x.Lines)
@@ -67,6 +68,9 @@ namespace Accounting.Application.Invoices.Commands.Update
 
         private async Task<bool> ContactBelongsToSameBranchAsync(UpdateInvoiceCommand cmd, CancellationToken ct)
         {
+            if (!_currentUserService.BranchId.HasValue) return false;
+            var currentBranchId = _currentUserService.BranchId.Value;
+
             var contact = await _db.Contacts
                 .AsNoTracking()
                 .Where(c => c.Id == cmd.ContactId && !c.IsDeleted)
@@ -76,11 +80,14 @@ namespace Accounting.Application.Invoices.Commands.Update
             if (contact == null)
                 return false;
 
-            return contact.BranchId == cmd.BranchId;
+            return contact.BranchId == currentBranchId;
         }
 
         private async Task<bool> AllItemsBelongToSameBranchAsync(UpdateInvoiceCommand cmd, CancellationToken ct)
         {
+            if (!_currentUserService.BranchId.HasValue) return false;
+            var currentBranchId = _currentUserService.BranchId.Value;
+
             var itemIds = cmd.Lines
                 .Where(l => l.ItemId.HasValue)
                 .Select(l => l.ItemId!.Value)
@@ -92,7 +99,7 @@ namespace Accounting.Application.Invoices.Commands.Update
 
             var mismatchedItems = await _db.Items
                 .AsNoTracking()
-                .Where(i => itemIds.Contains(i.Id) && !i.IsDeleted && i.BranchId != cmd.BranchId)
+                .Where(i => itemIds.Contains(i.Id) && !i.IsDeleted && i.BranchId != currentBranchId)
                 .AnyAsync(ct);
 
             return !mismatchedItems;

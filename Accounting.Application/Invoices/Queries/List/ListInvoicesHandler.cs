@@ -1,6 +1,8 @@
 ﻿using System.Globalization;
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Constants;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Models;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Invoices.Queries.Dto;
@@ -14,7 +16,13 @@ namespace Accounting.Application.Invoices.Queries.List;
 public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResult<InvoiceListItemDto>>
 {
     private readonly IAppDbContext _db;
-    public ListInvoicesHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public ListInvoicesHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<PagedResult<InvoiceListItemDto>> Handle(ListInvoicesQuery q, CancellationToken ct)
     {
@@ -22,7 +30,9 @@ public class ListInvoicesHandler : IRequestHandler<ListInvoicesQuery, PagedResul
         var pageNumber = PaginationConstants.NormalizePage(q.PageNumber);
         var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
 
-        var query = _db.Invoices.AsNoTracking();
+        var query = _db.Invoices
+            .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService); // ✅ DRY branch filtering
 
         // Filtreler
         if (q.BranchId is int branchId)

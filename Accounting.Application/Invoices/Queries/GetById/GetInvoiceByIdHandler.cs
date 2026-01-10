@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Utils; // Money.S2/S3/S4
 using Accounting.Application.Invoices.Queries.Dto;
 using MediatR;
@@ -10,12 +12,19 @@ namespace Accounting.Application.Invoices.Queries.GetById;
 public class GetInvoiceByIdHandler : IRequestHandler<GetInvoiceByIdQuery, InvoiceDto>
 {
     private readonly IAppDbContext _db;
-    public GetInvoiceByIdHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public GetInvoiceByIdHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<InvoiceDto> Handle(GetInvoiceByIdQuery q, CancellationToken cancellationToken)
     {
         var inv = await _db.Invoices
             .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService)
             .Include(i => i.Contact)
             .Include(i => i.Branch)
             .Include(i => i.Lines)

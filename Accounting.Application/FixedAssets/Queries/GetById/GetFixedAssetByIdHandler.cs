@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.FixedAssets.Queries.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +16,12 @@ public sealed class GetFixedAssetByIdHandler
     : IRequestHandler<GetFixedAssetByIdQuery, FixedAssetDetailDto>
 {
     private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
 
-    public GetFixedAssetByIdHandler(IAppDbContext db)
+    public GetFixedAssetByIdHandler(IAppDbContext db, ICurrentUserService currentUserService)
     {
         _db = db;
+        _currentUserService = currentUserService;
     }
 
     public async Task<FixedAssetDetailDto> Handle(
@@ -26,6 +30,7 @@ public sealed class GetFixedAssetByIdHandler
     {
         var x = await _db.FixedAssets
             .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService)
             .FirstOrDefaultAsync(f => f.Id == r.Id, ct);
 
         if (x is null)

@@ -2,16 +2,31 @@
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Items.Queries.Dto;
 using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Items.Queries.List;
 
-public class ListItemsHandler(IAppDbContext db) : IRequestHandler<ListItemsQuery, PagedResult<ItemListItemDto>>
+public class ListItemsHandler : IRequestHandler<ListItemsQuery, PagedResult<ItemListItemDto>>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public ListItemsHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
+
     public async Task<PagedResult<ItemListItemDto>> Handle(ListItemsQuery r, CancellationToken ct)
     {
-        var q = db.Items.AsNoTracking().Include(x => x.Category).Where(x => !x.IsDeleted);
+        var q = _db.Items
+            .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService)
+            .Include(x => x.Category)
+            .Where(x => !x.IsDeleted);
 
         if (r.CategoryId.HasValue)
             q = q.Where(x => x.CategoryId == r.CategoryId);

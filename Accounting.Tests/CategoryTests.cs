@@ -5,8 +5,17 @@ using Accounting.Application.Categories.Queries.List;
 using Accounting.Application.Common.Exceptions;
 using Accounting.Domain.Entities;
 using Accounting.Infrastructure.Persistence;
+using Accounting.Application.Categories.Commands.Create;
+using Accounting.Application.Categories.Commands.Delete;
+using Accounting.Application.Categories.Commands.Update;
+using Accounting.Application.Categories.Queries.List;
+using Accounting.Application.Common.Exceptions;
+using Accounting.Domain.Entities;
+using Accounting.Infrastructure.Persistence;
+using Accounting.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using Accounting.Tests.Common;
 
 namespace Accounting.Tests;
 
@@ -18,7 +27,8 @@ public class CategoryTests
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
 
-        return new AppDbContext(options, null!);
+        var userService = new FakeCurrentUserService(1);
+        return new AppDbContext(options, new AuditSaveChangesInterceptor(userService), userService);
     }
 
     [Fact]

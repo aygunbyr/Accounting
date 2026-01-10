@@ -5,15 +5,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage;
 
+using Accounting.Application.Common.Interfaces;
+
 namespace Accounting.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext, IAppDbContext
 {
     private readonly AuditSaveChangesInterceptor _audit;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AppDbContext(DbContextOptions<AppDbContext> options, AuditSaveChangesInterceptor audit) : base(options)
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options, 
+        AuditSaveChangesInterceptor audit,
+        ICurrentUserService currentUserService) : base(options)
     {
         _audit = audit;
+        _currentUserService = currentUserService;
     }
 
     public DbSet<Category> Categories => Set<Category>();
@@ -35,6 +42,11 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<Cheque> Cheques => Set<Cheque>();
     public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<AuditTrail> AuditTrails => Set<AuditTrail>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -42,13 +54,26 @@ public class AppDbContext : DbContext, IAppDbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        
+        // NOTE: Multi-Branch Visibility Filtering
+        // We do NOT use Global Query Filters for branch-based security because:
+        // 1. EF Core caches compiled queries with Expression.Constant, which captures service state at model-build time
+        // 2. ICurrentUserService is scoped per-request, but OnModelCreating runs once at app startup
+        // 3. This causes security issues where filter conditions become stale
+        //
+        // BEST PRACTICE: Apply branch filtering explicitly in each Handler/Query
+        // Example in handler:
+        //   var invoices = await context.Invoices
+        //       .Where(i => currentUserService.IsAdmin || currentUserService.IsHeadquarters || i.BranchId == currentUserService.BranchId)
+        //       .ToListAsync();
     }
-
+    
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         base.OnConfiguring(optionsBuilder);
         optionsBuilder.AddInterceptors(_audit);
     }
+
 
     public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
     => await Database.BeginTransactionAsync(cancellationToken);

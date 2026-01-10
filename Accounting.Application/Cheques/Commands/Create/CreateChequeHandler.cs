@@ -5,15 +5,18 @@ using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
+using Accounting.Application.Common.Interfaces;
+
 namespace Accounting.Application.Cheques.Commands.Create;
 
-public class CreateChequeHandler(IAppDbContext db) : IRequestHandler<CreateChequeCommand, int>
+public class CreateChequeHandler(IAppDbContext db, ICurrentUserService currentUserService) : IRequestHandler<CreateChequeCommand, int>
 {
     public async Task<int> Handle(CreateChequeCommand request, CancellationToken ct)
     {
+        var branchId = currentUserService.BranchId ?? throw new UnauthorizedAccessException();
         // Duplicate check: Aynı şubede aynı çek numarası olamaz
         var exists = await db.Cheques.AnyAsync(c =>
-            c.BranchId == request.BranchId &&
+            c.BranchId == branchId &&
             c.ChequeNumber == request.ChequeNumber &&
             !c.IsDeleted, ct);
 
@@ -22,7 +25,7 @@ public class CreateChequeHandler(IAppDbContext db) : IRequestHandler<CreateChequ
 
         var cheque = new Cheque
         {
-            BranchId = request.BranchId,
+            BranchId = branchId,
             ContactId = request.ContactId,
             Type = request.Type,
             Direction = request.Direction,

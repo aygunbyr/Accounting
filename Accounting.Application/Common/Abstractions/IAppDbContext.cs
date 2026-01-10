@@ -28,6 +28,11 @@ public interface IAppDbContext
     DbSet<StockMovement> StockMovements { get; }
     DbSet<Cheque> Cheques { get; }
     DbSet<Domain.Entities.CompanySettings> CompanySettings { get; }
+    DbSet<User> Users { get; }
+    DbSet<Role> Roles { get; }
+    DbSet<RolePermission> RolePermissions { get; }
+    DbSet<UserRole> UserRoles { get; }
+    DbSet<AuditTrail> AuditTrails { get; }
 
 
 

@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Domain.Enums;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
@@ -8,18 +9,18 @@ namespace Accounting.Application.Orders.Commands.Create;
 public class CreateOrderValidator : AbstractValidator<CreateOrderCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
 
-    public CreateOrderValidator(IAppDbContext db)
+    public CreateOrderValidator(IAppDbContext db, ICurrentUserService currentUserService)
     {
         _db = db;
+        _currentUserService = currentUserService;
 
-        RuleFor(x => x.BranchId)
-            .GreaterThan(0)
-            .MustAsync(BranchExistsAsync).WithMessage("Şube bulunamadı.");
+        // BranchId check removed
 
         RuleFor(x => x.ContactId)
             .GreaterThan(0)
-            .MustAsync(ContactExistsAsync).WithMessage("Cari bulunamadı.");
+            .MustAsync(ContactIsValidForBranchAsync).WithMessage("Cari bulunamadı veya bu şubeye ait değil.");
 
         RuleFor(x => x.Type)
             .IsInEnum()
@@ -65,13 +66,19 @@ public class CreateOrderValidator : AbstractValidator<CreateOrderCommand>
         });
     }
 
-    private async Task<bool> BranchExistsAsync(int branchId, CancellationToken ct)
+    private async Task<bool> ContactIsValidForBranchAsync(int contactId, CancellationToken ct)
     {
-        return await _db.Branches.AnyAsync(b => b.Id == branchId && !b.IsDeleted, ct);
-    }
+        if (!_currentUserService.BranchId.HasValue) return false;
+        var currentBranchId = _currentUserService.BranchId.Value;
 
-    private async Task<bool> ContactExistsAsync(int contactId, CancellationToken ct)
-    {
-        return await _db.Contacts.AnyAsync(c => c.Id == contactId && !c.IsDeleted, ct);
+        var contact = await _db.Contacts
+            .AsNoTracking()
+            .Where(c => c.Id == contactId && !c.IsDeleted)
+            .Select(c => new { c.BranchId })
+            .FirstOrDefaultAsync(ct);
+        
+        if (contact == null) return false;
+
+        return contact.BranchId == currentBranchId;
     }
 }

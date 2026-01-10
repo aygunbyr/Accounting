@@ -1,4 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Models;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.StockMovements.Queries.Dto;
@@ -8,14 +10,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.StockMovements.Queries.List;
 
-public class ListStockMovementsHandler(IAppDbContext db)
-    : IRequestHandler<ListStockMovementsQuery, PagedResult<StockMovementDto>>
+public class ListStockMovementsHandler : IRequestHandler<ListStockMovementsQuery, PagedResult<StockMovementDto>>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public ListStockMovementsHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
     public async Task<PagedResult<StockMovementDto>> Handle(ListStockMovementsQuery r, CancellationToken ct)
     {
-        IQueryable<StockMovement> q = db.StockMovements
+        IQueryable<StockMovement> q = _db.StockMovements
             .AsNoTracking()
-            .Where(x => x.BranchId == r.BranchId);
+            .ApplyBranchFilter(_currentUserService);
 
         // Include'ları IQueryable üstünden ekle (CS0266 fix)
         q = q

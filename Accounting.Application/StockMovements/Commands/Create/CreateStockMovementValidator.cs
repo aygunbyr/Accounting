@@ -8,7 +8,7 @@ public class CreateStockMovementValidator : AbstractValidator<CreateStockMovemen
 {
     public CreateStockMovementValidator()
     {
-        RuleFor(x => x.BranchId).GreaterThan(0);
+        // RuleFor(x => x.BranchId).GreaterThan(0); // Removed
         RuleFor(x => x.WarehouseId).GreaterThan(0);
         RuleFor(x => x.ItemId).GreaterThan(0);
 

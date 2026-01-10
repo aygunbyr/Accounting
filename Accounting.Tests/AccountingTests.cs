@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Xunit;
 using Accounting.Application.Common.Abstractions;
 using Moq;
+using Accounting.Tests.Common;
 
 namespace Accounting.Tests
 {
@@ -28,8 +29,9 @@ namespace Accounting.Tests
         [Fact]
         public async Task Handle_ShouldCreateInboundCheque()
         {
-            var audit = new AuditSaveChangesInterceptor();
-            using (var db = new AppDbContext(_options, audit)) 
+            var userService = new FakeCurrentUserService(1);
+            var audit = new AuditSaveChangesInterceptor(userService);
+            using (var db = new AppDbContext(_options, audit, userService)) 
             {
                 // Seed Dependencies
                 var branch = new Branch { Id = 1, Name = "Test Branch", Code = "BR-01" };
@@ -40,10 +42,9 @@ namespace Accounting.Tests
 
                 await db.SaveChangesAsync();
 
-                var handler = new CreateChequeHandler(db);
+                var handler = new CreateChequeHandler(db, new FakeCurrentUserService(1));
 
                 var cmd = new CreateChequeCommand(
-                    BranchId: 1,
                     ContactId: 1,
                     Type: ChequeType.Cheque,
                     Direction: ChequeDirection.Inbound,
@@ -72,8 +73,9 @@ namespace Accounting.Tests
         [Fact]
         public async Task Handle_ShouldUpdateStatusAndCreatePayment_WhenPaid()
         {
-            var audit = new AuditSaveChangesInterceptor();
-            using (var db = new AppDbContext(_options, audit))
+            var userService = new FakeCurrentUserService(1);
+            var audit = new AuditSaveChangesInterceptor(userService);
+            using (var db = new AppDbContext(_options, audit, userService))
             {
                 // Seed Dependencies
                 var branch = new Branch { Id = 1, Name = "Test Branch", Code = "BR-01" };
@@ -119,13 +121,13 @@ namespace Accounting.Tests
         [Fact]
         public async Task Handle_ShouldCreateItemWithSeparatePrices()
         {
-            var audit = new AuditSaveChangesInterceptor();
-            using (var db = new AppDbContext(_options, audit))
+            var userService = new FakeCurrentUserService(1);
+            var audit = new AuditSaveChangesInterceptor(userService);
+            using (var db = new AppDbContext(_options, audit, userService))
             {
-                var handler = new CreateItemHandler(db);
+                var handler = new CreateItemHandler(db, new FakeCurrentUserService(1));
 
                 var cmd = new CreateItemCommand(
-                    BranchId: 1,
                     CategoryId: null,
                     Code: "ITM-001",
                     Name: "Dual Price Product",

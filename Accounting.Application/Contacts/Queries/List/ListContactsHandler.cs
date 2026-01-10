@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Constants;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Contacts.Queries.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +11,13 @@ namespace Accounting.Application.Contacts.Queries.List;
 public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactListResult>
 {
     private readonly IAppDbContext _db;
-    public ListContactsHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+    
+    public ListContactsHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<ContactListResult> Handle(ListContactsQuery q, CancellationToken ct)
     {
@@ -17,7 +25,9 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
         var page = PaginationConstants.NormalizePage(q.Page);
         var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
 
-        var qry = _db.Contacts.AsNoTracking();
+        var qry = _db.Contacts
+            .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService);
 
         // BranchId filter (eğer belirtilmişse)
         if (q.BranchId.HasValue)

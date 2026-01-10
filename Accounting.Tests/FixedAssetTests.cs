@@ -5,8 +5,10 @@ using Accounting.Application.FixedAssets.Commands.Update;
 using Accounting.Domain.Entities;
 using Accounting.Infrastructure.Persistence;
 using Accounting.Infrastructure.Persistence.Interceptors;
+
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using Accounting.Tests.Common;
 
 namespace Accounting.Tests
 {
@@ -25,8 +27,9 @@ namespace Accounting.Tests
         [Fact]
         public async Task Create_ShouldCalculateDepreciationRate()
         {
-            var audit = new AuditSaveChangesInterceptor();
-            using (var db = new AppDbContext(_options, audit))
+            var userService = new FakeCurrentUserService(1);
+            var audit = new AuditSaveChangesInterceptor(userService);
+            using (var db = new AppDbContext(_options, audit, userService))
             {
                 // Seed Branch
                 db.Branches.Add(new Branch { Id = 1, Name = "Main", Code = "BR-01" });
@@ -54,8 +57,9 @@ namespace Accounting.Tests
         [Fact]
         public async Task Update_ShouldRecalculateRate_WhenLifeYearsChanged()
         {
-            var audit = new AuditSaveChangesInterceptor();
-            using (var db = new AppDbContext(_options, audit))
+            var userService = new FakeCurrentUserService(1);
+            var audit = new AuditSaveChangesInterceptor(userService);
+            using (var db = new AppDbContext(_options, audit, userService))
             {
                 db.Branches.Add(new Branch { Id = 1, Name = "Main", Code = "BR-01" });
                 var asset = new FixedAsset 
@@ -95,8 +99,9 @@ namespace Accounting.Tests
         [Fact]
         public async Task Delete_ShouldSoftDelete()
         {
-            var audit = new AuditSaveChangesInterceptor();
-            using (var db = new AppDbContext(_options, audit))
+            var userService = new FakeCurrentUserService(1);
+            var audit = new AuditSaveChangesInterceptor(userService);
+            using (var db = new AppDbContext(_options, audit, userService))
             {
                 db.Branches.Add(new Branch { Id = 1, Name = "Main", Code = "BR-01" });
                 var asset = new FixedAsset

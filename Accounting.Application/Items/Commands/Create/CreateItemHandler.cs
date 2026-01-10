@@ -5,12 +5,19 @@ using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
+using Accounting.Application.Common.Interfaces;
+
 namespace Accounting.Application.Items.Commands.Create;
 
 public class CreateItemHandler : IRequestHandler<CreateItemCommand, ItemDetailDto>
 {
     private readonly IAppDbContext _db;
-    public CreateItemHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+    public CreateItemHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<ItemDetailDto> Handle(CreateItemCommand r, CancellationToken ct)
     {
@@ -28,9 +35,11 @@ public class CreateItemHandler : IRequestHandler<CreateItemCommand, ItemDetailDt
             sPrice = Money.R2(sp);
         }
 
+        var branchId = _currentUserService.BranchId ?? throw new UnauthorizedAccessException();
+
         var e = new Item
         {
-            BranchId = r.BranchId,
+            BranchId = branchId,
             CategoryId = r.CategoryId,
             Code = r.Code.Trim(),
             Name = r.Name.Trim(),

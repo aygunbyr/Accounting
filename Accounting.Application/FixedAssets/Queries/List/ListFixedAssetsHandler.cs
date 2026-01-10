@@ -1,4 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Models;
 using Accounting.Application.FixedAssets.Queries.Dto;
 using MediatR;
@@ -10,17 +12,22 @@ public sealed class ListFixedAssetsHandler
     : IRequestHandler<ListFixedAssetsQuery, PagedResult<FixedAssetListItemDto>>
 {
     private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
 
-    public ListFixedAssetsHandler(IAppDbContext db)
+    public ListFixedAssetsHandler(IAppDbContext db, ICurrentUserService currentUserService)
     {
         _db = db;
+        _currentUserService = currentUserService;
     }
 
     public async Task<PagedResult<FixedAssetListItemDto>> Handle(
         ListFixedAssetsQuery r,
         CancellationToken ct)
     {
-        var q = _db.FixedAssets.AsNoTracking().AsQueryable();
+        var q = _db.FixedAssets
+            .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService)
+            .AsQueryable();
 
         if (!r.IncludeDeleted)
         {

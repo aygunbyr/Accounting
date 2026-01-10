@@ -6,11 +6,13 @@ using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
+using Accounting.Application.Common.Interfaces;
+
 namespace Accounting.Application.Orders.Commands.CreateInvoice;
 
 public record CreateInvoiceFromOrderCommand(int OrderId) : IRequest<int>;
 
-public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<CreateInvoiceFromOrderCommand, int>
+public class CreateInvoiceFromOrderHandler(IAppDbContext db, ICurrentUserService currentUserService) : IRequestHandler<CreateInvoiceFromOrderCommand, int>
 {
     public async Task<int> Handle(CreateInvoiceFromOrderCommand r, CancellationToken ct)
     {
@@ -20,6 +22,10 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
             .FirstOrDefaultAsync(o => o.Id == r.OrderId && !o.IsDeleted, ct);
 
         if (order is null) throw new NotFoundException("Order", r.OrderId);
+
+        // Security Check: Order must belong to current user's branch
+        var branchId = currentUserService.BranchId ?? throw new UnauthorizedAccessException();
+        if (order.BranchId != branchId) throw new NotFoundException("Order", r.OrderId);
 
         if (order.Status != OrderStatus.Approved)
         {

@@ -1,6 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Utils;
-using Accounting.Application.Common.Validation;  // ✅ CommonValidationRules
+using Accounting.Application.Common.Validation;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,13 +10,19 @@ namespace Accounting.Application.Payments.Commands.Create;
 public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
 
-    public CreatePaymentValidator(IAppDbContext db)
+    public CreatePaymentValidator(IAppDbContext db, ICurrentUserService currentUserService)
     {
         _db = db;
+        _currentUserService = currentUserService;
 
-        RuleFor(x => x.BranchId).GreaterThan(0);
-        RuleFor(x => x.AccountId).GreaterThan(0);
+        // RuleFor(x => x.BranchId).GreaterThan(0); // Removed
+
+        RuleFor(x => x.AccountId)
+            .GreaterThan(0)
+            .MustAsync(AccountBelongsToBranchAsync).WithMessage("Kasa/Banka hesabı bulunamadı veya bu şubeye ait değil.");
+
         RuleFor(x => x.Direction).IsInEnum();
 
         // ✅ CommonValidationRules kullan
@@ -26,20 +33,16 @@ public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
         // ✅ YENİ: LinkedInvoiceId Validasyonu
         When(x => x.LinkedInvoiceId.HasValue, () =>
         {
-            // 1. Invoice exist check
+            // 1. Invoice exist check & Branch Check
             RuleFor(x => x.LinkedInvoiceId!.Value)
-                .MustAsync(async (invoiceId, ct) =>
-                {
-                    return await _db.Invoices.AnyAsync(i => i.Id == invoiceId && !i.IsDeleted, ct);
-                })
-                .WithMessage("Linked invoice not found or has been deleted.");
+                .MustAsync(InvoiceBelongsToBranchAsync)
+                .WithMessage("Linked invoice not found, deleted, or belongs to another branch.");
 
             // 2. Currency match
             RuleFor(x => x)
                 .MustAsync(async (cmd, ct) =>
                 {
-                    if (!cmd.LinkedInvoiceId.HasValue)
-                        return true;
+                    if (!cmd.LinkedInvoiceId.HasValue) return true;
 
                     var invoice = await _db.Invoices
                         .AsNoTracking()
@@ -58,11 +61,8 @@ public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
             RuleFor(x => x)
                 .MustAsync(async (cmd, ct) =>
                 {
-                    if (!Money.TryParse2(cmd.Amount, out var amount))
-                        return true;
-
-                    if (!cmd.LinkedInvoiceId.HasValue)
-                        return true;
+                    if (!Money.TryParse2(cmd.Amount, out var amount)) return true;
+                    if (!cmd.LinkedInvoiceId.HasValue) return true;
 
                     var invoice = await _db.Invoices
                         .AsNoTracking()
@@ -74,22 +74,35 @@ public class CreatePaymentValidator : AbstractValidator<CreatePaymentCommand>
 
                     return amount <= invoice.Balance;
                 })
-                .WithMessage(cmd =>
-                {
-                    if (!cmd.LinkedInvoiceId.HasValue)
-                        return "Payment amount exceeds invoice balance.";
-
-                    var invoice = _db.Invoices
-                        .AsNoTracking()
-                        .Where(i => i.Id == cmd.LinkedInvoiceId.Value)
-                        .Select(i => new { i.Balance })
-                        .FirstOrDefault();
-
-                    if (invoice == null)
-                        return "Payment amount exceeds invoice balance.";
-
-                    return $"Payment amount exceeds invoice balance. Remaining balance: {Money.S2(invoice.Balance)} {cmd.Currency ?? "TRY"}";
-                });
+                .WithMessage("Payment amount exceeds invoice balance.");
         });
+    }
+
+    private async Task<bool> AccountBelongsToBranchAsync(int accountId, CancellationToken ct)
+    {
+        if (!_currentUserService.BranchId.HasValue) return false;
+        var currentBranchId = _currentUserService.BranchId.Value;
+
+        var account = await _db.CashBankAccounts
+            .AsNoTracking()
+            .Where(a => a.Id == accountId && !a.IsDeleted)
+            .Select(a => new { a.BranchId })
+            .FirstOrDefaultAsync(ct);
+        
+        return account != null && account.BranchId == currentBranchId;
+    }
+
+    private async Task<bool> InvoiceBelongsToBranchAsync(int invoiceId, CancellationToken ct)
+    {
+        if (!_currentUserService.BranchId.HasValue) return false;
+        var currentBranchId = _currentUserService.BranchId.Value;
+
+        var invoice = await _db.Invoices
+            .AsNoTracking()
+            .Where(i => i.Id == invoiceId && !i.IsDeleted)
+            .Select(i => new { i.BranchId })
+            .FirstOrDefaultAsync(ct);
+        
+        return invoice != null && invoice.BranchId == currentBranchId;
     }
 }

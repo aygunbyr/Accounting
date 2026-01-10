@@ -6,7 +6,6 @@ using MediatR;
 namespace Accounting.Application.StockMovements.Commands.Create;
 
 public record CreateStockMovementCommand(
-    int BranchId,
     int WarehouseId,
     int ItemId,
     StockMovementType Type,

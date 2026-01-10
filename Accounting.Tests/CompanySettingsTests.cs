@@ -4,8 +4,15 @@ using Accounting.Application.CompanySettings.Queries.Get;
 using Accounting.Domain.Entities;
 using Accounting.Infrastructure.Persistence;
 using Accounting.Infrastructure.Persistence.Interceptors;
+using Accounting.Application.Common.Exceptions;
+using Accounting.Application.CompanySettings.Commands.Update;
+using Accounting.Application.CompanySettings.Queries.Get;
+using Accounting.Domain.Entities;
+using Accounting.Infrastructure.Persistence;
+using Accounting.Infrastructure.Persistence.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using Accounting.Tests.Common;
 
 namespace Accounting.Tests;
 
@@ -24,8 +31,9 @@ public class CompanySettingsTests
     [Fact]
     public async Task Get_ShouldReturnDefaultOrSeeded()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             // Seed
             db.CompanySettings.Add(new CompanySettings { Title = "Test Corp", TaxNumber = "111" });
@@ -45,8 +53,9 @@ public class CompanySettingsTests
     [Fact]
     public async Task Update_ShouldUpdateFields_WhenValid()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             var entity = new CompanySettings 
             { 
@@ -90,8 +99,9 @@ public class CompanySettingsTests
     [Fact]
     public async Task Update_ShouldThrowConcurrency_WhenVersionMismatch()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             var entity = new CompanySettings 
             { 
@@ -119,8 +129,9 @@ public class CompanySettingsTests
     [Fact]
     public async Task Update_ShouldThrowValidation_WhenTaxNumberIsEmpty()
     {
-        var audit = new AuditSaveChangesInterceptor();
-        using (var db = new AppDbContext(_options, audit))
+        var userService = new FakeCurrentUserService(1);
+        var audit = new AuditSaveChangesInterceptor(userService);
+        using (var db = new AppDbContext(_options, audit, userService))
         {
             var entity = new CompanySettings { Title = "Valid", TaxNumber = "123" };
             db.CompanySettings.Add(entity);

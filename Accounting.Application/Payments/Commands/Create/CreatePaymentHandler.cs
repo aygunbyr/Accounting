@@ -6,6 +6,8 @@ using Accounting.Domain.Entities;
 using MediatR;
 using System.Globalization;
 
+using Accounting.Application.Common.Interfaces;
+
 namespace Accounting.Application.Payments.Commands.Create;
 
 public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, CreatePaymentResult>
@@ -13,12 +15,14 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
     private readonly IAppDbContext _db;
     private readonly IInvoiceBalanceService _balanceService;
     private readonly IAccountBalanceService _accountBalanceService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public CreatePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService, IAccountBalanceService accountBalanceService)
+    public CreatePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService, IAccountBalanceService accountBalanceService, ICurrentUserService currentUserService)
     {
         _db = db;
         _balanceService = balanceService;
         _accountBalanceService = accountBalanceService;
+        _currentUserService = currentUserService;
     }
 
     public async Task<CreatePaymentResult> Handle(CreatePaymentCommand req, CancellationToken ct)
@@ -33,11 +37,14 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             throw new FluentValidation.ValidationException("Amount is invalid.");
 
         // Currency Normalization & Validation (merkezi)
+        // Currency Normalization & Validation (merkezi)
         var currency = CommonValidationRules.NormalizeAndValidateCurrency(req.Currency);
+
+        var branchId = _currentUserService.BranchId ?? throw new UnauthorizedAccessException();
 
         var entity = new Payment
         {
-            BranchId = req.BranchId,
+            BranchId = branchId,
             AccountId = req.AccountId,
             ContactId = req.ContactId,
             LinkedInvoiceId = req.LinkedInvoiceId,

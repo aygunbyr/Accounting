@@ -7,6 +7,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 
+using Accounting.Application.Common.Interfaces;
+
 namespace Accounting.Application.Invoices.Commands.Create;
 
 public class CreateInvoiceHandler
@@ -15,16 +17,20 @@ public class CreateInvoiceHandler
     private readonly IAppDbContext _db;
     private readonly IMediator _mediator;
     private readonly IStockService _stockService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public CreateInvoiceHandler(IAppDbContext db, IMediator mediator, IStockService stockService)
+    public CreateInvoiceHandler(IAppDbContext db, IMediator mediator, IStockService stockService, ICurrentUserService currentUserService)
     {
         _db = db;
         _mediator = mediator;
         _stockService = stockService;
+        _currentUserService = currentUserService;
     }
 
     public async Task<CreateInvoiceResult> Handle(CreateInvoiceCommand req, CancellationToken ct)
     {
+        var branchId = _currentUserService.BranchId ?? throw new UnauthorizedAccessException("Branch context missing");
+
         // 1) Tarihi ISO-8601 (UTC) olarak parse et
         if (!DateTime.TryParse(req.DateUtc, CultureInfo.InvariantCulture,
             DateTimeStyles.AdjustToUniversal, out var dateUtc))
@@ -92,7 +98,7 @@ public class CreateInvoiceHandler
         // 5) Invoice entity oluştur (toplamlar sıfır)
         var invoice = new Invoice
         {
-            BranchId = req.BranchId,
+            BranchId = branchId,
             ContactId = req.ContactId,
             DateUtc = dateUtc,
             Currency = currency,
@@ -276,7 +282,6 @@ public class CreateInvoiceHandler
             if (absQty == 0) continue;
 
             var cmd = new Accounting.Application.StockMovements.Commands.Create.CreateStockMovementCommand(
-                BranchId: invoice.BranchId,
                 WarehouseId: defaultWarehouse.Id, // ✅ Dinamik warehouse
                 ItemId: line.ItemId!.Value,
                 Type: movementType.Value,

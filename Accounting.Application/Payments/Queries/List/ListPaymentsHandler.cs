@@ -1,4 +1,6 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Models;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Payments.Queries.Dto;
@@ -16,14 +18,19 @@ namespace Accounting.Application.Payments.Queries.List
     public class ListPaymentsHandler : IRequestHandler<ListPaymentsQuery, PagedResult<PaymentListItemDto>>
     {
         private readonly IAppDbContext _db;
-        public ListPaymentsHandler(IAppDbContext db)
+        private readonly ICurrentUserService _currentUserService;
+        
+        public ListPaymentsHandler(IAppDbContext db, ICurrentUserService currentUserService)
         {
             _db = db;
+            _currentUserService = currentUserService;
         }
 
         public async Task<PagedResult<PaymentListItemDto>> Handle(ListPaymentsQuery q, CancellationToken ct)
         {
-            var query = _db.Payments.AsNoTracking();
+            var query = _db.Payments
+                .AsNoTracking()
+                .ApplyBranchFilter(_currentUserService);
 
             // --- Filtreler ---
             if (q.AccountId is int accId) query = query.Where(p => p.AccountId == accId);
