@@ -11,6 +11,7 @@ public class CashBankAccount : IHasTimestamps, ISoftDeletable, IHasRowVersion, I
     public string Code { get; set; } = null!;
     public string Name { get; set; } = null!;
     public string? Iban { get; set; }
+    public string Currency { get; set; } = "TRY";
     public decimal Balance { get; set; }
 
     // audit + soft delete + concurrency
@@ -18,7 +19,7 @@ public class CashBankAccount : IHasTimestamps, ISoftDeletable, IHasRowVersion, I
     public DateTime? UpdatedAtUtc { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     // Navigations
     public Branch Branch { get; set; } = null!;

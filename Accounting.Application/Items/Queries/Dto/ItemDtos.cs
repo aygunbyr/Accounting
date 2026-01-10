@@ -8,7 +8,8 @@ public record ItemListItemDto(
     string Name,
     string Unit,
     int VatRate,
-    string? DefaultUnitPrice,   // money string (S2) veya null
+    string? PurchasePrice,      // money string 
+    string? SalesPrice,         // money string
     DateTime CreatedAtUtc
 );
 
@@ -19,7 +20,8 @@ public record ItemDetailDto(
     string Name,
     string Unit,
     int VatRate,
-    string? DefaultUnitPrice,   // money string (S2) veya null
+    string? PurchasePrice,      // money string
+    string? SalesPrice,         // money string
     string RowVersion,          // base64
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc

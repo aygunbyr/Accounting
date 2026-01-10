@@ -27,7 +27,7 @@ public class Payment : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranc
     public DateTime? UpdatedAtUtc { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     // Navigations
     public CashBankAccount Account { get; set; } = null!;

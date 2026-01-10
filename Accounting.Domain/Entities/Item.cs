@@ -11,14 +11,15 @@ public class Item : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranch
     public string Code { get; set; } = null!;
     public string Unit { get; set; } = "adet";
     public int VatRate { get; set; } = 20;
-    public decimal? DefaultUnitPrice { get; set; }
+    public decimal? PurchasePrice { get; set; } // Alış Fiyatı (Maliyet)
+    public decimal? SalesPrice { get; set; }    // Satış Fiyatı (Liste Fiyatı)
 
     // audit + soft delete + concurrency
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAtUtc { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
     // Navigations
     public Branch Branch { get; set; } = null!;

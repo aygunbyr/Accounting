@@ -17,7 +17,8 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
         b.Property(x => x.Unit).IsRequired().HasMaxLength(16);
         b.Property(x => x.VatRate).IsRequired();
 
-        b.Property(x => x.DefaultUnitPrice).HasColumnType("decimal(18,4)");
+        b.Property(x => x.PurchasePrice).HasColumnType("decimal(18,4)");
+        b.Property(x => x.SalesPrice).HasColumnType("decimal(18,4)");
 
         b.HasOne(i => i.Branch)
             .WithMany()

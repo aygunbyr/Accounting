@@ -12,6 +12,7 @@ DELETE FROM ExpenseDefinitions
 DELETE FROM FixedAssets
 DELETE FROM InvoiceLines
 DELETE FROM Payments
+DELETE FROM Cheques
 DELETE FROM Invoices
 DELETE FROM OrderLines
 DELETE FROM Orders
@@ -31,6 +32,7 @@ DBCC CHECKIDENT ('ExpenseDefinitions', RESEED, 0)
 DBCC CHECKIDENT ('FixedAssets', RESEED, 0)
 DBCC CHECKIDENT ('InvoiceLines', RESEED, 0)
 DBCC CHECKIDENT ('Payments', RESEED, 0)
+DBCC CHECKIDENT ('Cheques', RESEED, 0)
 DBCC CHECKIDENT ('Invoices', RESEED, 0)
 DBCC CHECKIDENT ('OrderLines', RESEED, 0)
 DBCC CHECKIDENT ('Orders', RESEED, 0)

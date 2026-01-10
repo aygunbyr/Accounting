@@ -30,14 +30,24 @@ public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, ItemDetailDt
         e.Unit = r.Unit.Trim();
         e.VatRate = r.VatRate;
 
-        if (r.DefaultUnitPrice is null)
+        if (r.PurchasePrice is null)
         {
-            e.DefaultUnitPrice = null;
+            e.PurchasePrice = null;
         }
         else
         {
-            Money.TryParse2(r.DefaultUnitPrice, out var p);
-            e.DefaultUnitPrice = Money.R2(p);
+            Money.TryParse2(r.PurchasePrice, out var pp);
+            e.PurchasePrice = Money.R2(pp);
+        }
+
+        if (r.SalesPrice is null)
+        {
+            e.SalesPrice = null;
+        }
+        else
+        {
+            Money.TryParse2(r.SalesPrice, out var sp);
+            e.SalesPrice = Money.R2(sp);
         }
 
         // (6) save + concurrency
@@ -65,7 +75,8 @@ public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, ItemDetailDt
             fresh.Name,
             fresh.Unit,
             fresh.VatRate,
-            fresh.DefaultUnitPrice is null ? null : Money.S2(fresh.DefaultUnitPrice.Value),
+            fresh.PurchasePrice is null ? null : Money.S2(fresh.PurchasePrice.Value),
+            fresh.SalesPrice is null ? null : Money.S2(fresh.SalesPrice.Value),
             Convert.ToBase64String(fresh.RowVersion),
             fresh.CreatedAtUtc,
             fresh.UpdatedAtUtc

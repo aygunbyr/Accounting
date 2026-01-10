@@ -10,6 +10,7 @@ public record UpdateItemCommand(
     string Name,
     string Unit,
     int VatRate,
-    string? DefaultUnitPrice,
+    string? PurchasePrice,
+    string? SalesPrice,
     string RowVersion   // base64
 ) : IRequest<ItemDetailDto>;

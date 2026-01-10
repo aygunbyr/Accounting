@@ -101,9 +101,10 @@ app.MapHealthChecks("/health");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var balanceService = scope.ServiceProvider.GetRequiredService<IInvoiceBalanceService>();
+    var invoiceBalanceService = scope.ServiceProvider.GetRequiredService<IInvoiceBalanceService>();
+    var accountBalanceService = scope.ServiceProvider.GetRequiredService<IAccountBalanceService>();
     await db.Database.MigrateAsync();
-    await DataSeeder.SeedAsync(db, balanceService);
+    await DataSeeder.SeedAsync(db, invoiceBalanceService, accountBalanceService);
 }
 
 app.Run();

@@ -22,7 +22,8 @@ public class GetItemByIdHandler(IAppDbContext db) : IRequestHandler<GetItemByIdQ
             x.CategoryId, 
             x.Category?.Name,
             x.Name, x.Unit, x.VatRate,
-            x.DefaultUnitPrice is null ? null : Money.S2(x.DefaultUnitPrice.Value),
+            x.PurchasePrice is null ? null : Money.S2(x.PurchasePrice.Value),
+            x.SalesPrice is null ? null : Money.S2(x.SalesPrice.Value),
             Convert.ToBase64String(x.RowVersion),
             x.CreatedAtUtc, x.UpdatedAtUtc
         );

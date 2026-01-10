@@ -15,6 +15,7 @@ public class CashBankAccountConfiguration : IEntityTypeConfiguration<CashBankAcc
         b.Property(x => x.Type).HasConversion<int>().IsRequired();
         b.Property(x => x.Name).IsRequired().HasMaxLength(120);
         b.Property(x => x.Iban).HasMaxLength(34);
+        b.Property(x => x.Currency).IsRequired().HasMaxLength(3);
 
         b.HasOne(c => c.Branch)
             .WithMany()

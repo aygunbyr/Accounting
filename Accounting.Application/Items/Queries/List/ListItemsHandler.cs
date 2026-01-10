@@ -39,8 +39,8 @@ public class ListItemsHandler(IAppDbContext db) : IRequestHandler<ListItemsQuery
             "name:desc" => q.OrderByDescending(x => x.Name),
             "vatrate:asc" => q.OrderBy(x => x.VatRate).ThenBy(x => x.Name),
             "vatrate:desc" => q.OrderByDescending(x => x.VatRate).ThenBy(x => x.Name),
-            "price:asc" => q.OrderBy(x => x.DefaultUnitPrice ?? 0).ThenBy(x => x.Name),
-            "price:desc" => q.OrderByDescending(x => x.DefaultUnitPrice ?? 0).ThenBy(x => x.Name),
+            "price:asc" => q.OrderBy(x => x.SalesPrice ?? 0).ThenBy(x => x.Name),
+            "price:desc" => q.OrderByDescending(x => x.SalesPrice ?? 0).ThenBy(x => x.Name),
             _ => q.OrderBy(x => x.Name)
         };
 
@@ -53,7 +53,8 @@ public class ListItemsHandler(IAppDbContext db) : IRequestHandler<ListItemsQuery
                                x.CategoryId,
                                x.Category == null ? null : x.Category.Name,
                                x.Code, x.Name, x.Unit, x.VatRate,
-                               x.DefaultUnitPrice == null ? null : Money.S2(x.DefaultUnitPrice.Value),
+                               x.PurchasePrice == null ? null : Money.S2(x.PurchasePrice.Value),
+                               x.SalesPrice == null ? null : Money.S2(x.SalesPrice.Value),
                                x.CreatedAtUtc))
                            .ToListAsync(ct);
 

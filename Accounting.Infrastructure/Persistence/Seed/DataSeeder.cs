@@ -7,7 +7,11 @@ namespace Accounting.Infrastructure.Persistence.Seed;
 
 public static class DataSeeder
 {
-    public static async Task SeedAsync(AppDbContext db, IInvoiceBalanceService balanceService, CancellationToken ct = default)
+    public static async Task SeedAsync(
+        AppDbContext db,
+        IInvoiceBalanceService invoiceBalanceService,
+        IAccountBalanceService accountBalanceService,
+        CancellationToken ct = default)
     {
         // Helpers (AwayFromZero)
         static decimal R2(decimal v) => Math.Round(v, 2, MidpointRounding.AwayFromZero);
@@ -38,7 +42,7 @@ public static class DataSeeder
         // 7) ExpenseDefinitions
         await SeedExpenseDefinitionsAsync(db, branchIds, ct);
 
-        // Lookup’lar (seed sonrası)
+        // Lookup'lar (seed sonrası)
         var contactIds = await db.Contacts.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
         var customerIds = await db.Contacts.AsNoTracking().Where(x => x.Type == ContactType.Customer).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
         var vendorIds = await db.Contacts.AsNoTracking().Where(x => x.Type == ContactType.Vendor).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
@@ -66,13 +70,16 @@ public static class DataSeeder
         await SeedInvoicesAsync(db, branchIds, itemsAll, customerIds, vendorIds, now, R2, R3, R4, ct);
 
         // 11) Payments + balance recalc
-        await SeedPaymentsAsync(db, branchIds, contactIds, accountIds, balanceService, now, R2, ct);
+        await SeedPaymentsAsync(db, branchIds, contactIds, accountIds, invoiceBalanceService, accountBalanceService, now, R2, ct);
 
         // 12) ExpenseLists
         await SeedExpenseListsAsync(db, branchIds, vendorIds, now, R2, ct);
 
         // 13) FixedAssets
         await SeedFixedAssetsAsync(db, branchIds, now, R2, R4, ct);
+
+        // 14) Cheques (Çek/Senet)
+        await SeedChequesAsync(db, branchIds, customerIds, vendorIds, now, R2, ct);
 
         await db.SaveChangesAsync(ct);
     }
@@ -112,8 +119,6 @@ public static class DataSeeder
 
     private static async Task SeedWarehousesAsync(AppDbContext db, List<int> branchIds, CancellationToken ct)
     {
-        // “Hiç warehouse yoksa” basit seed.
-        // İstersen bir sonraki adımda “şube bazlı DEPO yoksa ekle” şeklinde iyileştiririz.
         if (await db.Warehouses.AnyAsync(ct)) return;
 
         var now = DateTime.UtcNow;
@@ -188,7 +193,7 @@ public static class DataSeeder
             });
         }
 
-        // ✅ 5 çalışan/personel
+        // 5 çalışan/personel
         for (int i = 1; i <= 5; i++)
         {
             contacts.Add(new Contact
@@ -229,57 +234,40 @@ public static class DataSeeder
 
         var categoryIds = await db.Categories.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
 
-        var units = new[] { "adet", "kg", "lt", "saat" };
-        var items = new List<Item>();
-
-        for (int i = 1; i <= 10; i++)
+        var items = new List<Item>
         {
-            items.Add(new Item
-            {
-                BranchId = branchIds[(i - 1) % branchIds.Count],
-                CategoryId = categoryIds.Count > 0 ? categoryIds[(i - 1) % categoryIds.Count] : null,
-                Code = $"ITEM{i:000}",
-                Name = $"Stok {i}",
-                Unit = units[(i - 1) % units.Length],
-                VatRate = (i % 5 == 0) ? 1 : 20,
-                DefaultUnitPrice = R4(25m + i * 7.5m)
-            });
-        }
+            new() { BranchId = branchIds[0 % branchIds.Count], CategoryId = categoryIds[0], Code = "LAPTOP01", Name = "Dizüstü Bilgisayar", Unit = "Adet", SalesPrice = R4(15000m), PurchasePrice = R4(12000m), VatRate = 20 },
+            new() { BranchId = branchIds[0 % branchIds.Count], CategoryId = categoryIds[0], Code = "MOUSE01", Name = "Kablosuz Mouse", Unit = "Adet", SalesPrice = R4(250m), PurchasePrice = R4(180m), VatRate = 20 },
+            new() { BranchId = branchIds[1 % branchIds.Count], CategoryId = categoryIds[1], Code = "KAHVE01", Name = "Filtre Kahve 1kg", Unit = "Kg", SalesPrice = R4(320m), PurchasePrice = R4(240m), VatRate = 10 },
+            new() { BranchId = branchIds[1 % branchIds.Count], CategoryId = categoryIds[1], Code = "CAY01", Name = "Siyah Çay 500g", Unit = "Paket", SalesPrice = R4(85m), PurchasePrice = R4(60m), VatRate = 10 },
+            new() { BranchId = branchIds[2 % branchIds.Count], CategoryId = categoryIds[2], Code = "KALEM01", Name = "Tükenmez Kalem (12'li)", Unit = "Paket", SalesPrice = R4(48m), PurchasePrice = R4(32m), VatRate = 20 },
+            new() { BranchId = branchIds[2 % branchIds.Count], CategoryId = categoryIds[3], Code = "DETERJAN01", Name = "Çamaşır Deterjanı 5L", Unit = "Adet", SalesPrice = R4(180m), PurchasePrice = R4(130m), VatRate = 20 },
+            new() { BranchId = branchIds[0 % branchIds.Count], CategoryId = categoryIds[4], Code = "SERVIS01", Name = "Teknik Destek Hizmeti", Unit = "Saat", SalesPrice = R4(500m), PurchasePrice = R4(0m), VatRate = 20 },
+            new() { BranchId = branchIds[1 % branchIds.Count], CategoryId = categoryIds[0], Code = "TABLET01", Name = "Tablet 10 inç", Unit = "Adet", SalesPrice = R4(8500m), PurchasePrice = R4(6800m), VatRate = 20 },
+            new() { BranchId = branchIds[2 % branchIds.Count], CategoryId = categoryIds[2], Code = "DEFTER01", Name = "Spiralli Defter A4", Unit = "Adet", SalesPrice = R4(35m), PurchasePrice = R4(22m), VatRate = 10 },
+            new() { BranchId = branchIds[0 % branchIds.Count], CategoryId = categoryIds[3], Code = "SABUN01", Name = "Sıvı Sabun 5L", Unit = "Adet", SalesPrice = R4(95m), PurchasePrice = R4(65m), VatRate = 10 }
+        };
 
         db.Items.AddRange(items);
-        await db.SaveChangesAsync(ct); ;
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedCashBankAccountsAsync(AppDbContext db, List<int> branchIds, CancellationToken ct)
     {
         if (await db.CashBankAccounts.AnyAsync(ct)) return;
 
-        var accs = new List<CashBankAccount>();
+        var now = DateTime.UtcNow;
 
-        for (int i = 1; i <= 5; i++)
+        var accounts = new List<CashBankAccount>
         {
-            accs.Add(new CashBankAccount
-            {
-                BranchId = branchIds[(i - 1) % branchIds.Count],
-                Type = CashBankAccountType.Cash,
-                Code = $"CASH{i:000}",
-                Name = $"Kasa {i}",
-            });
-        }
+            new() { BranchId = branchIds[0 % branchIds.Count], Code = "KASA01", Name = "Merkez Kasa", Currency = "TRY", Balance = 0m, CreatedAtUtc = now },
+            new() { BranchId = branchIds[0 % branchIds.Count], Code = "BANKA01", Name = "İş Bankası TL Hesabı", Currency = "TRY", Balance = 0m, CreatedAtUtc = now },
+            new() { BranchId = branchIds[0 % branchIds.Count], Code = "BANKA02", Name = "Garanti USD Hesabı", Currency = "USD", Balance = 0m, CreatedAtUtc = now },
+            new() { BranchId = branchIds[1 % branchIds.Count], Code = "KASA02", Name = "Ankara Kasa", Currency = "TRY", Balance = 0m, CreatedAtUtc = now },
+            new() { BranchId = branchIds[2 % branchIds.Count], Code = "KASA03", Name = "İzmir Kasa", Currency = "TRY", Balance = 0m, CreatedAtUtc = now }
+        };
 
-        for (int i = 1; i <= 5; i++)
-        {
-            accs.Add(new CashBankAccount
-            {
-                BranchId = branchIds[(i - 1) % branchIds.Count],
-                Type = CashBankAccountType.Bank,
-                Code = $"BANK{i:000}",
-                Name = $"Banka {i}",
-                Iban = $"TR{i:00}0006200000000{i:000000000}"
-            });
-        }
-
-        db.CashBankAccounts.AddRange(accs);
+        db.CashBankAccounts.AddRange(accounts);
         await db.SaveChangesAsync(ct);
     }
 
@@ -287,26 +275,16 @@ public static class DataSeeder
     {
         if (await db.ExpenseDefinitions.AnyAsync(ct)) return;
 
-        var definitions = new List<ExpenseDefinition>();
-        var codes = new[] { "YOL", "YEMEK", "KIRTASIYE", "YAZILIMABO" };
-        var names = new[] { "Yol / Ulaşım", "Yemek / İkram", "Kırtasiye", "Yazılım Aboneliği" };
-        var vatRates = new[] { 20, 10, 20, 20 };
+        var now = DateTime.UtcNow;
 
-        // Her şube için aynı tanımları oluştur
-        foreach (var branchId in branchIds)
+        var definitions = new List<ExpenseDefinition>
         {
-            for (int i = 0; i < codes.Length; i++)
-            {
-                definitions.Add(new ExpenseDefinition
-                {
-                    BranchId = branchId,
-                    Code = codes[i],
-                    Name = names[i],
-                    DefaultVatRate = vatRates[i],
-                    IsActive = true
-                });
-            }
-        }
+            new() { BranchId = branchIds[0 % branchIds.Count], Code = "ULASIM", Name = "Ulaşım Giderleri", DefaultVatRate = 20, CreatedAtUtc = now },
+            new() { BranchId = branchIds[0 % branchIds.Count], Code = "KIRTASIYE", Name = "Kırtasiye Giderleri", DefaultVatRate = 20, CreatedAtUtc = now },
+            new() { BranchId = branchIds[0 % branchIds.Count], Code = "YEMEK", Name = "Yemek Giderleri", DefaultVatRate = 10, CreatedAtUtc = now },
+            new() { BranchId = branchIds[0 % branchIds.Count], Code = "KONAKLAMA", Name = "Konaklama Giderleri", DefaultVatRate = 10, CreatedAtUtc = now },
+            new() { BranchId = branchIds[1 % branchIds.Count], Code = "YAKIT", Name = "Yakıt Giderleri", DefaultVatRate = 20, CreatedAtUtc = now }
+        };
 
         db.ExpenseDefinitions.AddRange(definitions);
         await db.SaveChangesAsync(ct);
@@ -321,110 +299,51 @@ public static class DataSeeder
         Func<decimal, decimal> R3,
         CancellationToken ct)
     {
-        // StockMovements
-        if (!await db.StockMovements.AnyAsync(ct))
+        if (await db.Stocks.AnyAsync(ct)) return;
+        if (!itemsAll.Any()) return;
+
+        var effectiveBranchIds = branchIds.Count > 0 ? branchIds : new List<int> { 1 };
+
+        var movements = new List<StockMovement>();
+        var stocks = new List<Stock>();
+
+        var itemsByBranch = itemsAll.GroupBy(i => i.BranchId).ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var branchId in effectiveBranchIds)
         {
-            var itemsByBranch = itemsAll
-                .GroupBy(i => i.BranchId)
-                .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Id).ToList());
+            if (!defaultWarehouseByBranch.TryGetValue(branchId, out var warehouse)) continue;
+            if (!itemsByBranch.TryGetValue(branchId, out var branchItems)) continue;
 
-            var movements = new List<StockMovement>();
-            var stockMap = new Dictionary<(int BranchId, int WarehouseId, int ItemId), decimal>();
-
-            foreach (var branchId in branchIds)
+            foreach (var item in branchItems)
             {
-                if (!defaultWarehouseByBranch.TryGetValue(branchId, out var wh))
-                    continue;
+                var initialQty = R3(50m + (item.Id * 7) % 100);
 
-                if (!itemsByBranch.TryGetValue(branchId, out var branchItems) || branchItems.Count == 0)
-                    continue;
-
-                var takeCount = Math.Min(5, branchItems.Count);
-                for (int j = 0; j < takeCount; j++)
+                movements.Add(new StockMovement
                 {
-                    var item = branchItems[j];
-                    var key = (branchId, wh.Id, item.Id);
+                    BranchId = branchId,
+                    WarehouseId = warehouse.Id,
+                    ItemId = item.Id,
+                    Type = StockMovementType.AdjustmentIn,
+                    Quantity = initialQty,
+                    TransactionDateUtc = now.AddDays(-30),
+                    Note = "Açılış stoku",
+                    CreatedAtUtc = now.AddDays(-30)
+                });
 
-                    // PurchaseIn
-                    var inQty = R3(10m + (j * 3m));
-                    movements.Add(new StockMovement
-                    {
-                        BranchId = branchId,
-                        WarehouseId = wh.Id,
-                        ItemId = item.Id,
-                        Type = StockMovementType.PurchaseIn,
-                        Quantity = inQty,
-                        TransactionDateUtc = now.AddDays(-(j + 10)),
-                        Note = "Demo: Alış girişi",
-                        CreatedAtUtc = now.AddDays(-(j + 10))
-                    });
-
-                    stockMap[key] = R3((stockMap.TryGetValue(key, out var cur) ? cur : 0m) + inQty);
-
-                    // SalesOut (bazı item’larda)
-                    if (j % 2 == 0)
-                    {
-                        var outQty = R3(2m + j);
-                        var available = stockMap[key];
-                        if (outQty > available) outQty = available;
-
-                        if (outQty > 0m)
-                        {
-                            movements.Add(new StockMovement
-                            {
-                                BranchId = branchId,
-                                WarehouseId = wh.Id,
-                                ItemId = item.Id,
-                                Type = StockMovementType.SalesOut,
-                                Quantity = outQty,
-                                TransactionDateUtc = now.AddDays(-(j + 5)),
-                                Note = "Demo: Satış çıkışı",
-                                CreatedAtUtc = now.AddDays(-(j + 5))
-                            });
-
-                            stockMap[key] = R3(stockMap[key] - outQty);
-                        }
-                    }
-                }
+                stocks.Add(new Stock
+                {
+                    BranchId = branchId,
+                    WarehouseId = warehouse.Id,
+                    ItemId = item.Id,
+                    Quantity = initialQty,
+                    CreatedAtUtc = now.AddDays(-30)
+                });
             }
-
-            db.StockMovements.AddRange(movements);
-            await db.SaveChangesAsync(ct);
         }
 
-        // Stocks snapshot
-        if (!await db.Stocks.AnyAsync(ct))
-        {
-            var mv = await db.StockMovements
-                .AsNoTracking()
-                .Where(x => !x.IsDeleted)
-                .Select(x => new { x.BranchId, x.WarehouseId, x.ItemId, x.Type, x.Quantity })
-                .ToListAsync(ct);
-
-            var map = new Dictionary<(int BranchId, int WarehouseId, int ItemId), decimal>();
-
-            foreach (var m in mv)
-            {
-                var key = (m.BranchId, m.WarehouseId, m.ItemId);
-                var signed = (m.Type == StockMovementType.PurchaseIn || m.Type == StockMovementType.AdjustmentIn)
-                    ? m.Quantity
-                    : -m.Quantity;
-
-                map[key] = R3((map.TryGetValue(key, out var cur) ? cur : 0m) + signed);
-            }
-
-            var stocks = map.Select(kvp => new Stock
-            {
-                BranchId = kvp.Key.BranchId,
-                WarehouseId = kvp.Key.WarehouseId,
-                ItemId = kvp.Key.ItemId,
-                Quantity = kvp.Value,
-                CreatedAtUtc = now
-            }).ToList();
-
-            db.Stocks.AddRange(stocks);
-            await db.SaveChangesAsync(ct);
-        }
+        db.StockMovements.AddRange(movements);
+        db.Stocks.AddRange(stocks);
+        await db.SaveChangesAsync(ct);
     }
 
     private static async Task SeedOrdersAsync(
@@ -439,41 +358,40 @@ public static class DataSeeder
         CancellationToken ct)
     {
         if (await db.Orders.AnyAsync(ct)) return;
+        if (!itemsAll.Any()) return;
 
-        var orders = new List<Order>();
         var effectiveBranchIds = branchIds.Count > 0 ? branchIds : new List<int> { 1 };
 
-        // Satış Siparişleri (Draft, Approved, Invoiced çeşitliliği)
-        for (int i = 1; i <= 6; i++)
+        var orders = new List<Order>();
+
+        // 5 satış siparişi
+        for (int i = 1; i <= 5; i++)
         {
-            if (customerIds.Count == 0 || itemsAll.Count == 0) break;
+            var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
+            var customerId = customerIds[(i - 1) % customerIds.Count];
+            var item = itemsAll.FirstOrDefault(x => x.BranchId == branchId) ?? itemsAll.First();
 
-            var contactId = customerIds[(i - 1) % customerIds.Count];
-            var item = itemsAll[(i - 1) % itemsAll.Count];
-            var qty = R3(1m + i * 0.5m);
-            var unitPrice = item.DefaultUnitPrice ?? 100m;
+            var qty = R3(1m + (i % 5));
+            var unitPrice = item.SalesPrice ?? R2(100m);
             var vatRate = item.VatRate;
-
             var net = R2(qty * unitPrice);
             var vat = R2(net * vatRate / 100m);
             var gross = R2(net + vat);
 
-            var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
-
-            // Status çeşitliliği
             var status = i switch
             {
-                1 or 2 => OrderStatus.Draft,
-                3 or 4 => OrderStatus.Approved,
-                5 => OrderStatus.Invoiced,
-                _ => OrderStatus.Cancelled
+                1 => OrderStatus.Draft,
+                2 => OrderStatus.Approved,
+                3 => OrderStatus.Invoiced,
+                4 => OrderStatus.Cancelled,
+                _ => OrderStatus.Draft
             };
 
             orders.Add(new Order
             {
                 BranchId = branchId,
-                ContactId = contactId,
-                OrderNumber = $"SO-{i:0000}",
+                ContactId = customerId,
+                OrderNumber = $"SO-{now.Year}-{i:0000}",
                 Type = InvoiceType.Sales,
                 Status = status,
                 DateUtc = now.AddDays(-i * 2),
@@ -481,7 +399,6 @@ public static class DataSeeder
                 TotalNet = net,
                 TotalVat = vat,
                 TotalGross = gross,
-                Description = $"Satış Siparişi {i}",
                 Lines = new List<OrderLine>
                 {
                     new()
@@ -499,43 +416,32 @@ public static class DataSeeder
             });
         }
 
-        // Alış Siparişleri
-        for (int i = 1; i <= 4; i++)
+        // 3 alış siparişi
+        for (int i = 1; i <= 3; i++)
         {
-            if (vendorIds.Count == 0 || itemsAll.Count == 0) break;
+            var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
+            var vendorId = vendorIds[(i - 1) % vendorIds.Count];
+            var item = itemsAll.FirstOrDefault(x => x.BranchId == branchId) ?? itemsAll.First();
 
-            var contactId = vendorIds[(i - 1) % vendorIds.Count];
-            var item = itemsAll[(i + 2) % itemsAll.Count];
-            var qty = R3(5m + i * 2m);
-            var unitPrice = item.DefaultUnitPrice ?? 100m;
+            var qty = R3(5m + (i * 3));
+            var unitPrice = item.PurchasePrice ?? R2(80m);
             var vatRate = item.VatRate;
-
             var net = R2(qty * unitPrice);
             var vat = R2(net * vatRate / 100m);
             var gross = R2(net + vat);
 
-            var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
-
-            var status = i switch
-            {
-                1 => OrderStatus.Draft,
-                2 => OrderStatus.Approved,
-                _ => OrderStatus.Draft
-            };
-
             orders.Add(new Order
             {
                 BranchId = branchId,
-                ContactId = contactId,
-                OrderNumber = $"PO-{i:0000}",
+                ContactId = vendorId,
+                OrderNumber = $"PO-{now.Year}-{i:0000}",
                 Type = InvoiceType.Purchase,
-                Status = status,
+                Status = i == 1 ? OrderStatus.Draft : OrderStatus.Approved,
                 DateUtc = now.AddDays(-i * 3),
                 Currency = "TRY",
                 TotalNet = net,
                 TotalVat = vat,
                 TotalGross = gross,
-                Description = $"Alış Siparişi {i}",
                 Lines = new List<OrderLine>
                 {
                     new()
@@ -570,43 +476,34 @@ public static class DataSeeder
         CancellationToken ct)
     {
         if (await db.Invoices.AnyAsync(ct)) return;
+        if (!itemsAll.Any()) return;
 
-        var invoices = new List<Invoice>();
         var effectiveBranchIds = branchIds.Count > 0 ? branchIds : new List<int> { 1 };
 
-        for (int i = 1; i <= 12; i++)
+        var invoices = new List<Invoice>();
+
+        for (int i = 1; i <= 18; i++)
         {
-            var invType =
-                (i % 6 == 0) ? InvoiceType.SalesReturn :
-                (i % 5 == 0) ? InvoiceType.PurchaseReturn :
-                (i % 2 == 0) ? InvoiceType.Purchase :
-                               InvoiceType.Sales;
+            var isSales = i <= 10;
+            var invType = isSales ? InvoiceType.Sales : InvoiceType.Purchase;
+            var prefix = isSales ? "SLS" : "PUR";
 
-            var contactId =
-                (invType == InvoiceType.Sales || invType == InvoiceType.SalesReturn)
-                    ? customerIds[(i - 1) % customerIds.Count]
-                    : vendorIds[(i - 1) % vendorIds.Count];
+            var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
+            var contactId = isSales
+                ? customerIds[(i - 1) % customerIds.Count]
+                : vendorIds[(i - 1) % vendorIds.Count];
 
-            var item = itemsAll[(i - 1) % itemsAll.Count];
-            var qty = R3(1m + (i % 3));
-            var unitPrice = R4(item.DefaultUnitPrice ?? 50m);
+            var item = itemsAll.FirstOrDefault(x => x.BranchId == branchId) ?? itemsAll.First();
+
+            var qty = R3(1m + (i % 7) * 2);
+            var unitPrice = isSales
+                ? (item.SalesPrice ?? R4(100m))
+                : (item.PurchasePrice ?? R4(80m));
+
             var vatRate = item.VatRate;
-
             var net = R2(qty * unitPrice);
             var vat = R2(net * vatRate / 100m);
             var gross = R2(net + vat);
-
-            var branchId = effectiveBranchIds[(i - 1) % effectiveBranchIds.Count];
-
-            // Invoice number prefix based on type
-            var prefix = invType switch
-            {
-                InvoiceType.Sales => "SLS",
-                InvoiceType.Purchase => "PUR",
-                InvoiceType.SalesReturn => "SRT",
-                InvoiceType.PurchaseReturn => "PRT",
-                _ => "INV"
-            };
 
             invoices.Add(new Invoice
             {
@@ -650,7 +547,8 @@ public static class DataSeeder
         List<int> branchIds,
         List<int> contactIds,
         List<int> accountIds,
-        IInvoiceBalanceService balanceService,
+        IInvoiceBalanceService invoiceBalanceService,
+        IAccountBalanceService accountBalanceService,
         DateTime now,
         Func<decimal, decimal> R2,
         CancellationToken ct)
@@ -661,6 +559,7 @@ public static class DataSeeder
 
         var payments = new List<Payment>();
 
+        // Faturaya bağlı ödemeler
         for (int i = 1; i <= Math.Min(10, invoiceIds.Count); i++)
         {
             var invoiceId = invoiceIds[i - 1];
@@ -696,6 +595,7 @@ public static class DataSeeder
             });
         }
 
+        // Bağımsız ödemeler
         for (int i = 1; i <= 5; i++)
         {
             var accountId = accountIds[(i - 1) % accountIds.Count];
@@ -718,7 +618,7 @@ public static class DataSeeder
         db.Payments.AddRange(payments);
         await db.SaveChangesAsync(ct);
 
-        // balance recalc (linked)
+        // Invoice balance recalc
         var linkedInvoiceIds = payments
             .Where(p => p.LinkedInvoiceId.HasValue)
             .Select(p => p.LinkedInvoiceId!.Value)
@@ -727,7 +627,18 @@ public static class DataSeeder
 
         foreach (var invoiceId in linkedInvoiceIds)
         {
-            await balanceService.RecalculateBalanceAsync(invoiceId);
+            await invoiceBalanceService.RecalculateBalanceAsync(invoiceId);
+        }
+
+        // Account balance recalc
+        var affectedAccountIds = payments
+            .Select(p => p.AccountId)
+            .Distinct()
+            .ToList();
+
+        foreach (var accountId in affectedAccountIds)
+        {
+            await accountBalanceService.RecalculateBalanceAsync(accountId, ct);
         }
 
         await db.SaveChangesAsync(ct);
@@ -826,6 +737,140 @@ public static class DataSeeder
         };
 
         db.FixedAssets.AddRange(assets);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedChequesAsync(
+        AppDbContext db,
+        List<int> branchIds,
+        List<int> customerIds,
+        List<int> vendorIds,
+        DateTime now,
+        Func<decimal, decimal> R2,
+        CancellationToken ct)
+    {
+        if (await db.Cheques.AnyAsync(ct)) return;
+
+        var cheques = new List<Cheque>();
+        var bankNames = new[] { "İş Bankası", "Garanti BBVA", "Yapı Kredi", "Ziraat Bankası", "Akbank" };
+
+        // Müşteriden alınan çekler (Inbound)
+        for (int i = 1; i <= 6; i++)
+        {
+            var branchId = branchIds[(i - 1) % branchIds.Count];
+            var customerId = customerIds[(i - 1) % customerIds.Count];
+            var daysUntilDue = 30 + (i * 15);
+
+            var status = i switch
+            {
+                1 => ChequeStatus.Paid,
+                2 => ChequeStatus.Endorsed,
+                6 => ChequeStatus.Bounced,
+                _ => ChequeStatus.Pending
+            };
+
+            cheques.Add(new Cheque
+            {
+                BranchId = branchId,
+                ContactId = customerId,
+                Type = ChequeType.Cheque,
+                Direction = ChequeDirection.Inbound,
+                Status = status,
+                ChequeNumber = $"CHQ-IN-{now.Year}-{i:0000}",
+                IssueDate = now.AddDays(-30),
+                DueDate = now.AddDays(daysUntilDue - 30),
+                Amount = R2(5000m + i * 2500m),
+                Currency = "TRY",
+                BankName = bankNames[(i - 1) % bankNames.Length],
+                BankBranch = $"Şube {i}",
+                AccountNumber = $"TR{i:00}0001000{i:00}00000{i:000}",
+                DrawerName = $"Müşteri {i} A.Ş.",
+                Description = $"Satış bedeli - Fatura grubu {i}",
+                CreatedAtUtc = now.AddDays(-30)
+            });
+        }
+
+        // Müşteriden alınan senetler (Inbound - Promissory Note)
+        for (int i = 1; i <= 3; i++)
+        {
+            var branchId = branchIds[(i - 1) % branchIds.Count];
+            var customerId = customerIds[(i - 1) % customerIds.Count];
+
+            cheques.Add(new Cheque
+            {
+                BranchId = branchId,
+                ContactId = customerId,
+                Type = ChequeType.PromissoryNote,
+                Direction = ChequeDirection.Inbound,
+                Status = i == 1 ? ChequeStatus.Paid : ChequeStatus.Pending,
+                ChequeNumber = $"SNT-IN-{now.Year}-{i:0000}",
+                IssueDate = now.AddDays(-45),
+                DueDate = now.AddDays(60 + i * 30),
+                Amount = R2(10000m + i * 5000m),
+                Currency = "TRY",
+                DrawerName = $"Müşteri {i}",
+                Description = $"Vadeli satış - Senet {i}",
+                CreatedAtUtc = now.AddDays(-45)
+            });
+        }
+
+        // Tedarikçiye verilen çekler (Outbound)
+        for (int i = 1; i <= 4; i++)
+        {
+            var branchId = branchIds[(i - 1) % branchIds.Count];
+            var vendorId = vendorIds[(i - 1) % vendorIds.Count];
+
+            var status = i switch
+            {
+                1 => ChequeStatus.Paid,
+                4 => ChequeStatus.Cancelled,
+                _ => ChequeStatus.Pending
+            };
+
+            cheques.Add(new Cheque
+            {
+                BranchId = branchId,
+                ContactId = vendorId,
+                Type = ChequeType.Cheque,
+                Direction = ChequeDirection.Outbound,
+                Status = status,
+                ChequeNumber = $"CHQ-OUT-{now.Year}-{i:0000}",
+                IssueDate = now.AddDays(-15),
+                DueDate = now.AddDays(30 + i * 15),
+                Amount = R2(3000m + i * 1500m),
+                Currency = "TRY",
+                BankName = "Şirket Bankası",
+                BankBranch = "Merkez",
+                AccountNumber = "TR000001000000000001",
+                Description = $"Tedarikçi ödemesi - {i}",
+                CreatedAtUtc = now.AddDays(-15)
+            });
+        }
+
+        // Tedarikçiye verilen senetler (Outbound - Promissory Note)
+        for (int i = 1; i <= 2; i++)
+        {
+            var branchId = branchIds[(i - 1) % branchIds.Count];
+            var vendorId = vendorIds[(i - 1) % vendorIds.Count];
+
+            cheques.Add(new Cheque
+            {
+                BranchId = branchId,
+                ContactId = vendorId,
+                Type = ChequeType.PromissoryNote,
+                Direction = ChequeDirection.Outbound,
+                Status = ChequeStatus.Pending,
+                ChequeNumber = $"SNT-OUT-{now.Year}-{i:0000}",
+                IssueDate = now.AddDays(-20),
+                DueDate = now.AddDays(90 + i * 30),
+                Amount = R2(15000m + i * 7500m),
+                Currency = "TRY",
+                Description = $"Vadeli alım - Tedarikçi senet {i}",
+                CreatedAtUtc = now.AddDays(-20)
+            });
+        }
+
+        db.Cheques.AddRange(cheques);
         await db.SaveChangesAsync(ct);
     }
 }

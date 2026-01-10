@@ -14,23 +14,31 @@ public class CreateItemHandler : IRequestHandler<CreateItemCommand, ItemDetailDt
 
     public async Task<ItemDetailDto> Handle(CreateItemCommand r, CancellationToken ct)
     {
-        decimal? price = null;
-        if (r.DefaultUnitPrice is not null)
+        decimal? pPrice = null;
+        if (r.PurchasePrice is not null)
         {
-            // Validator zaten kontrol ediyor; yine de güvenli parse:
-            Money.TryParse2(r.DefaultUnitPrice, out var p);
-            price = Money.R2(p);
+            Money.TryParse2(r.PurchasePrice, out var pp);
+            pPrice = Money.R2(pp);
+        }
+
+        decimal? sPrice = null;
+        if (r.SalesPrice is not null)
+        {
+            Money.TryParse2(r.SalesPrice, out var sp);
+            sPrice = Money.R2(sp);
         }
 
         var e = new Item
         {
             BranchId = r.BranchId,
             CategoryId = r.CategoryId,
+            Code = r.Code.Trim(),
             Name = r.Name.Trim(),
             Unit = r.Unit.Trim(),
             VatRate = r.VatRate,
-            DefaultUnitPrice = price
-            // Created/Updated, SoftDelete alanları audit interceptor tarafından set ediliyor
+            PurchasePrice = pPrice,
+            SalesPrice = sPrice
+            // Created/Updated defaults via interceptor
         };
 
         _db.Items.Add(e);
@@ -39,7 +47,7 @@ public class CreateItemHandler : IRequestHandler<CreateItemCommand, ItemDetailDt
         // Fresh read
         var saved = await _db.Items.AsNoTracking().FirstAsync(x => x.Id == e.Id, ct);
 
-        // Kategori ismi
+        // Kategori ismi look up
         string? catName = null;
         if (e.CategoryId.HasValue)
         {
@@ -54,7 +62,8 @@ public class CreateItemHandler : IRequestHandler<CreateItemCommand, ItemDetailDt
             saved.Name,
             saved.Unit,
             saved.VatRate,
-            saved.DefaultUnitPrice is null ? null : Money.S2(saved.DefaultUnitPrice.Value),
+            saved.PurchasePrice is null ? null : Money.S2(saved.PurchasePrice.Value),
+            saved.SalesPrice is null ? null : Money.S2(saved.SalesPrice.Value),
             Convert.ToBase64String(saved.RowVersion),
             saved.CreatedAtUtc,
             saved.UpdatedAtUtc
