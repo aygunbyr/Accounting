@@ -86,6 +86,7 @@ public class UpdateChequeStatusHandler : IRequestHandler<UpdateChequeStatusComma
             BranchId = cheque.BranchId,
             AccountId = accountId,
             ContactId = cheque.ContactId,
+            ChequeId = cheque.Id, // Çek-Ödeme ilişkisi
             Direction = direction,
             Amount = cheque.Amount,
             Currency = cheque.Currency,

@@ -8,6 +8,43 @@ namespace Accounting.Application.Common.Validation;
 /// </summary>
 public static class CommonValidationRules
 {
+    // ========== Allowed Values ==========
+
+    /// <summary>
+    /// Desteklenen para birimleri (ISO-4217)
+    /// </summary>
+    public static readonly string[] AllowedCurrencies = { "TRY", "USD", "EUR", "GBP" };
+
+    // ========== Helper Methods for Handlers ==========
+
+    /// <summary>
+    /// Currency kodunu normalize et ve validate et.
+    /// Handler'larda kullanım için.
+    /// </summary>
+    /// <param name="currency">Input currency (nullable)</param>
+    /// <param name="defaultCurrency">Default değer (varsayılan: TRY)</param>
+    /// <returns>Normalized uppercase currency code</returns>
+    /// <exception cref="FluentValidation.ValidationException">Geçersiz currency</exception>
+    public static string NormalizeAndValidateCurrency(string? currency, string defaultCurrency = "TRY")
+    {
+        var normalized = (currency ?? defaultCurrency).ToUpperInvariant();
+
+        if (!AllowedCurrencies.Contains(normalized))
+            throw new ValidationException($"Currency '{currency}' is not supported. Allowed: {string.Join(", ", AllowedCurrencies)}");
+
+        return normalized;
+    }
+
+    /// <summary>
+    /// Currency kodunun geçerli olup olmadığını kontrol et (exception fırlatmadan)
+    /// </summary>
+    public static bool IsValidCurrency(string? currency)
+    {
+        if (string.IsNullOrWhiteSpace(currency)) return false;
+        return AllowedCurrencies.Contains(currency.ToUpperInvariant());
+    }
+
+    // ========== FluentValidation Rule Extensions ==========
     /// <summary>
     /// String money amount validation (GreaterThan 0)
     /// </summary>
@@ -132,11 +169,7 @@ public static class CommonValidationRules
     private static bool BeValidCurrency(string? currency)
     {
         if (string.IsNullOrWhiteSpace(currency)) return false;
-
-        var normalized = currency.ToUpperInvariant();
-        var allowedCurrencies = new[] { "TRY", "USD", "EUR", "GBP" };
-
-        return allowedCurrencies.Contains(normalized);
+        return AllowedCurrencies.Contains(currency.ToUpperInvariant());
     }
 
     private static bool BeValidUtcDateTime(string? dateUtc)

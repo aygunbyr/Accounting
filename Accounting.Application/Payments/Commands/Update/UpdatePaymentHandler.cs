@@ -2,6 +2,7 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;   // ConcurrencyConflictException, BusinessRuleException
 using Accounting.Application.Common.Utils;    // Money.TryParse2 / Money.S2
+using Accounting.Application.Common.Validation;
 using Accounting.Application.Payments.Queries.Dto;
 using Accounting.Application.Services;
 using Accounting.Domain.Entities;
@@ -50,13 +51,8 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
         if (!Money.TryParse2(req.Amount, out var amount))
             throw new BusinessRuleException("Amount format is invalid.");
 
-        // Currency Normalization
-        var currency = (req.Currency ?? "TRY").ToUpperInvariant();
-
-        // Whitelist Validation
-        var allowedCurrencies = new[] { "TRY", "USD", "EUR", "GBP" };
-        if (!allowedCurrencies.Contains(currency))
-            throw new FluentValidation.ValidationException($"Currency '{currency}' is not supported.");
+        // Currency Normalization & Validation (merkezi)
+        var currency = CommonValidationRules.NormalizeAndValidateCurrency(req.Currency);
 
         p.AccountId = req.AccountId;
         p.ContactId = req.ContactId;

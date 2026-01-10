@@ -12,6 +12,12 @@ public class Payment : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranc
     public int? ContactId { get; set; }
     public int? LinkedInvoiceId { get; set; }
 
+    /// <summary>
+    /// Çek/Senet tahsilatı veya ödemesinden oluşan payment'lar için referans.
+    /// Manuel ödeme girişlerinde null.
+    /// </summary>
+    public int? ChequeId { get; set; }
+
     public DateTime DateUtc { get; set; } = DateTime.UtcNow;
     public PaymentDirection Direction { get; set; } = PaymentDirection.In;
     public decimal Amount { get; set; }
@@ -28,4 +34,5 @@ public class Payment : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranc
     public Branch Branch { get; set; } = null!;
     public Contact? Contact { get; set; }
     public Invoice? LinkedInvoice { get; set; }
+    public Cheque? Cheque { get; set; }
 }

@@ -38,6 +38,12 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .HasForeignKey(p => p.LinkedInvoiceId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Cheque ilişkisi (opsiyonel - çek/senet kaynaklı ödemeler için)
+        b.HasOne(p => p.Cheque)
+            .WithMany()
+            .HasForeignKey(p => p.ChequeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // audit
         b.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()")
@@ -52,7 +58,8 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         b.HasIndex(x => x.AccountId).HasDatabaseName("IX_Payments_AccountId");
         b.HasIndex(x => x.BranchId).HasDatabaseName("IX_Payments_BranchId");
         b.HasIndex(x => x.ContactId).HasDatabaseName("IX_Payments_ContactId");
-        b.HasIndex(x => x.LinkedInvoiceId).HasDatabaseName("IX_Payments_LinkedInvoiceId"); // yeni
+        b.HasIndex(x => x.LinkedInvoiceId).HasDatabaseName("IX_Payments_LinkedInvoiceId");
+        b.HasIndex(x => x.ChequeId).HasDatabaseName("IX_Payments_ChequeId");
         b.HasIndex(x => x.Currency).HasDatabaseName("IX_Payments_Currency");
     }
 }

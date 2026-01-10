@@ -1,6 +1,7 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
+using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -10,86 +11,35 @@ namespace Accounting.Application.Reports.Queries;
 
 public record GetContactStatementQuery(int ContactId, DateTime? DateFrom, DateTime? DateTo) : IRequest<ContactStatementDto>;
 
-public class GetContactStatementHandler(IAppDbContext db) : IRequestHandler<GetContactStatementQuery, ContactStatementDto>
+public class GetContactStatementHandler : IRequestHandler<GetContactStatementQuery, ContactStatementDto>
 {
+    private readonly IAppDbContext _db;
+    private readonly IContactBalanceService _balanceService;
+
+    public GetContactStatementHandler(IAppDbContext db, IContactBalanceService balanceService)
+    {
+        _db = db;
+        _balanceService = balanceService;
+    }
+
     public async Task<ContactStatementDto> Handle(GetContactStatementQuery request, CancellationToken ct)
     {
-        var contact = await db.Contacts.FindAsync(new object[] { request.ContactId }, ct);
+        var contact = await _db.Contacts.FindAsync(new object[] { request.ContactId }, ct);
         if (contact == null || contact.IsDeleted)
             throw new NotFoundException("Contact", request.ContactId);
 
         var fromDate = request.DateFrom ?? DateTime.MinValue;
         var toDate = request.DateTo ?? DateTime.MaxValue;
 
-        // 1. Opening Balance (Devir Bakiyesi)
-        // DateFrom'dan önceki tüm hareketlerin toplamı
-        var prevInvoices = await db.Invoices
-            .AsNoTracking()
-            .Where(i => i.ContactId == request.ContactId && !i.IsDeleted && i.DateUtc < fromDate)
-            .Select(i => new { i.Type, i.TotalGross })
-            .ToListAsync(ct);
+        // 1. Opening Balance (Devir Bakiyesi) - Servis kullanarak
+        var openingBalance = fromDate > DateTime.MinValue
+            ? await _balanceService.CalculateBalanceAsync(request.ContactId, fromDate, ct)
+            : 0m;
 
-        var prevPayments = await db.Payments
-            .AsNoTracking()
-            .Where(p => p.ContactId == request.ContactId && !p.IsDeleted && p.DateUtc < fromDate)
-            .Select(p => new { p.Direction, p.Amount })
-            .ToListAsync(ct);
+        // 2. Fetch Transactions in Range - Servis kullanarak
+        var transactions = await _balanceService.GetTransactionsAsync(request.ContactId, fromDate, toDate, ct);
 
-        decimal openingBalance = 0;
-
-        // Fatura Etkisi: Satış (+) Borç Artırır, Alış (-) Alacak Artırır (Bizim açımızdan değil, cari bakiye açısından)
-        // Cari Bakiye = (Satışlar - Alışlar) - (Tahsilatlar - Ödemeler) ?? 
-        // Basit Bakiye: Borç - Alacak
-        // Satış Faturası => Borç
-        // Alış Faturası => Alacak
-        // Ödeme (In - Tahsilat) => Alacak (Borç düşer)
-        // Ödeme (Out - Tediye) => Borç (Alacak düşer)
-
-        foreach (var inv in prevInvoices)
-        {
-            if (inv.Type == InvoiceType.Sales) openingBalance += inv.TotalGross; // Borç
-            else openingBalance -= inv.TotalGross; // Alacak
-        }
-
-        foreach (var pay in prevPayments)
-        {
-            if (pay.Direction == PaymentDirection.In) openingBalance -= pay.Amount; // Alacak (Tahsilat)
-            else openingBalance += pay.Amount; // Borç (Tediye)
-        }
-
-        // 2. Fetch Transactions in Range
-        var invoices = await db.Invoices
-            .AsNoTracking()
-            .Where(i => i.ContactId == request.ContactId && !i.IsDeleted && i.DateUtc >= fromDate && i.DateUtc <= toDate)
-            .Select(i => new StatementTransaction
-            {
-                DateUtc = i.DateUtc,
-                Type = i.Type == InvoiceType.Sales ? "Satış Faturası" : "Alış Faturası",
-                DocNo = i.InvoiceNumber,
-                Desc = "", // Description property doesn't exist on Invoice yet
-                Debt = i.Type == InvoiceType.Sales ? i.TotalGross : 0,
-                Credit = i.Type == InvoiceType.Purchase ? i.TotalGross : 0
-            })
-            .ToListAsync(ct);
-
-        var payments = await db.Payments
-            .AsNoTracking()
-            .Where(p => p.ContactId == request.ContactId && !p.IsDeleted && p.DateUtc >= fromDate && p.DateUtc <= toDate)
-            .Select(p => new StatementTransaction
-            {
-                DateUtc = p.DateUtc,
-                Type = p.Direction == PaymentDirection.In ? "Tahsilat" : "Ödeme",
-                DocNo = p.Id.ToString(), // Ödeme No
-                Desc = "", // Payment might not have Description either, check entity if needed
-                Debt = p.Direction == PaymentDirection.Out ? p.Amount : 0,
-                Credit = p.Direction == PaymentDirection.In ? p.Amount : 0
-            })
-            .ToListAsync(ct);
-
-        // 3. Merge and Sort
-        var allTransactions = invoices.Concat(payments).OrderBy(x => x.DateUtc).ToList();
-
-        // 4. Calculate Running Balance
+        // 3. Build Result with Running Balance
         var resultItems = new List<StatementItemDto>();
 
         // Add Opening Balance Line
@@ -100,15 +50,15 @@ public class GetContactStatementHandler(IAppDbContext db) : IRequestHandler<GetC
                 "DEVİR",
                 "-",
                 "Önceki dönem bakiyesi",
-                openingBalance > 0 ? openingBalance : 0, // Devir Borç
-                openingBalance < 0 ? Math.Abs(openingBalance) : 0, // Devir Alacak
-                openingBalance // Bakiye
+                openingBalance > 0 ? openingBalance : 0,
+                openingBalance < 0 ? Math.Abs(openingBalance) : 0,
+                openingBalance
             ));
         }
 
         decimal currentBalance = openingBalance;
 
-        foreach (var txn in allTransactions)
+        foreach (var txn in transactions)
         {
             currentBalance += txn.Debt;
             currentBalance -= txn.Credit;
@@ -117,7 +67,7 @@ public class GetContactStatementHandler(IAppDbContext db) : IRequestHandler<GetC
                 txn.DateUtc,
                 txn.Type,
                 txn.DocNo,
-                txn.Desc ?? "",
+                txn.Description ?? "",
                 txn.Debt,
                 txn.Credit,
                 currentBalance
@@ -125,15 +75,5 @@ public class GetContactStatementHandler(IAppDbContext db) : IRequestHandler<GetC
         }
 
         return new ContactStatementDto(contact.Id, contact.Name, resultItems);
-    }
-
-    private class StatementTransaction
-    {
-        public DateTime DateUtc { get; set; }
-        public required string Type { get; set; }
-        public required string DocNo { get; set; }
-        public string? Desc { get; set; }
-        public decimal Debt { get; set; }
-        public decimal Credit { get; set; }
     }
 }

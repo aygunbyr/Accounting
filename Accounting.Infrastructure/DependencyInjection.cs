@@ -12,7 +12,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration config) 
+        IConfiguration config)
     {
         var conn = config.GetConnectionString("Default")!;
         services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(conn));
@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IInvoiceBalanceService, InvoiceBalanceService>();
         services.AddScoped<IExcelService, Accounting.Application.Common.Services.ExcelService>();
         services.AddScoped<IAccountBalanceService, AccountBalanceService>();
+        services.AddScoped<IContactBalanceService, ContactBalanceService>();
         services.AddScoped<IStockService, StockService>();
 
         return services;

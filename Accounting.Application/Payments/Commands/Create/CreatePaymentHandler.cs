@@ -1,5 +1,6 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Utils;
+using Accounting.Application.Common.Validation;
 using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -31,13 +32,8 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
         if (!Money.TryParse2(req.Amount, out var amount))
             throw new FluentValidation.ValidationException("Amount is invalid.");
 
-        // Currency Normalization
-        var currency = (req.Currency ?? "TRY").ToUpperInvariant();
-
-        // Whitelist Validation
-        var allowedCurrencies = new[] { "TRY", "USD", "EUR", "GBP" };
-        if (!allowedCurrencies.Contains(currency))
-            throw new FluentValidation.ValidationException($"Currency '{currency}' is not supported.");
+        // Currency Normalization & Validation (merkezi)
+        var currency = CommonValidationRules.NormalizeAndValidateCurrency(req.Currency);
 
         var entity = new Payment
         {
