@@ -33,6 +33,7 @@ This document defines the coding standards, architectural patterns, and best pra
 - **Entities**:
   - Keep entities **Rich** where possible (methods for logic), but public setters are currently permitted for practical CRUD simplification in this project.
   - **Soft Delete**: Entities implementing `ISoftDelete` must set `IsDeleted = true` instead of physical deletion.
+  - **Concurrency**: `RowVersion` property **MUST** be initialized to `Array.Empty<byte>()` in the entity definition to support InMemory testing and prevent nullability errors.
 
 ## 4. Application Patterns
 - **Database Access**:
@@ -75,3 +76,19 @@ This document defines the coding standards, architectural patterns, and best pra
 - **Core Domain**: Pre-Accounting (Ön Muhasebe) and Stock Management.
 - **Reference Model**: Features and UX should take inspiration from **"Mikro Paraşüt"** SaaS application.
 - **Goal**: Provide a tailored, efficient backend that replaces Excel for SMEs (KOBİ), without over-engineering enterprise ERP features unless requested.
+
+## 9. Testing Strategy
+- **Mandatory Unit Tests**: Every new feature (Command, Handler, Logic) **MUST** have corresponding unit tests.
+- **InMemory Provider**: Tests use `Microsoft.EntityFrameworkCore.InMemory`.
+  - **Limitations**: Does not support transactions (ignore `TransactionIgnoredWarning`). Enforces strict nullability checks.
+  - **Seeding**: All `required` or non-nullable properties (e.g., `Code`, `Currency`, `RowVersion`) **MUST** be populated in test seeds.
+- **Consolidation**: Group related tests (e.g., `AccountingTests.cs` for general flows) or separate by module (`ChequeTests.cs`) if complex.
+- **Scope**: Verify Happy Path, Edge Cases, and Business Rule Exceptions.
+
+## 10. Development Workflow
+1.  **Entity/Domain**: Define entities, properties, and relationships.
+2.  **Contracts**: Create/Update Commands, Queries, and DTOs.
+3.  **Application Logic**: Implement Handlers and Validators.
+4.  **Database**: Create Migrations (if Entity changed) and update `DataSeeder`.
+5.  **TESTING**: Write/Update Unit Tests to verify the change. **(Do not skip)**.
+6.  **Refactor**: Cleanup and optimize based on test results.
