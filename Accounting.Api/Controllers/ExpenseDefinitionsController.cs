@@ -1,4 +1,7 @@
 ﻿using Accounting.Application.Common.Models;
+using Accounting.Application.ExpenseDefinitions.Commands.Create;
+using Accounting.Application.ExpenseDefinitions.Commands.Update;
+using Accounting.Application.ExpenseDefinitions.Commands.Delete;
 using Accounting.Application.ExpenseDefinitions.Queries.Dto;
 using Accounting.Application.ExpenseDefinitions.Queries.GetById;
 using Accounting.Application.ExpenseDefinitions.Queries.List;
@@ -42,6 +45,33 @@ namespace Accounting.Api.Controllers
 
             var res = await _mediator.Send(new GetExpenseDefinitionByIdQuery(id), ct);
             return Ok(res);
+        }
+
+        // POST api/ExpenseDefinitions
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateExpenseDefinitionCommand command, CancellationToken ct)
+        {
+            var id = await _mediator.Send(command, ct);
+            return CreatedAtAction(nameof(GetById), new { id }, new { id });
+        }
+
+        // PUT api/ExpenseDefinitions/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateExpenseDefinitionCommand command, CancellationToken ct)
+        {
+            if (id != command.Id)
+                return BadRequest("ID mismatch");
+
+            await _mediator.Send(command, ct);
+            return NoContent();
+        }
+
+        // DELETE api/ExpenseDefinitions/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id, CancellationToken ct)
+        {
+            await _mediator.Send(new SoftDeleteExpenseDefinitionCommand(id), ct);
+            return NoContent();
         }
     }
 }
