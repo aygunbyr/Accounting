@@ -12,5 +12,6 @@ public record CreateStockMovementCommand(
     StockMovementType Type,
     string Quantity,                 // FE string gelebilir
     DateTime? TransactionDateUtc,
-    string? Note
+    string? Note,
+    int? InvoiceId = null            // Fatura kaynaklı hareketler için
 ) : IRequest<StockMovementDto>;

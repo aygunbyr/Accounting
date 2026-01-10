@@ -120,16 +120,17 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db) : IRequestHandler<C
         {
             var itemId = line.ItemId!.Value;
 
-            // Create movement (Invoice.Id will be set after SaveChanges, use navigation reference)
+            // Create movement - Invoice navigation ile ilişkilendirme (SaveChanges sonrası FK set edilecek)
             var movement = new StockMovement
             {
                 BranchId = branchId,
                 WarehouseId = defaultWarehouse.Id,
                 ItemId = itemId,
+                Invoice = invoice, // Navigation property ile ilişkilendir (EF Core FK'yı otomatik set edecek)
                 Type = movementType.Value,
                 Quantity = line.Qty,
                 TransactionDateUtc = invoice.DateUtc,
-                Note = $"Sipariş→Fatura: {invoice.OrderId}",
+                Note = null,
                 RowVersion = []
             };
             db.StockMovements.Add(movement);

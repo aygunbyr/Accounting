@@ -67,6 +67,7 @@ public class CreateStockMovementHandler(IAppDbContext db) : IRequestHandler<Crea
             BranchId = r.BranchId,
             WarehouseId = r.WarehouseId,
             ItemId = r.ItemId,
+            InvoiceId = r.InvoiceId, // Fatura kaynaklı hareketler için
             Type = r.Type,
             Quantity = qty,
             TransactionDateUtc = trxDate,

@@ -35,6 +35,12 @@ public class StockMovementConfiguration : IEntityTypeConfiguration<StockMovement
             .HasForeignKey(x => x.ItemId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Invoice ilişkisi (opsiyonel - fatura kaynaklı hareketler için)
+        b.HasOne(x => x.Invoice)
+            .WithMany()
+            .HasForeignKey(x => x.InvoiceId)
+            .OnDelete(DeleteBehavior.SetNull); // Fatura silinirse hareket kalır, InvoiceId null olur
+
         // audit
         b.Property(x => x.CreatedAtUtc)
             .HasDefaultValueSql("GETUTCDATE()")
@@ -49,6 +55,7 @@ public class StockMovementConfiguration : IEntityTypeConfiguration<StockMovement
         b.HasIndex(x => x.BranchId).HasDatabaseName("IX_StockMovements_BranchId");
         b.HasIndex(x => x.WarehouseId).HasDatabaseName("IX_StockMovements_WarehouseId");
         b.HasIndex(x => x.ItemId).HasDatabaseName("IX_StockMovements_ItemId");
+        b.HasIndex(x => x.InvoiceId).HasDatabaseName("IX_StockMovements_InvoiceId");
         b.HasIndex(x => x.TransactionDateUtc).HasDatabaseName("IX_StockMovements_TransactionDateUtc");
         // Note arama performansı için (filtered index - sadece dolu olanlar)
         b.HasIndex(x => x.Note)

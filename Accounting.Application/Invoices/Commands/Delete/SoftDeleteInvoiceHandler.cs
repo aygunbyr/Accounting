@@ -62,9 +62,8 @@ public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand
         // ---------------------------------------------------------
         // Stok hareketlerini de iptal et (Soft Delete)
         // ---------------------------------------------------------
-        var refNote = $"Fatura Ref: {inv.Id}";
         var existingMovements = await _db.StockMovements
-            .Where(m => m.Note == refNote && !m.IsDeleted)
+            .Where(m => m.InvoiceId == inv.Id && !m.IsDeleted)
             .ToListAsync(ct);
 
         foreach (var move in existingMovements)

@@ -48,45 +48,45 @@ public class CreateInvoiceHandler
 
         if (invType == InvoiceType.Expense)
         {
-             var expenseIds = req.Lines
-                .Where(x => x.ExpenseDefinitionId.HasValue)
-                .Select(l => l.ExpenseDefinitionId!.Value)
-                .Distinct()
-                .ToList();
-            
-             expensesMap = await _db.ExpenseDefinitions
-                .Where(i => expenseIds.Contains(i.Id))
-                .Select(i => new { i.Id, i.Code, i.Name })
-                .ToDictionaryAsync(i => i.Id, i => (dynamic)i, ct);
+            var expenseIds = req.Lines
+               .Where(x => x.ExpenseDefinitionId.HasValue)
+               .Select(l => l.ExpenseDefinitionId!.Value)
+               .Distinct()
+               .ToList();
+
+            expensesMap = await _db.ExpenseDefinitions
+               .Where(i => expenseIds.Contains(i.Id))
+               .Select(i => new { i.Id, i.Code, i.Name })
+               .ToDictionaryAsync(i => i.Id, i => (dynamic)i, ct);
         }
         else
         {
-             var itemIds = req.Lines
-                .Where(x => x.ItemId.HasValue)
-                .Select(l => l.ItemId!.Value)
-                .Distinct()
-                .ToList();
+            var itemIds = req.Lines
+               .Where(x => x.ItemId.HasValue)
+               .Select(l => l.ItemId!.Value)
+               .Distinct()
+               .ToList();
 
-             // STOCK VALIDATION (Only for Sales)
-             if (invType == InvoiceType.Sales)
-             {
-                 foreach (var line in req.Lines)
-                 {
-                     if (line.ItemId.HasValue && decimal.TryParse(line.Qty, NumberStyles.Number, CultureInfo.InvariantCulture, out var qty))
-                     {
-                         var absQty = Math.Abs(qty);
-                         if (absQty > 0)
-                         {
-                             await _stockService.ValidateStockAvailabilityAsync(line.ItemId.Value, absQty, ct);
-                         }
-                     }
-                 }
-             }
+            // STOCK VALIDATION (Only for Sales)
+            if (invType == InvoiceType.Sales)
+            {
+                foreach (var line in req.Lines)
+                {
+                    if (line.ItemId.HasValue && decimal.TryParse(line.Qty, NumberStyles.Number, CultureInfo.InvariantCulture, out var qty))
+                    {
+                        var absQty = Math.Abs(qty);
+                        if (absQty > 0)
+                        {
+                            await _stockService.ValidateStockAvailabilityAsync(line.ItemId.Value, absQty, ct);
+                        }
+                    }
+                }
+            }
 
-             itemsMap = await _db.Items
-                .Where(i => itemIds.Contains(i.Id))
-                .Select(i => new { i.Id, i.Code, i.Name, i.Unit, i.VatRate })
-                .ToDictionaryAsync(i => i.Id, i => (dynamic)i, ct);
+            itemsMap = await _db.Items
+               .Where(i => itemIds.Contains(i.Id))
+               .Select(i => new { i.Id, i.Code, i.Name, i.Unit, i.VatRate })
+               .ToDictionaryAsync(i => i.Id, i => (dynamic)i, ct);
         }
 
         // 5) Invoice entity oluştur (toplamlar sıfır)
@@ -116,10 +116,10 @@ public class CreateInvoiceHandler
             // Kural: qty = 3 hane, unitPrice = 4 hane (AwayFromZero)
             qty = Money.R3(qty);
             unitPrice = Money.R4(unitPrice);
-            
+
             // DB'ye her zaman pozitif Qty kaydediyoruz
             var absQty = Math.Abs(qty);
-            
+
             // Net = qty * unitPrice (2 hane)
             var net = Money.R2(unitPrice * absQty);
 
@@ -147,7 +147,7 @@ public class CreateInvoiceHandler
 
                 if (!line.ExpenseDefinitionId.HasValue)
                     throw new BusinessRuleException("Masraf faturasında masraf tanımı (ExpenseDefinitionId) zorunludur.");
-                
+
                 if (expensesMap == null || !expensesMap.TryGetValue(line.ExpenseDefinitionId.Value, out var exp))
                     throw new BusinessRuleException($"Masraf tanımı {line.ExpenseDefinitionId} bulunamadı.");
 
@@ -163,11 +163,11 @@ public class CreateInvoiceHandler
                     throw new BusinessRuleException("Stok faturasında masraf tanımı (ExpenseDefinitionId) bulunamaz.");
 
                 if (!line.ItemId.HasValue)
-                     throw new BusinessRuleException("Stok faturasında ürün kodu (ItemId) zorunludur.");
+                    throw new BusinessRuleException("Stok faturasında ürün kodu (ItemId) zorunludur.");
 
                 if (itemsMap == null || !itemsMap.TryGetValue(line.ItemId.Value, out var it))
                     throw new BusinessRuleException($"Item {line.ItemId} bulunamadı.");
-                
+
                 lineEntity.ItemId = line.ItemId;
                 lineEntity.ItemCode = it.Code;
                 lineEntity.ItemName = it.Name;
@@ -271,8 +271,8 @@ public class CreateInvoiceHandler
             // "IsIn" ise +qty, değilse -qty yapıyor.
             // BİZİM BURADA GÖNDERECEĞİMİZ "Miktar" HER ZAMAN POZİTİF OLMALI.
             // CreateStockMovementHandler kendi içinde Type'a göre artırıp azaltacak.
-            
-            var absQty = Math.Abs(line.Qty); 
+
+            var absQty = Math.Abs(line.Qty);
             if (absQty == 0) continue;
 
             var cmd = new Accounting.Application.StockMovements.Commands.Create.CreateStockMovementCommand(
@@ -282,7 +282,8 @@ public class CreateInvoiceHandler
                 Type: movementType.Value,
                 Quantity: Money.S3(absQty), // String format
                 TransactionDateUtc: invoice.DateUtc,
-                Note: $"Fatura Ref: {invoice.Id}"
+                Note: null,
+                InvoiceId: invoice.Id // FK ile ilişkilendirme
             );
 
             await _mediator.Send(cmd, ct);

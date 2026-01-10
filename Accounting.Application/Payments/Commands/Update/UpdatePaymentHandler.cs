@@ -12,11 +12,16 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
 {
     private readonly IAppDbContext _db;
     private readonly IInvoiceBalanceService _balanceService;
+    private readonly IAccountBalanceService _accountBalanceService;
 
-    public UpdatePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService)
+    public UpdatePaymentHandler(
+        IAppDbContext db,
+        IInvoiceBalanceService balanceService,
+        IAccountBalanceService accountBalanceService)
     {
         _db = db;
         _balanceService = balanceService;
+        _accountBalanceService = accountBalanceService;
     }
 
     public async Task<PaymentDetailDto> Handle(UpdatePaymentCommand req, CancellationToken ct)
@@ -25,8 +30,9 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
         var p = await _db.Payments.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
         if (p is null) throw new NotFoundException("Payment", req.Id);
 
-        // Eski LinkedInvoiceId'yi sakla (balance recalc için)
+        // Eski değerleri sakla (balance recalc için)
         var oldLinkedInvoiceId = p.LinkedInvoiceId;
+        var oldAccountId = p.AccountId;
 
         // 2) Business rules: (şimdilik yok)
 
@@ -72,7 +78,7 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
             catch (DbUpdateConcurrencyException)
             { throw new ConcurrencyConflictException("Ödeme başka biri tarafından güncellendi."); }
 
-            // 7) Recalculate balances (eski ve yeni invoice için)
+            // 7) Recalculate Invoice balances (eski ve yeni invoice için)
             var invoicesToRecalc = new HashSet<int>();
             if (oldLinkedInvoiceId.HasValue) invoicesToRecalc.Add(oldLinkedInvoiceId.Value);
             if (p.LinkedInvoiceId.HasValue) invoicesToRecalc.Add(p.LinkedInvoiceId.Value);
@@ -82,6 +88,20 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
                 await _balanceService.RecalculateBalanceAsync(invoiceId, ct);
             }
             if (invoicesToRecalc.Count > 0)
+            {
+                await _db.SaveChangesAsync(ct);
+            }
+
+            // 8) Recalculate Account balances (eski ve yeni account için)
+            var accountsToRecalc = new HashSet<int>();
+            if (oldAccountId > 0) accountsToRecalc.Add(oldAccountId);
+            if (p.AccountId > 0) accountsToRecalc.Add(p.AccountId);
+
+            foreach (var accountId in accountsToRecalc)
+            {
+                await _accountBalanceService.RecalculateBalanceAsync(accountId, ct);
+            }
+            if (accountsToRecalc.Count > 0)
             {
                 await _db.SaveChangesAsync(ct);
             }

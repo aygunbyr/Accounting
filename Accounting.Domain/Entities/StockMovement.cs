@@ -11,6 +11,12 @@ public class StockMovement : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHa
     public int WarehouseId { get; set; }
     public int ItemId { get; set; }
 
+    /// <summary>
+    /// Fatura kaynaklı stok hareketleri için referans.
+    /// Manuel stok hareketlerinde null olabilir.
+    /// </summary>
+    public int? InvoiceId { get; set; }
+
     public StockMovementType Type { get; set; }
 
     /// <summary>
@@ -32,4 +38,5 @@ public class StockMovement : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHa
     public Branch Branch { get; set; } = null!;
     public Warehouse Warehouse { get; set; } = null!;
     public Item Item { get; set; } = null!;
+    public Invoice? Invoice { get; set; }
 }

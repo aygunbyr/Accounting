@@ -1,5 +1,6 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Errors;
+using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -8,25 +9,34 @@ using Microsoft.EntityFrameworkCore;
 namespace Accounting.Application.Cheques.Commands.UpdateStatus;
 
 public record UpdateChequeStatusCommand(
-    int Id, 
-    ChequeStatus NewStatus, 
+    int Id,
+    ChequeStatus NewStatus,
     DateTime? TransactionDate = null,
     int? CashBankAccountId = null // Tahsilat/Ödeme için gerekli
 ) : IRequest;
 
-public class UpdateChequeStatusHandler(IAppDbContext db) : IRequestHandler<UpdateChequeStatusCommand>
+public class UpdateChequeStatusHandler : IRequestHandler<UpdateChequeStatusCommand>
 {
+    private readonly IAppDbContext _db;
+    private readonly IAccountBalanceService _accountBalanceService;
+
+    public UpdateChequeStatusHandler(IAppDbContext db, IAccountBalanceService accountBalanceService)
+    {
+        _db = db;
+        _accountBalanceService = accountBalanceService;
+    }
+
     public async Task Handle(UpdateChequeStatusCommand request, CancellationToken ct)
     {
-        var cheque = await db.Cheques
-            .Include(c => c.Contact)
-            .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+        var cheque = await _db.Cheques
+            .FirstOrDefaultAsync(x => x.Id == request.Id && !x.IsDeleted, ct);
 
-        if (cheque == null) throw new ApplicationException("Çek/Senet bulunamadı");
+        if (cheque == null)
+            throw new NotFoundException("Cheque", request.Id);
 
         // Status Validations
         if (cheque.Status == ChequeStatus.Paid)
-            throw new ApplicationException("Zaten ödenmiş/tahsil edilmiş evrakın durumu değiştirilemez.");
+            throw new BusinessRuleException("Zaten ödenmiş/tahsil edilmiş evrakın durumu değiştirilemez.");
 
         if (cheque.Status == request.NewStatus)
             return; // No change
@@ -35,26 +45,50 @@ public class UpdateChequeStatusHandler(IAppDbContext db) : IRequestHandler<Updat
         if (request.NewStatus == ChequeStatus.Paid)
         {
             if (!request.CashBankAccountId.HasValue)
-                throw new ApplicationException("Tahsilat/Ödeme işlemi için Kasa/Banka hesabı seçilmelidir.");
+                throw new BusinessRuleException("Tahsilat/Ödeme işlemi için Kasa/Banka hesabı seçilmelidir.");
 
-            await ProcessPaymentAsync(cheque, request.CashBankAccountId.Value, request.TransactionDate ?? DateTime.UtcNow, ct);
+            // Transaction: Payment + AccountBalance + ChequeStatus birlikte commit
+            await using var tx = await _db.BeginTransactionAsync(ct);
+            try
+            {
+                // 1. Payment oluştur
+                var payment = CreatePaymentFromCheque(cheque, request.CashBankAccountId.Value, request.TransactionDate ?? DateTime.UtcNow);
+                _db.Payments.Add(payment);
+                await _db.SaveChangesAsync(ct);
+
+                // 2. Account Balance güncelle
+                await _accountBalanceService.RecalculateBalanceAsync(request.CashBankAccountId.Value, ct);
+                await _db.SaveChangesAsync(ct);
+
+                // 3. Cheque status güncelle
+                cheque.Status = request.NewStatus;
+                cheque.UpdatedAtUtc = DateTime.UtcNow;
+                await _db.SaveChangesAsync(ct);
+
+                await tx.CommitAsync(ct);
+            }
+            catch
+            {
+                await tx.RollbackAsync(ct);
+                throw;
+            }
         }
-        else if (request.NewStatus == ChequeStatus.Bounced)
+        else
         {
-             // Karşılıksız durumu (Sadece işaretleme, ekstra muhasebe kaydı şu an yok)
+            // Bounced veya diğer durumlar - sadece status değişikliği
+            cheque.Status = request.NewStatus;
+            cheque.UpdatedAtUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
         }
-
-        cheque.Status = request.NewStatus;
-        await db.SaveChangesAsync(ct);
     }
 
-    private async Task ProcessPaymentAsync(Cheque cheque, int accountId, DateTime dateUtc, CancellationToken ct)
+    private static Payment CreatePaymentFromCheque(Cheque cheque, int accountId, DateTime dateUtc)
     {
-        var direction = cheque.Direction == ChequeDirection.Inbound 
+        var direction = cheque.Direction == ChequeDirection.Inbound
             ? PaymentDirection.In  // Müşteri çeki tahsilatı -> Kasa Giriş
             : PaymentDirection.Out; // Kendi çekimiz ödenmesi -> Kasa Çıkış
 
-        var payment = new Payment
+        return new Payment
         {
             BranchId = cheque.BranchId,
             AccountId = accountId,
@@ -62,11 +96,7 @@ public class UpdateChequeStatusHandler(IAppDbContext db) : IRequestHandler<Updat
             Direction = direction,
             Amount = cheque.Amount,
             Currency = cheque.Currency,
-            DateUtc = dateUtc,
-            // Link? Payment entity'sinde ChequeId yok. Description'a yazacağız veya Payment Entity'si güncellenmeli.
-            // MVP için Description'a yazıyoruz.
+            DateUtc = dateUtc
         };
-
-        db.Payments.Add(payment);
     }
 }
