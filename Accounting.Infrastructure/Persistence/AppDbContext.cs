@@ -34,6 +34,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<Stock> Stocks => Set<Stock>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<Cheque> Cheques => Set<Cheque>();
+    public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

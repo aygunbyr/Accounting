@@ -18,6 +18,9 @@ public static class DataSeeder
         static decimal R3(decimal v) => Math.Round(v, 3, MidpointRounding.AwayFromZero);
         static decimal R4(decimal v) => Math.Round(v, 4, MidpointRounding.AwayFromZero);
 
+        // 0) Company Settings
+        await SeedCompanySettingsAsync(db, ct);
+
         // 1) Branches
         await SeedBranchesAsync(db, ct);
         var branchIds = await GetActiveBranchIdsAsync(db, ct);
@@ -87,6 +90,31 @@ public static class DataSeeder
     // -----------------------------
     // SRP METHODS
     // -----------------------------
+
+    private static async Task SeedCompanySettingsAsync(AppDbContext db, CancellationToken ct)
+    {
+        if (await db.CompanySettings.AnyAsync(ct)) return;
+
+        var now = DateTime.UtcNow;
+
+        var settings = new CompanySettings
+        {
+            Title = "Demo Şirketi A.Ş.",
+            TaxNumber = "1234567890",
+            TaxOffice = "Ankara Kurumlar V.D.",
+            Address = "Teknokent Bilişim Vadisi, D Blok No:12, Çankaya/ANKARA",
+            Phone = "+90 312 555 1234",
+            Email = "info@demosirketi.com.tr",
+            Website = "https://www.demosirketi.com.tr",
+            TradeRegisterNo = "12345",
+            MersisNo = "0123456789000015",
+            LogoUrl = "https://via.placeholder.com/150",
+            CreatedAtUtc = now
+        };
+
+        db.CompanySettings.Add(settings);
+        await db.SaveChangesAsync(ct);
+    }
 
     private static async Task SeedBranchesAsync(AppDbContext db, CancellationToken ct)
     {

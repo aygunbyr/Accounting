@@ -1,0 +1,33 @@
+using Accounting.Application.CompanySettings.Commands.Update;
+using Accounting.Application.CompanySettings.Dto;
+using Accounting.Application.CompanySettings.Queries.Get;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Accounting.Api.Controllers;
+
+[ApiController]
+[Route("api/company-settings")]
+public class CompanySettingsController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    public CompanySettingsController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<CompanySettingsDto>> Get()
+    {
+        var result = await _mediator.Send(new GetCompanySettingsQuery());
+        return Ok(result);
+    }
+
+    [HttpPut]
+    public async Task<ActionResult<CompanySettingsDto>> Update(UpdateCompanySettingsCommand command)
+    {
+        var result = await _mediator.Send(command);
+        return Ok(result);
+    }
+}

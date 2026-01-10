@@ -27,6 +27,9 @@ public interface IAppDbContext
     DbSet<Stock> Stocks { get; }
     DbSet<StockMovement> StockMovements { get; }
     DbSet<Cheque> Cheques { get; }
+    DbSet<Domain.Entities.CompanySettings> CompanySettings { get; }
+
+
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
