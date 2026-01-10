@@ -15,15 +15,16 @@ public class ApproveOrderHandler(IAppDbContext db, IStockService stockService) :
     {
         var order = await db.Orders
             .Include(o => o.Lines)
-            .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+            .FirstOrDefaultAsync(x => x.Id == request.Id && !x.IsDeleted, ct);
 
-        if (order == null) throw new ApplicationException("Sipariş bulunamadı");
+        if (order == null)
+            throw new NotFoundException("Order", request.Id);
 
         // Optimistic Concurrency Check
         db.Entry(order).Property("RowVersion").OriginalValue = request.RowVersion;
 
         if (order.Status != OrderStatus.Draft)
-            throw new ApplicationException("Sadece 'Taslak' durumundaki siparişler onaylanabilir.");
+            throw new BusinessRuleException("Sadece 'Taslak' durumundaki siparişler onaylanabilir.");
 
         // Validate Stock for Sales Orders
         if (order.Type == InvoiceType.Sales)
@@ -38,7 +39,7 @@ public class ApproveOrderHandler(IAppDbContext db, IStockService stockService) :
         }
 
         order.Status = OrderStatus.Approved;
-        
+
         try
         {
             await db.SaveChangesAsync(ct);

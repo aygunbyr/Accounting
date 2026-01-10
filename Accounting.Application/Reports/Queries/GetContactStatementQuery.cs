@@ -1,4 +1,5 @@
 using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Application.Common.Utils;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
@@ -14,7 +15,8 @@ public class GetContactStatementHandler(IAppDbContext db) : IRequestHandler<GetC
     public async Task<ContactStatementDto> Handle(GetContactStatementQuery request, CancellationToken ct)
     {
         var contact = await db.Contacts.FindAsync(new object[] { request.ContactId }, ct);
-        if (contact == null) throw new ApplicationException("Contact not found");
+        if (contact == null || contact.IsDeleted)
+            throw new NotFoundException("Contact", request.ContactId);
 
         var fromDate = request.DateFrom ?? DateTime.MinValue;
         var toDate = request.DateTo ?? DateTime.MaxValue;
@@ -34,7 +36,7 @@ public class GetContactStatementHandler(IAppDbContext db) : IRequestHandler<GetC
             .ToListAsync(ct);
 
         decimal openingBalance = 0;
-        
+
         // Fatura Etkisi: Satış (+) Borç Artırır, Alış (-) Alacak Artırır (Bizim açımızdan değil, cari bakiye açısından)
         // Cari Bakiye = (Satışlar - Alışlar) - (Tahsilatlar - Ödemeler) ?? 
         // Basit Bakiye: Borç - Alacak
@@ -89,7 +91,7 @@ public class GetContactStatementHandler(IAppDbContext db) : IRequestHandler<GetC
 
         // 4. Calculate Running Balance
         var resultItems = new List<StatementItemDto>();
-        
+
         // Add Opening Balance Line
         if (fromDate > DateTime.MinValue)
         {

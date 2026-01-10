@@ -1,4 +1,5 @@
 using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Errors;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -27,9 +28,9 @@ public class StockService(IAppDbContext db) : IStockService
         // Kriter: Satış Siparişi + Onaylı (Approved)
         var reservedLines = await db.OrderLines
             .AsNoTracking()
-            .Where(l => l.ItemId.HasValue && itemIds.Contains(l.ItemId.Value) && 
+            .Where(l => l.ItemId.HasValue && itemIds.Contains(l.ItemId.Value) &&
                         !l.IsDeleted &&
-                        l.Order.Type == InvoiceType.Sales && 
+                        l.Order.Type == InvoiceType.Sales &&
                         l.Order.Status == OrderStatus.Approved)
             .Select(l => new
             {
@@ -70,7 +71,7 @@ public class StockService(IAppDbContext db) : IStockService
 
         if (stock.QuantityAvailable < quantityRequired)
         {
-            throw new ApplicationException($"Stok yetersiz! İstenen: {quantityRequired}, Mevcut (Rezerve Dahil): {stock.QuantityAvailable}, Ürün ID: {itemId}");
+            throw new BusinessRuleException($"Stok yetersiz! İstenen: {quantityRequired}, Mevcut (Rezerve Dahil): {stock.QuantityAvailable}, Ürün ID: {itemId}");
         }
     }
 }

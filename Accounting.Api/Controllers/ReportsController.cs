@@ -41,24 +41,25 @@ public class ReportsController(IMediator mediator, IExcelService excelService) :
 
     [HttpGet("contact/{id}/statement/export")]
     public async Task<IActionResult> ExportContactStatement(
-        int id, 
+        int id,
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
         CancellationToken ct)
     {
         var data = await mediator.Send(new GetContactStatementQuery(id, dateFrom, dateTo), ct);
         var fileContent = await excelService.ExportAsync(data.Items, "Statement");
-        
+
         var safeName = string.Join("_", data.ContactName.Split(Path.GetInvalidFileNameChars()));
         return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Ekstre_{safeName}_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx");
     }
 
     [HttpGet("profit-loss")]
     public async Task<ActionResult<ProfitLossDto>> GetProfitLoss(
+        [FromQuery] int? branchId,
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
         CancellationToken ct)
     {
-        return Ok(await mediator.Send(new GetProfitLossQuery(dateFrom, dateTo), ct));
+        return Ok(await mediator.Send(new GetProfitLossQuery(branchId, dateFrom, dateTo), ct));
     }
 }

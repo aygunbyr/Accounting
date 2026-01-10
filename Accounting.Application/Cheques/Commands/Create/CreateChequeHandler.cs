@@ -3,48 +3,23 @@ using Accounting.Application.Common.Errors;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using MediatR;
-using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Cheques.Commands.Create;
-
-public record CreateChequeCommand(
-    int BranchId,
-    int? ContactId,
-    ChequeType Type,
-    ChequeDirection Direction,
-    string ChequeNumber,
-    DateTime IssueDate,
-    DateTime DueDate,
-    decimal Amount,
-    string Currency,
-    string? BankName,
-    string? BankBranch,
-    string? AccountNumber,
-    string? DrawerName,
-    string? Description
-) : IRequest<int>;
-
-public class CreateChequeValidator : AbstractValidator<CreateChequeCommand>
-{
-    public CreateChequeValidator()
-    {
-        RuleFor(x => x.BranchId).GreaterThan(0);
-        RuleFor(x => x.ChequeNumber).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.Amount).GreaterThan(0);
-        RuleFor(x => x.DueDate).GreaterThanOrEqualTo(x => x.IssueDate).WithMessage("Vade tarihi düzenleme tarihinden önce olamaz.");
-        
-        // Müşteri çeki ise Contact zorunlu
-        RuleFor(x => x.ContactId)
-            .NotEmpty()
-            .When(x => x.Direction == ChequeDirection.Inbound)
-            .WithMessage("Müşteri evrağı girişinde cari seçimi zorunludur.");
-    }
-}
 
 public class CreateChequeHandler(IAppDbContext db) : IRequestHandler<CreateChequeCommand, int>
 {
     public async Task<int> Handle(CreateChequeCommand request, CancellationToken ct)
     {
+        // Duplicate check: Aynı şubede aynı çek numarası olamaz
+        var exists = await db.Cheques.AnyAsync(c =>
+            c.BranchId == request.BranchId &&
+            c.ChequeNumber == request.ChequeNumber &&
+            !c.IsDeleted, ct);
+
+        if (exists)
+            throw new BusinessRuleException($"Bu çek numarası ({request.ChequeNumber}) zaten kayıtlı.");
+
         var cheque = new Cheque
         {
             BranchId = request.BranchId,

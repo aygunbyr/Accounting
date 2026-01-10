@@ -6,11 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Services;
 
-public interface IAccountBalanceService
-{
-    Task<decimal> RecalculateBalanceAsync(int accountId, CancellationToken ct = default);
-}
-
 public class AccountBalanceService(IAppDbContext db) : IAccountBalanceService
 {
     public async Task<decimal> RecalculateBalanceAsync(int accountId, CancellationToken ct = default)
