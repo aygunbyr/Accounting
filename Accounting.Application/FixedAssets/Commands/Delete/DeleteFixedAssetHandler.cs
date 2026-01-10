@@ -1,5 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +29,7 @@ public sealed class DeleteFixedAssetHandler
         // Concurrency: RowVersion
         if (string.IsNullOrWhiteSpace(r.RowVersionBase64))
         {
-            throw new InvalidOperationException("RowVersion is required.");
+            throw new BusinessRuleException("RowVersion is required.");
         }
 
         var originalRowVersion = Convert.FromBase64String(r.RowVersionBase64);

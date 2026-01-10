@@ -1,4 +1,4 @@
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Accounting.Application.StockMovements.Commands.Transfer;
 using Accounting.Domain.Entities;

@@ -1,5 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors; // ConcurrencyConflictException
+using Accounting.Application.Common.Exceptions; // ConcurrencyConflictException
 using Accounting.Application.Contacts.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;

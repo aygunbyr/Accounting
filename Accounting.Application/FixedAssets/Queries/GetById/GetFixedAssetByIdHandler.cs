@@ -1,5 +1,5 @@
 ﻿using System;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

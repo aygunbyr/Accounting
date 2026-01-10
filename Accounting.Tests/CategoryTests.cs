@@ -2,7 +2,7 @@ using Accounting.Application.Categories.Commands.Create;
 using Accounting.Application.Categories.Commands.Delete;
 using Accounting.Application.Categories.Commands.Update;
 using Accounting.Application.Categories.Queries.List;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using Accounting.Domain.Entities;
 using Accounting.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;

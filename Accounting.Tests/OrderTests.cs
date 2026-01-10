@@ -1,5 +1,5 @@
 using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using Accounting.Application.Reports.Queries;
 using Accounting.Application.Orders.Commands.Approve;
 using Accounting.Application.Orders.Commands.Create;

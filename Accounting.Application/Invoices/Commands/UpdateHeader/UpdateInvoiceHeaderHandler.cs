@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;  // ConcurrencyConflictException
+using Accounting.Application.Common.Exceptions;  // ConcurrencyConflictException
 using Accounting.Application.Common.Utils;   // Money.*
 using Accounting.Application.Invoices.Queries.Dto;
 using Accounting.Domain.Entities;

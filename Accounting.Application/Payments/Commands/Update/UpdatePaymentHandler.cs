@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;   // ConcurrencyConflictException, BusinessRuleException
+using Accounting.Application.Common.Exceptions;   // ConcurrencyConflictException, BusinessRuleException
 using Accounting.Application.Common.Utils;    // Money.TryParse2 / Money.S2
 using Accounting.Application.Common.Validation;
 using Accounting.Application.Payments.Queries.Dto;

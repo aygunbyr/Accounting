@@ -1,5 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using Accounting.Application.FixedAssets.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -37,7 +37,7 @@ public sealed class UpdateFixedAssetHandler
         // Concurrency: RowVersion
         if (string.IsNullOrWhiteSpace(r.RowVersionBase64))
         {
-            throw new InvalidOperationException("RowVersion is required.");
+            throw new BusinessRuleException("RowVersion is required.");
         }
 
         var originalRowVersion = Convert.FromBase64String(r.RowVersionBase64);
@@ -49,12 +49,12 @@ public sealed class UpdateFixedAssetHandler
 
         if (codeExists)
         {
-            throw new InvalidOperationException("A fixed asset with the same code already exists.");
+            throw new BusinessRuleException("A fixed asset with the same code already exists.");
         }
 
         if (r.UsefulLifeYears <= 0)
         {
-            throw new InvalidOperationException("Useful life must be greater than zero.");
+            throw new BusinessRuleException("Useful life must be greater than zero.");
         }
 
         decimal depRate =

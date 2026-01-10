@@ -1,5 +1,5 @@
 using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Orders.Dto;
 using Accounting.Domain.Entities;

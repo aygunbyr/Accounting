@@ -1,4 +1,4 @@
-﻿using Accounting.Application.Common.Errors;
+﻿using Accounting.Application.Common.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

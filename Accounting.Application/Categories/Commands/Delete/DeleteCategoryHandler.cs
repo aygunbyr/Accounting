@@ -1,5 +1,5 @@
 using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 

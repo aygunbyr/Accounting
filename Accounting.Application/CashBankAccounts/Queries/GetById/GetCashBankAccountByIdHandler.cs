@@ -1,5 +1,5 @@
 ﻿using Accounting.Application.CashBankAccounts.Queries.Dto;
-using Accounting.Application.Common.Errors;
+using Accounting.Application.Common.Exceptions;
 using Accounting.Application.Common.Abstractions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

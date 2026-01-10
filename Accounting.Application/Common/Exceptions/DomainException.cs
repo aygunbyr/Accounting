@@ -1,4 +1,4 @@
-﻿namespace Accounting.Application.Common.Errors;
+﻿namespace Accounting.Application.Common.Exceptions;
 
 public abstract class DomainException : Exception
 {

@@ -1,6 +1,6 @@
 ﻿// Accounting.Application/Items/Commands/Update/UpdateItemHandler.cs
 using Accounting.Application.Common.Abstractions;
-using Accounting.Application.Common.Errors;   // ConcurrencyConflictException
+using Accounting.Application.Common.Exceptions;   // ConcurrencyConflictException
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Items.Queries.Dto;
 using Accounting.Domain.Entities;

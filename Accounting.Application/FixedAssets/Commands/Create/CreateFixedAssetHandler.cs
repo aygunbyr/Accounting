@@ -1,4 +1,5 @@
 ﻿using Accounting.Application.Common.Abstractions;
+using Accounting.Application.Common.Exceptions;
 using Accounting.Application.FixedAssets.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -26,13 +27,13 @@ public sealed class CreateFixedAssetHandler
 
         if (codeExists)
         {
-            throw new InvalidOperationException("A fixed asset with the same code already exists.");
+            throw new BusinessRuleException("A fixed asset with the same code already exists.");
         }
 
         // Amortisman oranı: 100 / UsefulLifeYears
         if (r.UsefulLifeYears <= 0)
         {
-            throw new InvalidOperationException("Useful life must be greater than zero.");
+            throw new BusinessRuleException("Useful life must be greater than zero.");
         }
 
         decimal depRate =
