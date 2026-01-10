@@ -12,10 +12,10 @@ public class GetOrderByIdHandler(IAppDbContext db) : IRequestHandler<GetOrderByI
     {
         var order = await db.Orders
             .AsNoTracking()
-            .Include(o => o.Lines.Where(l => !l.IsDeleted))
+            .Include(o => o.Lines)
                 .ThenInclude(l => l.Item)
             .Include(o => o.Contact)
-            .FirstOrDefaultAsync(o => o.Id == r.Id && !o.IsDeleted, ct);
+            .FirstOrDefaultAsync(o => o.Id == r.Id, ct);
 
         if (order is null)
             throw new NotFoundException("Order", r.Id);

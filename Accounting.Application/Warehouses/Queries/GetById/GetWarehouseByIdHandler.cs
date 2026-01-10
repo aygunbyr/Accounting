@@ -13,7 +13,7 @@ public class GetWarehouseByIdHandler(IAppDbContext db)
     {
         var e = await db.Warehouses
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == r.Id && !x.IsDeleted, ct);
+            .FirstOrDefaultAsync(x => x.Id == r.Id, ct);
 
         if (e is null) throw new NotFoundException("Warehouse", r.Id);
 

@@ -18,7 +18,6 @@ public class CreateWarehouseHandler(IAppDbContext db)
         // aynı şubede aynı code olmasın (soft delete hariç)
         var exists = await db.Warehouses.AnyAsync(x =>
             x.BranchId == r.BranchId &&
-            !x.IsDeleted &&
             x.Code == code, ct);
 
         if (exists)
@@ -28,7 +27,7 @@ public class CreateWarehouseHandler(IAppDbContext db)
         if (r.IsDefault)
         {
             var defaults = await db.Warehouses
-                .Where(x => x.BranchId == r.BranchId && !x.IsDeleted && x.IsDefault)
+                .Where(x => x.BranchId == r.BranchId && x.IsDefault)
                 .ToListAsync(ct);
 
             foreach (var d in defaults) d.IsDefault = false;

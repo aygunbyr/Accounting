@@ -13,7 +13,7 @@ public class UpdateWarehouseHandler(IAppDbContext db)
     public async Task<WarehouseDto> Handle(UpdateWarehouseCommand r, CancellationToken ct)
     {
         var e = await db.Warehouses
-            .FirstOrDefaultAsync(x => x.Id == r.Id && !x.IsDeleted, ct);
+            .FirstOrDefaultAsync(x => x.Id == r.Id, ct);
 
         if (e is null) throw new NotFoundException("Warehouse", r.Id);
 
@@ -28,7 +28,6 @@ public class UpdateWarehouseHandler(IAppDbContext db)
         var exists = await db.Warehouses.AnyAsync(x =>
             x.Id != r.Id &&
             x.BranchId == r.BranchId &&
-            !x.IsDeleted &&
             x.Code == code, ct);
 
         if (exists)
@@ -43,7 +42,7 @@ public class UpdateWarehouseHandler(IAppDbContext db)
         if (r.IsDefault && !e.IsDefault)
         {
             var defaults = await db.Warehouses
-                .Where(x => x.BranchId == r.BranchId && !x.IsDeleted && x.IsDefault)
+                .Where(x => x.BranchId == r.BranchId && x.IsDefault)
                 .ToListAsync(ct);
 
             foreach (var d in defaults) d.IsDefault = false;

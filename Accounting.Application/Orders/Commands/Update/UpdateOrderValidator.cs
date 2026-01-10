@@ -59,6 +59,6 @@ public class UpdateOrderValidator : AbstractValidator<UpdateOrderCommand>
 
     private async Task<bool> ContactExistsAsync(int contactId, CancellationToken ct)
     {
-        return await _db.Contacts.AnyAsync(c => c.Id == contactId && !c.IsDeleted, ct);
+        return await _db.Contacts.AnyAsync(c => c.Id == contactId, ct);
     }
 }

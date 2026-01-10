@@ -34,13 +34,16 @@ This document defines the coding standards, architectural patterns, and best pra
   - Keep entities **Rich** where possible (methods for logic), but public setters are currently permitted for practical CRUD simplification in this project.
   - **Soft Delete**: Entities implementing `ISoftDelete` must set `IsDeleted = true` instead of physical deletion.
   - **Concurrency**: `RowVersion` property **MUST** be initialized to `Array.Empty<byte>()` in the entity definition to support InMemory testing and prevent nullability errors.
+  - **Use Global Query Filters**: `AppDbContext` and EntityConfigurations apply global filters for `ISoftDeletable`.
+    - **DO NOT** manually filter by `!x.IsDeleted` in Application layer queries (Handlers).
+    - Use `.IgnoreQueryFilters()` explicitly if you need to access deleted records (e.g., for restore functionality or Audit).
 
 ## 4. Application Patterns
 - **Database Access**:
   - Use `IAppDbContext` abstraction. Do not access `DbContext` direct methods not in the interface.
   - **AsNoTracking**: Use `.AsNoTracking()` for all Read/Query operations.
 - **Exceptions**:
-  - **NotFound**: throw `new Accounting.Application.Common.Errors.NotFoundException("EntityName", id)`. Does NOT throw `KeyNotFoundException`.
+  - **NotFound**: throw `new Accounting.Application.Common.Exceptions.NotFoundException("EntityName", id)`. Does NOT throw `KeyNotFoundException`.
   - **Concurrency**: throw `new ConcurrencyConflictException(...)` when `RowVersion` mismatches.
   - **Validation**: handled by FluentValidation pipeline.
 - **Pagination**:

@@ -11,7 +11,7 @@ public class SoftDeleteWarehouseHandler(IAppDbContext db)
 {
     public async Task Handle(SoftDeleteWarehouseCommand r, CancellationToken ct)
     {
-        var e = await db.Warehouses.FirstOrDefaultAsync(x => x.Id == r.Id && !x.IsDeleted, ct);
+        var e = await db.Warehouses.FirstOrDefaultAsync(x => x.Id == r.Id, ct);
         if (e is null) throw new NotFoundException("Warehouse", r.Id);
 
         db.Entry(e).Property(nameof(Warehouse.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);

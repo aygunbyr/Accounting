@@ -17,7 +17,7 @@ public class ContactBalanceService(IAppDbContext db) : IContactBalanceService
         // Faturalar
         var invoiceTotals = await db.Invoices
             .AsNoTracking()
-            .Where(i => i.ContactId == contactId && !i.IsDeleted && i.DateUtc < asOfDate)
+            .Where(i => i.ContactId == contactId && i.DateUtc < asOfDate)
             .GroupBy(_ => 1)
             .Select(g => new
             {
@@ -29,7 +29,7 @@ public class ContactBalanceService(IAppDbContext db) : IContactBalanceService
         // Ödemeler
         var paymentTotals = await db.Payments
             .AsNoTracking()
-            .Where(p => p.ContactId == contactId && !p.IsDeleted && p.DateUtc < asOfDate)
+            .Where(p => p.ContactId == contactId && p.DateUtc < asOfDate)
             .GroupBy(_ => 1)
             .Select(g => new
             {
@@ -69,7 +69,7 @@ public class ContactBalanceService(IAppDbContext db) : IContactBalanceService
         // Faturalar
         var invoices = await db.Invoices
             .AsNoTracking()
-            .Where(i => i.ContactId == contactId && !i.IsDeleted && i.DateUtc >= fromDate && i.DateUtc <= toDate)
+            .Where(i => i.ContactId == contactId && i.DateUtc >= fromDate && i.DateUtc <= toDate)
             .Select(i => new ContactTransaction(
                 i.DateUtc,
                 i.Type == InvoiceType.Sales ? "Satış Faturası" :
@@ -86,7 +86,7 @@ public class ContactBalanceService(IAppDbContext db) : IContactBalanceService
         // Ödemeler
         var payments = await db.Payments
             .AsNoTracking()
-            .Where(p => p.ContactId == contactId && !p.IsDeleted && p.DateUtc >= fromDate && p.DateUtc <= toDate)
+            .Where(p => p.ContactId == contactId && p.DateUtc >= fromDate && p.DateUtc <= toDate)
             .Select(p => new ContactTransaction(
                 p.DateUtc,
                 p.Direction == PaymentDirection.In ? "Tahsilat" : "Ödeme",

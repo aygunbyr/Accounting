@@ -15,7 +15,7 @@ public class GetStockByIdHandler(IAppDbContext db) : IRequestHandler<GetStockByI
             .AsNoTracking()
             .Include(x => x.Warehouse)
             .Include(x => x.Item)
-            .FirstOrDefaultAsync(x => x.Id == r.Id && !x.IsDeleted, ct);
+            .FirstOrDefaultAsync(x => x.Id == r.Id, ct);
 
         if (e is null) throw new NotFoundException("Stock", r.Id);
 

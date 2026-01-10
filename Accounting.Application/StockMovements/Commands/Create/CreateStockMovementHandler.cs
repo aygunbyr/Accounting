@@ -23,13 +23,13 @@ public class CreateStockMovementHandler(IAppDbContext db) : IRequestHandler<Crea
 
         // Warehouse kontrolü (şube uyumu da dahil)
         var wh = await db.Warehouses.FirstOrDefaultAsync(x =>
-            x.Id == r.WarehouseId && !x.IsDeleted && x.BranchId == r.BranchId, ct);
+            x.Id == r.WarehouseId && x.BranchId == r.BranchId, ct);
 
         if (wh is null) throw new NotFoundException("Warehouse", r.WarehouseId);
 
         // Item kontrolü (şube uyumu)
         var item = await db.Items.FirstOrDefaultAsync(x =>
-            x.Id == r.ItemId && !x.IsDeleted && x.BranchId == r.BranchId, ct);
+            x.Id == r.ItemId && x.BranchId == r.BranchId, ct);
 
         if (item is null) throw new NotFoundException("Item", r.ItemId);
 
@@ -37,8 +37,7 @@ public class CreateStockMovementHandler(IAppDbContext db) : IRequestHandler<Crea
         var stock = await db.Stocks.FirstOrDefaultAsync(x =>
             x.BranchId == r.BranchId &&
             x.WarehouseId == r.WarehouseId &&
-            x.ItemId == r.ItemId &&
-            !x.IsDeleted, ct);
+            x.ItemId == r.ItemId, ct);
 
         if (stock is null)
         {

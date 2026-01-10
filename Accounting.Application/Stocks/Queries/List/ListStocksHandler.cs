@@ -15,7 +15,7 @@ public class ListStocksHandler(IAppDbContext db)
     {
         IQueryable<Stock> q = db.Stocks
             .AsNoTracking()
-            .Where(x => !x.IsDeleted && x.BranchId == r.BranchId);
+            .Where(x => x.BranchId == r.BranchId);
 
         // Include'ları IQueryable üstünden ekle (CS0266 fix)
         q = q

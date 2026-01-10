@@ -20,7 +20,6 @@ public class GetDashboardStatsHandler(IAppDbContext db) : IRequestHandler<GetDas
             .AsNoTracking()
             .Where(i => i.BranchId == request.BranchId && 
                         i.Type == InvoiceType.Sales &&
-                        !i.IsDeleted &&
                         i.DateUtc >= today && i.DateUtc < tomorrow)
             .SumAsync(i => (decimal?)i.TotalGross, ct) ?? 0m;
 
@@ -29,7 +28,6 @@ public class GetDashboardStatsHandler(IAppDbContext db) : IRequestHandler<GetDas
             .AsNoTracking()
             .Where(p => p.BranchId == request.BranchId &&
                         p.Direction == PaymentDirection.In &&
-                        !p.IsDeleted &&
                         p.DateUtc >= today && p.DateUtc < tomorrow)
             .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
 
@@ -38,7 +36,6 @@ public class GetDashboardStatsHandler(IAppDbContext db) : IRequestHandler<GetDas
             .AsNoTracking()
             .Where(i => i.BranchId == request.BranchId &&
                         i.Type == InvoiceType.Sales &&
-                        !i.IsDeleted &&
                         i.Balance > 0) // Kalanı olanlar
             .SumAsync(i => (decimal?)i.Balance, ct) ?? 0m;
 
@@ -47,14 +44,13 @@ public class GetDashboardStatsHandler(IAppDbContext db) : IRequestHandler<GetDas
             .AsNoTracking()
             .Where(i => i.BranchId == request.BranchId &&
                         i.Type == InvoiceType.Purchase &&
-                        !i.IsDeleted &&
                         i.Balance > 0)
             .SumAsync(i => (decimal?)i.Balance, ct) ?? 0m;
 
         // 5. Cash/Bank Status
         var accounts = await db.CashBankAccounts
             .AsNoTracking()
-            .Where(a => a.BranchId == request.BranchId && !a.IsDeleted)
+            .Where(a => a.BranchId == request.BranchId)
             .Select(a => new CashStatusDto(
                 a.Id,
                 a.Name,

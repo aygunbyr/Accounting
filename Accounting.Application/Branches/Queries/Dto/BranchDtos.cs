@@ -1,7 +1,3 @@
 ﻿namespace Accounting.Application.Branches.Queries.Dto;
 
-public sealed record BranchDto(
-    int Id,
-    string Code,
-    string Name
-);
+public record BranchDto(int Id, string Code, string Name, string RowVersionBase64);

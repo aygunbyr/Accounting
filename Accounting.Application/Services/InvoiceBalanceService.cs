@@ -53,7 +53,7 @@ public class InvoiceBalanceService : IInvoiceBalanceService
 
         var totalPayments = await _db.Payments
             .AsNoTracking()
-            .Where(p => p.LinkedInvoiceId == invoiceId && !p.IsDeleted)
+            .Where(p => p.LinkedInvoiceId == invoiceId)
             .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
 
         var balance = Money.R2(invoice.TotalGross - totalPayments);
@@ -111,7 +111,7 @@ public class InvoiceBalanceService : IInvoiceBalanceService
         // artık önce SaveChanges yapıyor, sonra RecalculateBalance çağırıyor
         var totalPayments = await _db.Payments
             .AsNoTracking()
-            .Where(p => p.LinkedInvoiceId == invoiceId && !p.IsDeleted)
+            .Where(p => p.LinkedInvoiceId == invoiceId)
             .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
 
         var balance = Money.R2(invoice.TotalGross - totalPayments);

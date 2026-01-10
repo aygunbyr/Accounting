@@ -13,7 +13,7 @@ public class AccountBalanceService(IAppDbContext db) : IAccountBalanceService
         // 1. Calculate total In (Giriş) and Out (Çıkış)
         var movements = await db.Payments
             .AsNoTracking()
-            .Where(p => p.AccountId == accountId && !p.IsDeleted)
+            .Where(p => p.AccountId == accountId)
             .Select(p => new { p.Direction, p.Amount })
             .ToListAsync(ct);
 

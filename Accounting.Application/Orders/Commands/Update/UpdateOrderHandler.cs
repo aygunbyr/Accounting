@@ -33,7 +33,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
     {
         var order = await db.Orders
             .Include(o => o.Lines)
-            .FirstOrDefaultAsync(o => o.Id == r.Id && !o.IsDeleted, ct);
+            .FirstOrDefaultAsync(o => o.Id == r.Id, ct);
 
         if (order is null) throw new NotFoundException("Order", r.Id);
 
@@ -53,7 +53,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
         // Update Lines
         // 1. Soft delete removed lines (hard delete yerine)
         var reqLineIds = r.Lines.Where(l => l.Id.HasValue).Select(l => l.Id!.Value).ToList();
-        var toRemove = order.Lines.Where(l => !l.IsDeleted && !reqLineIds.Contains(l.Id)).ToList();
+        var toRemove = order.Lines.Where(l => !reqLineIds.Contains(l.Id)).ToList();
         foreach (var rm in toRemove)
         {
             rm.IsDeleted = true;
@@ -76,7 +76,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
 
             if (l.Id.HasValue)
             {
-                var existing = order.Lines.FirstOrDefault(x => x.Id == l.Id.Value && !x.IsDeleted);
+                var existing = order.Lines.FirstOrDefault(x => x.Id == l.Id.Value);
                 if (existing == null) continue; // Skip if not found or deleted
 
                 existing.ItemId = l.ItemId;
@@ -127,7 +127,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
             order.TotalGross,
             order.Currency,
             order.Description,
-            order.Lines.Where(x => !x.IsDeleted).Select(x => new OrderLineDto(x.Id, x.ItemId, null, x.Description, x.Quantity, x.UnitPrice, x.VatRate, x.Total)).ToList(),
+            order.Lines.Select(x => new OrderLineDto(x.Id, x.ItemId, null, x.Description, x.Quantity, x.UnitPrice, x.VatRate, x.Total)).ToList(),
             order.CreatedAtUtc,
             Convert.ToBase64String(order.RowVersion)
         );

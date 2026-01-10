@@ -41,11 +41,11 @@ public class TransferStockValidator : AbstractValidator<TransferStockCommand>
 
     private async Task<bool> WarehouseExistsAsync(int warehouseId, CancellationToken ct)
     {
-        return await _db.Warehouses.AnyAsync(w => w.Id == warehouseId && !w.IsDeleted, ct);
+        return await _db.Warehouses.AnyAsync(w => w.Id == warehouseId, ct);
     }
 
     private async Task<bool> ItemExistsAsync(int itemId, CancellationToken ct)
     {
-        return await _db.Items.AnyAsync(i => i.Id == itemId && !i.IsDeleted, ct);
+        return await _db.Items.AnyAsync(i => i.Id == itemId, ct);
     }
 }

@@ -23,11 +23,10 @@ public class GetOrdersHandler(IAppDbContext db) : IRequestHandler<GetOrdersQuery
         var page = PaginationConstants.NormalizePage(q.Page);
         var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
 
-        var query = db.Orders
+        IQueryable<Accounting.Domain.Entities.Order> query = db.Orders
             .AsNoTracking()
             .Include(o => o.Lines)
-            .Include(o => o.Contact)
-            .Where(x => !x.IsDeleted);
+            .Include(o => o.Contact);
 
         // Filters
         if (q.BranchId.HasValue)
@@ -60,7 +59,7 @@ public class GetOrdersHandler(IAppDbContext db) : IRequestHandler<GetOrdersQuery
             o.TotalGross,
             o.Currency,
             o.Description,
-            o.Lines.Where(l => !l.IsDeleted).Select(l => new OrderLineDto(
+            o.Lines.Select(l => new OrderLineDto(
                 l.Id, l.ItemId, l.Item?.Name, l.Description, l.Quantity, l.UnitPrice, l.VatRate, l.Total
             )).ToList(),
             o.CreatedAtUtc,

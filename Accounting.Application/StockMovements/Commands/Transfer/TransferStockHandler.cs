@@ -24,10 +24,10 @@ public class TransferStockHandler(IAppDbContext db) : IRequestHandler<TransferSt
             throw new BusinessRuleException("Transfer miktarı 0'dan büyük olmalı.");
 
         // 2. Fetch Warehouses and validate existence
-        var sourceWh = await db.Warehouses.FirstOrDefaultAsync(w => w.Id == r.SourceWarehouseId && !w.IsDeleted, ct)
+        var sourceWh = await db.Warehouses.FirstOrDefaultAsync(w => w.Id == r.SourceWarehouseId, ct)
              ?? throw new NotFoundException("Source Warehouse", r.SourceWarehouseId);
 
-        var targetWh = await db.Warehouses.FirstOrDefaultAsync(w => w.Id == r.TargetWarehouseId && !w.IsDeleted, ct)
+        var targetWh = await db.Warehouses.FirstOrDefaultAsync(w => w.Id == r.TargetWarehouseId, ct)
              ?? throw new NotFoundException("Target Warehouse", r.TargetWarehouseId);
 
         // 3. Validation: Branch Consistency
@@ -38,15 +38,14 @@ public class TransferStockHandler(IAppDbContext db) : IRequestHandler<TransferSt
         var branchId = sourceWh.BranchId;
 
         // 4. Validate Item
-        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == r.ItemId && !i.IsDeleted && i.BranchId == branchId, ct)
+        var item = await db.Items.FirstOrDefaultAsync(i => i.Id == r.ItemId && i.BranchId == branchId, ct)
             ?? throw new NotFoundException("Item", r.ItemId);
 
         // 5. Source Stock Check (Snapshot)
         var sourceStock = await db.Stocks.FirstOrDefaultAsync(s => 
             s.WarehouseId == r.SourceWarehouseId && 
             s.ItemId == r.ItemId && 
-            s.BranchId == branchId && 
-            !s.IsDeleted, ct);
+            s.BranchId == branchId, ct);
 
         if (sourceStock == null || sourceStock.Quantity < qty)
             throw new BusinessRuleException($"Kaynak depoda yetersiz stok. Mevcut: {(sourceStock?.Quantity ?? 0):N3}, İstenen: {qty:N3}");
@@ -55,8 +54,7 @@ public class TransferStockHandler(IAppDbContext db) : IRequestHandler<TransferSt
         var targetStock = await db.Stocks.FirstOrDefaultAsync(s => 
             s.WarehouseId == r.TargetWarehouseId && 
             s.ItemId == r.ItemId && 
-            s.BranchId == branchId && 
-            !s.IsDeleted, ct);
+            s.BranchId == branchId, ct);
 
         if (targetStock == null)
         {

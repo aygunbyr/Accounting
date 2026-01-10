@@ -14,7 +14,7 @@ public class ListWarehousesHandler(IAppDbContext db)
     {
         IQueryable<Warehouse> q = db.Warehouses
             .AsNoTracking()
-            .Where(x => !x.IsDeleted && x.BranchId == r.BranchId);
+            .Where(x => x.BranchId == r.BranchId);
 
         if (!string.IsNullOrWhiteSpace(r.Search))
         {

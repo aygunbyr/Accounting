@@ -15,7 +15,7 @@ public class StockService(IAppDbContext db) : IStockService
         // Çıkış: Satış Faturaları
         var invoiceLines = await db.InvoiceLines
             .AsNoTracking()
-            .Where(l => l.ItemId.HasValue && itemIds.Contains(l.ItemId.Value) && !l.IsDeleted)
+            .Where(l => l.ItemId.HasValue && itemIds.Contains(l.ItemId.Value))
             .Select(l => new
             {
                 l.ItemId,
@@ -29,7 +29,6 @@ public class StockService(IAppDbContext db) : IStockService
         var reservedLines = await db.OrderLines
             .AsNoTracking()
             .Where(l => l.ItemId.HasValue && itemIds.Contains(l.ItemId.Value) &&
-                        !l.IsDeleted &&
                         l.Order.Type == InvoiceType.Sales &&
                         l.Order.Status == OrderStatus.Approved)
             .Select(l => new

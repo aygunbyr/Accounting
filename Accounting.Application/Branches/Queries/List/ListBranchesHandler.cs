@@ -26,10 +26,11 @@ public sealed class ListBranchesHandler
         var branches = await _ctx.Branches
             .AsNoTracking()
             .OrderBy(b => b.Code)
-            .Select(b => new BranchDto(
-                b.Id,
-                b.Code,
-                b.Name
+            .Select(x => new BranchDto(
+                x.Id,
+                x.Code,
+                x.Name,
+                Convert.ToBase64String(x.RowVersion ?? Array.Empty<byte>())
             ))
             .ToListAsync(ct);
 
