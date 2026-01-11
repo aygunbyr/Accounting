@@ -1,5 +1,7 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Orders.Dto;
 using Accounting.Domain.Entities;
@@ -27,11 +29,21 @@ public record UpdateOrderLineDto(
     int VatRate
 );
 
-public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderCommand, OrderDto>
+public class UpdateOrderHandler : IRequestHandler<UpdateOrderCommand, OrderDto>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public UpdateOrderHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
+
     public async Task<OrderDto> Handle(UpdateOrderCommand r, CancellationToken ct)
     {
-        var order = await db.Orders
+        var order = await _db.Orders
+            .ApplyBranchFilter(_currentUserService)
             .Include(o => o.Lines)
             .FirstOrDefaultAsync(o => o.Id == r.Id, ct);
 
@@ -42,7 +54,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
             throw new BusinessRuleException("Sadece taslak durumundaki siparişler güncellenebilir.");
         }
 
-        db.Entry(order).Property(nameof(order.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
+        _db.Entry(order).Property(nameof(order.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
 
         // Update Header
         order.ContactId = r.ContactId;
@@ -107,7 +119,7 @@ public class UpdateOrderHandler(IAppDbContext db) : IRequestHandler<UpdateOrderC
 
         try
         {
-            await db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
         }
         catch (DbUpdateConcurrencyException)
         {

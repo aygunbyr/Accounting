@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -10,15 +12,18 @@ public sealed class DeleteFixedAssetHandler
     : IRequestHandler<DeleteFixedAssetCommand>
 {
     private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
 
-    public DeleteFixedAssetHandler(IAppDbContext db)
+    public DeleteFixedAssetHandler(IAppDbContext db, ICurrentUserService currentUserService)
     {
         _db = db;
+        _currentUserService = currentUserService;
     }
 
     public async Task Handle(DeleteFixedAssetCommand r, CancellationToken ct)
     {
         var entity = await _db.FixedAssets
+            .ApplyBranchFilter(_currentUserService)
             .FirstOrDefaultAsync(x => x.Id == r.Id, ct);
 
         if (entity is null)

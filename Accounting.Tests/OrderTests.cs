@@ -70,7 +70,7 @@ public class OrderTests
         db.Orders.Add(order);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateOrderHandler(db);
+        var handler = new UpdateOrderHandler(db, new FakeCurrentUserService(1));
         var cmd = new UpdateOrderCommand(
             order.Id,
             ContactId: 2, // Changing contact
@@ -101,7 +101,7 @@ public class OrderTests
         db.Orders.Add(order);
         await db.SaveChangesAsync();
 
-        var handler = new UpdateOrderHandler(db);
+        var handler = new UpdateOrderHandler(db, new FakeCurrentUserService(1));
         var cmd = new UpdateOrderCommand(
             order.Id, 1, DateTime.UtcNow, "Try Update", new(), Convert.ToBase64String(order.RowVersion)
         );
@@ -123,7 +123,7 @@ public class OrderTests
         db.Orders.Add(order);
         await db.SaveChangesAsync();
 
-        var handler = new ApproveOrderHandler(db, new FakeStockService());
+        var handler = new ApproveOrderHandler(db, new FakeStockService(), new FakeCurrentUserService(1));
         var result = await handler.Handle(new ApproveOrderCommand(order.Id, rowVer), CancellationToken.None);
 
         Assert.True(result);

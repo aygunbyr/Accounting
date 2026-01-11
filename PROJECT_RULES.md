@@ -62,11 +62,12 @@ This document defines the coding standards, architectural patterns, and best pra
   - **Pattern**:
     ```csharp
     var query = _db.Entities
+        .ApplyBranchFilter(_currentUserService)  // 👈 MUST come before Includes
+        .Include(...)
         .AsNoTracking()
-        .ApplyBranchFilter(_currentUserService)  // 👈 REQUIRED
         .Where(...);
     ```
-  - **Why**: Ensures branch-level data isolation. Admin and HQ users see all branches; regular users see only their branch.
+  - **Why**: Ensures branch-level data isolation. Admin and HQ users see all branches; regular users see only their branch. Placing it before `Include` ensures the filter is applied to the root query and maintains `IIncludableQueryable` flexibility downstream.
   - **Exception**: User/Role management handlers (admin-only, no branch filtering needed).
 
 ## 5. API Rules

@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,11 +11,18 @@ namespace Accounting.Application.Invoices.Commands.Delete;
 public class SoftDeleteInvoiceHandler : IRequestHandler<SoftDeleteInvoiceCommand>
 {
     private readonly IAppDbContext _db;
-    public SoftDeleteInvoiceHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public SoftDeleteInvoiceHandler(IAppDbContext db, ICurrentUserService currentUserService) 
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task Handle(SoftDeleteInvoiceCommand req, CancellationToken ct)
     {
         var inv = await _db.Invoices
+            .ApplyBranchFilter(_currentUserService)
             .Include(i => i.Lines)
             .FirstOrDefaultAsync(i => i.Id == req.Id && !i.IsDeleted, ct);
 

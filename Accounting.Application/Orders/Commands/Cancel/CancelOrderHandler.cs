@@ -1,5 +1,7 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -8,11 +10,22 @@ namespace Accounting.Application.Orders.Commands.Cancel;
 
 public record CancelOrderCommand(int Id, string RowVersion) : IRequest<bool>;
 
-public class CancelOrderHandler(IAppDbContext db) : IRequestHandler<CancelOrderCommand, bool>
+public class CancelOrderHandler : IRequestHandler<CancelOrderCommand, bool>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public CancelOrderHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
+
     public async Task<bool> Handle(CancelOrderCommand r, CancellationToken ct)
     {
-        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == r.Id && !o.IsDeleted, ct);
+        var order = await _db.Orders
+            .ApplyBranchFilter(_currentUserService)
+            .FirstOrDefaultAsync(o => o.Id == r.Id && !o.IsDeleted, ct);
         if (order is null) throw new NotFoundException("Order", r.Id);
 
         if (order.Status == OrderStatus.Invoiced)
@@ -25,14 +38,14 @@ public class CancelOrderHandler(IAppDbContext db) : IRequestHandler<CancelOrderC
             throw new BusinessRuleException("Sipariş zaten iptal edilmiş.");
         }
 
-        db.Entry(order).Property(nameof(order.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
+        _db.Entry(order).Property(nameof(order.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
 
         order.Status = OrderStatus.Cancelled;
         order.UpdatedAtUtc = DateTime.UtcNow;
 
         try
         {
-            await db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
         }
         catch (DbUpdateConcurrencyException)
         {

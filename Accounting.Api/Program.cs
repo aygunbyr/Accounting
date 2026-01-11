@@ -154,8 +154,9 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var invoiceBalanceService = scope.ServiceProvider.GetRequiredService<IInvoiceBalanceService>();
     var accountBalanceService = scope.ServiceProvider.GetRequiredService<IAccountBalanceService>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<Accounting.Application.Common.Interfaces.IPasswordHasher>();
     await db.Database.MigrateAsync();
-    await DataSeeder.SeedAsync(db, invoiceBalanceService, accountBalanceService);
+    await DataSeeder.SeedAsync(db, invoiceBalanceService, accountBalanceService, passwordHasher);
 }
 
 app.Run();

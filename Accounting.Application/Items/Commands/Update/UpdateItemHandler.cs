@@ -1,6 +1,8 @@
 ﻿// Accounting.Application/Items/Commands/Update/UpdateItemHandler.cs
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;   // ConcurrencyConflictException
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.Common.Utils;
 using Accounting.Application.Items.Queries.Dto;
 using Accounting.Domain.Entities;
@@ -12,12 +14,20 @@ namespace Accounting.Application.Items.Commands.Update;
 public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, ItemDetailDto>
 {
     private readonly IAppDbContext _db;
-    public UpdateItemHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public UpdateItemHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<ItemDetailDto> Handle(UpdateItemCommand r, CancellationToken ct)
     {
         // (1) fetch (tracking)
-        var e = await _db.Items.FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
+        var e = await _db.Items
+            .ApplyBranchFilter(_currentUserService)
+            .FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
         if (e is null) throw new NotFoundException("Item", r.Id);
 
         // (3) original rowversion
@@ -64,6 +74,7 @@ public class UpdateItemHandler : IRequestHandler<UpdateItemCommand, ItemDetailDt
         // (7) fresh read
         var fresh = await _db.Items
             .AsNoTracking()
+            .ApplyBranchFilter(_currentUserService)
             .Include(x => x.Category)
             .FirstAsync(x => x.Id == e.Id, ct);
 

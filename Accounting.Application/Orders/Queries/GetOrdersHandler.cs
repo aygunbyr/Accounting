@@ -1,5 +1,7 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Constants;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Common.Models;
 using Accounting.Application.Orders.Dto;
 using Accounting.Domain.Enums;
@@ -16,19 +18,29 @@ public record GetOrdersQuery(
     int PageSize = PaginationConstants.DefaultPageSize
 ) : IRequest<PagedResult<OrderDto>>;
 
-public class GetOrdersHandler(IAppDbContext db) : IRequestHandler<GetOrdersQuery, PagedResult<OrderDto>>
+public class GetOrdersHandler : IRequestHandler<GetOrdersQuery, PagedResult<OrderDto>>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public GetOrdersHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
+
     public async Task<PagedResult<OrderDto>> Handle(GetOrdersQuery q, CancellationToken ct)
     {
         var page = PaginationConstants.NormalizePage(q.Page);
         var pageSize = PaginationConstants.NormalizePageSize(q.PageSize);
 
-        IQueryable<Accounting.Domain.Entities.Order> query = db.Orders
+        var query = _db.Orders
             .AsNoTracking()
             .Include(o => o.Lines)
-            .Include(o => o.Contact);
+            .Include(o => o.Contact)
+            .ApplyBranchFilter(_currentUserService);
 
-        // Filters
+        // Additional filters (after branch security filter)
         if (q.BranchId.HasValue)
             query = query.Where(x => x.BranchId == q.BranchId.Value);
 

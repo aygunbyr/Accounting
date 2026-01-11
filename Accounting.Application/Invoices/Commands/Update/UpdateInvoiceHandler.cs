@@ -1,6 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
 using Accounting.Application.Common.Utils;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
 using Accounting.Application.Invoices.Queries.Dto;
 using Accounting.Application.Services;
 using Accounting.Domain.Entities;
@@ -29,14 +30,10 @@ public sealed class UpdateInvoiceHandler : IRequestHandler<UpdateInvoiceCommand,
     {
         // 1) Aggregate (+Include)
         var inv = await _ctx.Invoices
+            .ApplyBranchFilter(_currentUserService)
             .Include(i => i.Lines)
             .FirstOrDefaultAsync(i => i.Id == r.Id, ct)
             ?? throw new NotFoundException(nameof(Invoice), r.Id);
-
-        // Security Check: Must be in same branch
-        var branchId = _currentUserService.BranchId ?? throw new UnauthorizedAccessException();
-        if (inv.BranchId != branchId)
-            throw new NotFoundException(nameof(Invoice), r.Id); // Hide cross-branch existence or Unauthorized
 
         // 2) Concurrency (RowVersion base64)
         _ctx.Entry(inv).Property(nameof(Invoice.RowVersion))

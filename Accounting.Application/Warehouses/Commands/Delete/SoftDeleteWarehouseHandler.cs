@@ -1,20 +1,32 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Warehouses.Commands.Delete;
 
-public class SoftDeleteWarehouseHandler(IAppDbContext db)
-    : IRequestHandler<SoftDeleteWarehouseCommand>
+public class SoftDeleteWarehouseHandler : IRequestHandler<SoftDeleteWarehouseCommand>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public SoftDeleteWarehouseHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
+
     public async Task Handle(SoftDeleteWarehouseCommand r, CancellationToken ct)
     {
-        var e = await db.Warehouses.FirstOrDefaultAsync(x => x.Id == r.Id, ct);
+        var e = await _db.Warehouses
+            .ApplyBranchFilter(_currentUserService)
+            .FirstOrDefaultAsync(x => x.Id == r.Id, ct);
         if (e is null) throw new NotFoundException("Warehouse", r.Id);
 
-        db.Entry(e).Property(nameof(Warehouse.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
+        _db.Entry(e).Property(nameof(Warehouse.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
 
         e.IsDeleted = true;
         e.DeletedAtUtc = DateTime.UtcNow;
@@ -22,7 +34,7 @@ public class SoftDeleteWarehouseHandler(IAppDbContext db)
 
         try
         {
-            await db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
         }
         catch (DbUpdateConcurrencyException)
         {

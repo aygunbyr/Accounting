@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.Common.Utils;
 using Accounting.Application.ExpenseLists.Dto;
 using Accounting.Domain.Entities;
@@ -13,11 +15,18 @@ namespace Accounting.Application.ExpenseLists.Commands.Update;
 public class UpdateExpenseListHandler : IRequestHandler<UpdateExpenseListCommand, ExpenseListDetailDto>
 {
     private readonly IAppDbContext _db;
-    public UpdateExpenseListHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public UpdateExpenseListHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<ExpenseListDetailDto> Handle(UpdateExpenseListCommand req, CancellationToken ct)
     {
         var list = await _db.ExpenseLists
+            .ApplyBranchFilter(_currentUserService)
             .Include(x => x.Lines.Where(l => !l.IsDeleted))
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
 

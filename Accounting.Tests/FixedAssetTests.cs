@@ -76,7 +76,7 @@ namespace Accounting.Tests
                 await db.SaveChangesAsync();
 
                 // Update
-                var handler = new UpdateFixedAssetHandler(db);
+                var handler = new UpdateFixedAssetHandler(db, userService);
                 var rowVersionBase64 = Convert.ToBase64String(asset.RowVersion);
                 var cmd = new UpdateFixedAssetCommand(
                     asset.Id, 
@@ -115,7 +115,7 @@ namespace Accounting.Tests
                 db.FixedAssets.Add(asset);
                 await db.SaveChangesAsync();
 
-                var handler = new DeleteFixedAssetHandler(db);
+                var handler = new DeleteFixedAssetHandler(db, userService);
                 var rowVersion = Convert.ToBase64String(asset.RowVersion);
                 var cmd = new DeleteFixedAssetCommand(asset.Id, rowVersion);
 

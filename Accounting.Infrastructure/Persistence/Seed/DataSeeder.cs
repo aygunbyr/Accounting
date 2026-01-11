@@ -1,4 +1,6 @@
-﻿using Accounting.Application.Services;
+﻿using Accounting.Application.Common.Interfaces;
+using Accounting.Application.Services;
+using Accounting.Domain.Constants;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +13,7 @@ public static class DataSeeder
         AppDbContext db,
         IInvoiceBalanceService invoiceBalanceService,
         IAccountBalanceService accountBalanceService,
+        IPasswordHasher passwordHasher,
         CancellationToken ct = default)
     {
         // Helpers (AwayFromZero)
@@ -24,6 +27,11 @@ public static class DataSeeder
         // 1) Branches
         await SeedBranchesAsync(db, ct);
         var branchIds = await GetActiveBranchIdsAsync(db, ct);
+        var headquartersBranchId = await GetHeadquartersBranchIdAsync(db, ct);
+
+        // 1.5) Roles & Users (Auth için gerekli)
+        await SeedRolesAsync(db, ct);
+        await SeedUsersAsync(db, passwordHasher, headquartersBranchId, branchIds, ct);
 
         // 2) Warehouses (per branch default)
         await SeedWarehousesAsync(db, branchIds, ct);
@@ -124,12 +132,22 @@ public static class DataSeeder
 
         db.Branches.AddRange(new List<Branch>
         {
-            new() { Code = "MERKEZ", Name = "Merkez Şube", CreatedAtUtc = now },
-            new() { Code = "ANKARA", Name = "Ankara Şubesi", CreatedAtUtc = now },
-            new() { Code = "IZMIR",  Name = "İzmir Şubesi",  CreatedAtUtc = now }
+            new() { Code = "MERKEZ", Name = "Merkez Şube", IsHeadquarters = true, CreatedAtUtc = now },
+            new() { Code = "ANKARA", Name = "Ankara Şubesi", IsHeadquarters = false, CreatedAtUtc = now },
+            new() { Code = "IZMIR",  Name = "İzmir Şubesi", IsHeadquarters = false, CreatedAtUtc = now }
         });
 
         await db.SaveChangesAsync(ct);
+    }
+    
+    private static async Task<int> GetHeadquartersBranchIdAsync(AppDbContext db, CancellationToken ct)
+    {
+        var hqBranch = await db.Branches
+            .AsNoTracking()
+            .Where(x => !x.IsDeleted && x.IsHeadquarters)
+            .FirstOrDefaultAsync(ct);
+        
+        return hqBranch?.Id ?? 1;
     }
 
     private static async Task<List<int>> GetActiveBranchIdsAsync(AppDbContext db, CancellationToken ct)
@@ -899,6 +917,197 @@ public static class DataSeeder
         }
 
         db.Cheques.AddRange(cheques);
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedRolesAsync(AppDbContext db, CancellationToken ct)
+    {
+        if (await db.Roles.AnyAsync(ct)) return;
+
+        var now = DateTime.UtcNow;
+
+        // Admin Role - Tüm yetkiler
+        var adminRole = new Role
+        {
+            Name = "Admin",
+            Description = "Sistem Yöneticisi - Tüm yetkiler",
+            IsStatic = true,
+            CreatedAtUtc = now
+        };
+
+        // Admin gets all permissions
+        foreach (var permission in Permissions.GetAll())
+        {
+            adminRole.Permissions.Add(new RolePermission
+            {
+                Permission = permission,
+                CreatedAtUtc = now
+            });
+        }
+
+        db.Roles.Add(adminRole);
+
+        // Manager Role - Okuma + Temel işlemler
+        var managerRole = new Role
+        {
+            Name = "Manager",
+            Description = "Şube Yöneticisi - Temel yetkiler",
+            IsStatic = true,
+            CreatedAtUtc = now
+        };
+
+        var managerPermissions = new[]
+        {
+            Permissions.Invoice.Create, Permissions.Invoice.Read, Permissions.Invoice.Update,
+            Permissions.Payment.Create, Permissions.Payment.Read, Permissions.Payment.Update,
+            Permissions.Contact.Create, Permissions.Contact.Read, Permissions.Contact.Update,
+            Permissions.Item.Read,
+            Permissions.Order.Create, Permissions.Order.Read, Permissions.Order.Update, Permissions.Order.Approve,
+            Permissions.Stock.Read, Permissions.StockMovement.Read,
+            Permissions.Warehouse.Read,
+            Permissions.CashBankAccount.Read,
+            Permissions.Cheque.Create, Permissions.Cheque.Read, Permissions.Cheque.Update,
+            Permissions.ExpenseList.Create, Permissions.ExpenseList.Read, Permissions.ExpenseList.Update, Permissions.ExpenseList.Review,
+            Permissions.Category.Read,
+            Permissions.Report.Dashboard, Permissions.Report.ProfitLoss, Permissions.Report.ContactStatement, Permissions.Report.StockStatus
+        };
+
+        foreach (var permission in managerPermissions)
+        {
+            managerRole.Permissions.Add(new RolePermission
+            {
+                Permission = permission,
+                CreatedAtUtc = now
+            });
+        }
+
+        db.Roles.Add(managerRole);
+
+        // User Role - Sadece okuma
+        var userRole = new Role
+        {
+            Name = "User",
+            Description = "Standart Kullanıcı - Sınırlı yetkiler",
+            IsStatic = false,
+            CreatedAtUtc = now
+        };
+
+        var userPermissions = new[]
+        {
+            Permissions.Invoice.Read,
+            Permissions.Payment.Read,
+            Permissions.Contact.Read,
+            Permissions.Item.Read,
+            Permissions.Order.Read,
+            Permissions.Stock.Read,
+            Permissions.Warehouse.Read,
+            Permissions.CashBankAccount.Read,
+            Permissions.Cheque.Read,
+            Permissions.ExpenseList.Read,
+            Permissions.Category.Read,
+            Permissions.Report.Dashboard
+        };
+
+        foreach (var permission in userPermissions)
+        {
+            userRole.Permissions.Add(new RolePermission
+            {
+                Permission = permission,
+                CreatedAtUtc = now
+            });
+        }
+
+        db.Roles.Add(userRole);
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedUsersAsync(
+        AppDbContext db,
+        IPasswordHasher passwordHasher,
+        int headquartersBranchId,
+        List<int> branchIds,
+        CancellationToken ct)
+    {
+        if (await db.Users.AnyAsync(ct)) return;
+
+        var now = DateTime.UtcNow;
+
+        // Get roles
+        var adminRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Admin", ct);
+        var managerRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Manager", ct);
+        var userRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "User", ct);
+
+        if (adminRole == null || managerRole == null || userRole == null)
+            return;
+
+        var users = new List<User>();
+
+        // 1. Admin User (Merkez)
+        var adminUser = new User
+        {
+            FirstName = "Admin",
+            LastName = "User",
+            Email = "admin@demo.local",
+            PasswordHash = passwordHasher.HashPassword("Admin123!"),
+            IsActive = true,
+            BranchId = headquartersBranchId,
+            CreatedAtUtc = now
+        };
+        users.Add(adminUser);
+
+        // 2. Manager User (Merkez)
+        var managerUser = new User
+        {
+            FirstName = "Merkez",
+            LastName = "Yönetici",
+            Email = "manager@demo.local",
+            PasswordHash = passwordHasher.HashPassword("Manager123!"),
+            IsActive = true,
+            BranchId = headquartersBranchId,
+            CreatedAtUtc = now
+        };
+        users.Add(managerUser);
+
+        // 3. Branch Users (Her şube için bir kullanıcı)
+        for (int i = 0; i < branchIds.Count; i++)
+        {
+            var branchId = branchIds[i];
+            var branchUser = new User
+            {
+                FirstName = $"Şube{i + 1}",
+                LastName = "Kullanıcı",
+                Email = $"user{i + 1}@demo.local",
+                PasswordHash = passwordHasher.HashPassword("User123!"),
+                IsActive = true,
+                BranchId = branchId,
+                CreatedAtUtc = now
+            };
+            users.Add(branchUser);
+        }
+
+        db.Users.AddRange(users);
+        await db.SaveChangesAsync(ct);
+
+        // Assign roles
+        var userRoleAssignments = new List<UserRole>
+        {
+            new() { UserId = adminUser.Id, RoleId = adminRole.Id, CreatedAtUtc = now },
+            new() { UserId = managerUser.Id, RoleId = managerRole.Id, CreatedAtUtc = now }
+        };
+
+        // Branch users get User role
+        foreach (var user in users.Where(u => u.Email.StartsWith("user")))
+        {
+            userRoleAssignments.Add(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = userRole.Id,
+                CreatedAtUtc = now
+            });
+        }
+
+        db.Set<UserRole>().AddRange(userRoleAssignments);
         await db.SaveChangesAsync(ct);
     }
 }

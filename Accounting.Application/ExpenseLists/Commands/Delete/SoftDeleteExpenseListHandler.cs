@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -10,11 +12,18 @@ namespace Accounting.Application.ExpenseLists.Commands.Delete;
 public class SoftDeleteExpenseListHandler : IRequestHandler<SoftDeleteExpenseListCommand>
 {
     private readonly IAppDbContext _db;
-    public SoftDeleteExpenseListHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public SoftDeleteExpenseListHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task Handle(SoftDeleteExpenseListCommand req, CancellationToken ct)
     {
         var list = await _db.ExpenseLists
+            .ApplyBranchFilter(_currentUserService)
             .Include(x => x.Lines)
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
 

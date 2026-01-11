@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.Services;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -10,17 +12,25 @@ public class SoftDeletePaymentHandler : IRequestHandler<SoftDeletePaymentCommand
     private readonly IAppDbContext _db;
     private readonly IInvoiceBalanceService _balanceService;
     private readonly IAccountBalanceService _accountBalanceService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public SoftDeletePaymentHandler(IAppDbContext db, IInvoiceBalanceService balanceService, IAccountBalanceService accountBalanceService)
+    public SoftDeletePaymentHandler(
+        IAppDbContext db,
+        IInvoiceBalanceService balanceService,
+        IAccountBalanceService accountBalanceService,
+        ICurrentUserService currentUserService)
     {
         _db = db;
         _balanceService = balanceService;
         _accountBalanceService = accountBalanceService;
+        _currentUserService = currentUserService;
     }
 
     public async Task Handle(SoftDeletePaymentCommand req, CancellationToken ct)
     {
-        var p = await _db.Payments.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
+        var p = await _db.Payments
+            .ApplyBranchFilter(_currentUserService)
+            .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
         if (p is null) throw new NotFoundException("Payment", req.Id);
 
         byte[] originalBytes;

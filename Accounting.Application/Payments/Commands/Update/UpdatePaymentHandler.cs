@@ -3,6 +3,8 @@ using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;   // ConcurrencyConflictException, BusinessRuleException
 using Accounting.Application.Common.Utils;    // Money.TryParse2 / Money.S2
 using Accounting.Application.Common.Validation;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.Payments.Queries.Dto;
 using Accounting.Application.Services;
 using Accounting.Domain.Entities;
@@ -14,21 +16,26 @@ public class UpdatePaymentHandler : IRequestHandler<UpdatePaymentCommand, Paymen
     private readonly IAppDbContext _db;
     private readonly IInvoiceBalanceService _balanceService;
     private readonly IAccountBalanceService _accountBalanceService;
+    private readonly ICurrentUserService _currentUserService;
 
     public UpdatePaymentHandler(
         IAppDbContext db,
         IInvoiceBalanceService balanceService,
-        IAccountBalanceService accountBalanceService)
+        IAccountBalanceService accountBalanceService,
+        ICurrentUserService currentUserService)
     {
         _db = db;
         _balanceService = balanceService;
         _accountBalanceService = accountBalanceService;
+        _currentUserService = currentUserService;
     }
 
     public async Task<PaymentDetailDto> Handle(UpdatePaymentCommand req, CancellationToken ct)
     {
         // 1) Fetch (TRACKING)
-        var p = await _db.Payments.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
+        var p = await _db.Payments
+            .ApplyBranchFilter(_currentUserService)
+            .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
         if (p is null) throw new NotFoundException("Payment", req.Id);
 
         // Eski değerleri sakla (balance recalc için)

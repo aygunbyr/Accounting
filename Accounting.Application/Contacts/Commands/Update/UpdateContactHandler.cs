@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions; // ConcurrencyConflictException
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.Contacts.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -10,12 +12,20 @@ namespace Accounting.Application.Contacts.Commands.Update;
 public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, ContactDto>
 {
     private readonly IAppDbContext _db;
-    public UpdateContactHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public UpdateContactHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<ContactDto> Handle(UpdateContactCommand req, CancellationToken ct)
     {
         // 1) Fetch (TRACKING)
-        var c = await _db.Contacts.FirstOrDefaultAsync(x => x.Id == req.Id, ct);
+        var c = await _db.Contacts
+            .ApplyBranchFilter(_currentUserService)
+            .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
         if (c is null) throw new NotFoundException("Contact", req.Id);
 
         // 2) Business rules: (şimdilik yok)

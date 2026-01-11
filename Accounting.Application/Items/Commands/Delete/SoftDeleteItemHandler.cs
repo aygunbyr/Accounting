@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,11 +11,19 @@ namespace Accounting.Application.Items.Commands.Delete;
 public class SoftDeleteItemHandler : IRequestHandler<SoftDeleteItemCommand, bool>
 {
     private readonly IAppDbContext _db;
-    public SoftDeleteItemHandler(IAppDbContext db) => _db = db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public SoftDeleteItemHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
 
     public async Task<bool> Handle(SoftDeleteItemCommand r, CancellationToken ct)
     {
-        var e = await _db.Items.FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
+        var e = await _db.Items
+            .ApplyBranchFilter(_currentUserService)
+            .FirstOrDefaultAsync(i => i.Id == r.Id && !i.IsDeleted, ct);
         if (e is null) throw new NotFoundException("Item", r.Id);
 
         _db.Entry(e).Property(nameof(Item.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);

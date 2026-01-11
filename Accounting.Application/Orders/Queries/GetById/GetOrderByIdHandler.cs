@@ -1,20 +1,32 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions;
+using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Orders.Dto;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Orders.Queries.GetById;
 
-public class GetOrderByIdHandler(IAppDbContext db) : IRequestHandler<GetOrderByIdQuery, OrderDto>
+public class GetOrderByIdHandler : IRequestHandler<GetOrderByIdQuery, OrderDto>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public GetOrderByIdHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
+
     public async Task<OrderDto> Handle(GetOrderByIdQuery r, CancellationToken ct)
     {
-        var order = await db.Orders
+        var order = await _db.Orders
             .AsNoTracking()
             .Include(o => o.Lines)
                 .ThenInclude(l => l.Item)
             .Include(o => o.Contact)
+            .ApplyBranchFilter(_currentUserService)
             .FirstOrDefaultAsync(o => o.Id == r.Id, ct);
 
         if (order is null)

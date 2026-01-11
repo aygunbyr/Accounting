@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.FixedAssets.Queries.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -11,10 +13,12 @@ public sealed class UpdateFixedAssetHandler
     : IRequestHandler<UpdateFixedAssetCommand, FixedAssetDetailDto>
 {
     private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
 
-    public UpdateFixedAssetHandler(IAppDbContext db)
+    public UpdateFixedAssetHandler(IAppDbContext db, ICurrentUserService currentUserService)
     {
         _db = db;
+        _currentUserService = currentUserService;
     }
 
     public async Task<FixedAssetDetailDto> Handle(
@@ -22,6 +26,7 @@ public sealed class UpdateFixedAssetHandler
         CancellationToken ct)
     {
         var entity = await _db.FixedAssets
+            .ApplyBranchFilter(_currentUserService)
             .FirstOrDefaultAsync(x => x.Id == r.Id, ct);
 
         if (entity is null)

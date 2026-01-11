@@ -1,5 +1,7 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
 using MediatR;
@@ -9,11 +11,23 @@ namespace Accounting.Application.Orders.Commands.Approve;
 
 public record ApproveOrderCommand(int Id, byte[] RowVersion) : IRequest<bool>;
 
-public class ApproveOrderHandler(IAppDbContext db, IStockService stockService) : IRequestHandler<ApproveOrderCommand, bool>
+public class ApproveOrderHandler : IRequestHandler<ApproveOrderCommand, bool>
 {
+    private readonly IAppDbContext _db;
+    private readonly IStockService _stockService;
+    private readonly ICurrentUserService _currentUserService;
+
+    public ApproveOrderHandler(IAppDbContext db, IStockService stockService, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _stockService = stockService;
+        _currentUserService = currentUserService;
+    }
+
     public async Task<bool> Handle(ApproveOrderCommand request, CancellationToken ct)
     {
-        var order = await db.Orders
+        var order = await _db.Orders
+            .ApplyBranchFilter(_currentUserService)
             .Include(o => o.Lines)
             .FirstOrDefaultAsync(x => x.Id == request.Id && !x.IsDeleted, ct);
 
@@ -21,7 +35,7 @@ public class ApproveOrderHandler(IAppDbContext db, IStockService stockService) :
             throw new NotFoundException("Order", request.Id);
 
         // Optimistic Concurrency Check
-        db.Entry(order).Property("RowVersion").OriginalValue = request.RowVersion;
+        _db.Entry(order).Property("RowVersion").OriginalValue = request.RowVersion;
 
         if (order.Status != OrderStatus.Draft)
             throw new BusinessRuleException("Sadece 'Taslak' durumundaki siparişler onaylanabilir.");
@@ -33,7 +47,7 @@ public class ApproveOrderHandler(IAppDbContext db, IStockService stockService) :
             {
                 if (line.ItemId.HasValue)
                 {
-                    await stockService.ValidateStockAvailabilityAsync(line.ItemId.Value, line.Quantity, ct);
+                    await _stockService.ValidateStockAvailabilityAsync(line.ItemId.Value, line.Quantity, ct);
                 }
             }
         }
@@ -42,7 +56,7 @@ public class ApproveOrderHandler(IAppDbContext db, IStockService stockService) :
 
         try
         {
-            await db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
         }
         catch (DbUpdateConcurrencyException)
         {

@@ -1,5 +1,6 @@
 using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions;
 using Accounting.Application.Common.Utils;
 using Accounting.Domain.Entities;
 using Accounting.Domain.Enums;
@@ -12,20 +13,25 @@ namespace Accounting.Application.Orders.Commands.CreateInvoice;
 
 public record CreateInvoiceFromOrderCommand(int OrderId) : IRequest<int>;
 
-public class CreateInvoiceFromOrderHandler(IAppDbContext db, ICurrentUserService currentUserService) : IRequestHandler<CreateInvoiceFromOrderCommand, int>
+public class CreateInvoiceFromOrderHandler : IRequestHandler<CreateInvoiceFromOrderCommand, int>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public CreateInvoiceFromOrderHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
     public async Task<int> Handle(CreateInvoiceFromOrderCommand r, CancellationToken ct)
     {
-        var order = await db.Orders
+        var order = await _db.Orders
+            .ApplyBranchFilter(_currentUserService)
             .Include(o => o.Lines.Where(l => !l.IsDeleted))
                 .ThenInclude(l => l.Item)
             .FirstOrDefaultAsync(o => o.Id == r.OrderId && !o.IsDeleted, ct);
 
         if (order is null) throw new NotFoundException("Order", r.OrderId);
-
-        // Security Check: Order must belong to current user's branch
-        var branchId = currentUserService.BranchId ?? throw new UnauthorizedAccessException();
-        if (order.BranchId != branchId) throw new NotFoundException("Order", r.OrderId);
 
         if (order.Status != OrderStatus.Approved)
         {
@@ -70,13 +76,13 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db, ICurrentUserService
         order.Status = OrderStatus.Invoiced;
         order.UpdatedAtUtc = DateTime.UtcNow;
 
-        db.Invoices.Add(invoice);
+        _db.Invoices.Add(invoice);
 
         // Create StockMovements (all in same transaction)
         await AddStockMovementsAsync(invoice, order.BranchId, ct);
 
         // Single SaveChanges for entire operation
-        await db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(ct);
 
         return invoice.Id;
     }
@@ -87,13 +93,13 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db, ICurrentUserService
         if (!itemLines.Any()) return;
 
         // Get default warehouse for this branch
-        var defaultWarehouse = await db.Warehouses
+        var defaultWarehouse = await _db.Warehouses
             .Where(w => w.BranchId == branchId && w.IsDefault && !w.IsDeleted)
             .FirstOrDefaultAsync(ct);
 
         if (defaultWarehouse == null)
         {
-            defaultWarehouse = await db.Warehouses
+            defaultWarehouse = await _db.Warehouses
                 .Where(w => w.BranchId == branchId && !w.IsDeleted)
                 .FirstOrDefaultAsync(ct);
         }
@@ -115,7 +121,7 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db, ICurrentUserService
 
         // Get all item IDs to fetch stocks in one query
         var itemIds = itemLines.Select(l => l.ItemId!.Value).Distinct().ToList();
-        var existingStocks = await db.Stocks
+        var existingStocks = await _db.Stocks
             .Where(s => s.BranchId == branchId &&
                         s.WarehouseId == defaultWarehouse.Id &&
                         itemIds.Contains(s.ItemId) &&
@@ -139,7 +145,7 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db, ICurrentUserService
                 Note = null,
                 RowVersion = []
             };
-            db.StockMovements.Add(movement);
+            _db.StockMovements.Add(movement);
 
             // Update or create stock
             var stock = existingStocks.FirstOrDefault(s => s.ItemId == itemId);
@@ -153,7 +159,7 @@ public class CreateInvoiceFromOrderHandler(IAppDbContext db, ICurrentUserService
                     Quantity = 0,
                     RowVersion = []
                 };
-                db.Stocks.Add(stock);
+                _db.Stocks.Add(stock);
                 existingStocks.Add(stock); // Track for potential duplicate items in lines
             }
 

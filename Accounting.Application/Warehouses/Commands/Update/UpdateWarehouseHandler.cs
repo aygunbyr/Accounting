@@ -1,5 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Common.Exceptions;
+using Accounting.Application.Common.Extensions; // ApplyBranchFilter
+using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.Warehouses.Dto;
 using Accounting.Domain.Entities;
 using MediatR;
@@ -7,25 +9,34 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Accounting.Application.Warehouses.Commands.Update;
 
-public class UpdateWarehouseHandler(IAppDbContext db)
-    : IRequestHandler<UpdateWarehouseCommand, WarehouseDto>
+public class UpdateWarehouseHandler : IRequestHandler<UpdateWarehouseCommand, WarehouseDto>
 {
+    private readonly IAppDbContext _db;
+    private readonly ICurrentUserService _currentUserService;
+
+    public UpdateWarehouseHandler(IAppDbContext db, ICurrentUserService currentUserService)
+    {
+        _db = db;
+        _currentUserService = currentUserService;
+    }
+
     public async Task<WarehouseDto> Handle(UpdateWarehouseCommand r, CancellationToken ct)
     {
-        var e = await db.Warehouses
+        var e = await _db.Warehouses
+            .ApplyBranchFilter(_currentUserService)
             .FirstOrDefaultAsync(x => x.Id == r.Id, ct);
 
         if (e is null) throw new NotFoundException("Warehouse", r.Id);
 
         // concurrency: RowVersion original set
         e.RowVersion = e.RowVersion; // no-op (avoid analyzer)
-        db.Entry(e).Property(nameof(Warehouse.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
+        _db.Entry(e).Property(nameof(Warehouse.RowVersion)).OriginalValue = Convert.FromBase64String(r.RowVersion);
 
         var code = r.Code.Trim().ToUpperInvariant();
         var name = r.Name.Trim();
 
         // aynı şubede code çakışması
-        var exists = await db.Warehouses.AnyAsync(x =>
+        var exists = await _db.Warehouses.AnyAsync(x =>
             x.Id != r.Id &&
             x.BranchId == r.BranchId &&
             x.Code == code, ct);
@@ -41,7 +52,7 @@ public class UpdateWarehouseHandler(IAppDbContext db)
 
         if (r.IsDefault && !e.IsDefault)
         {
-            var defaults = await db.Warehouses
+            var defaults = await _db.Warehouses
                 .Where(x => x.BranchId == r.BranchId && x.IsDefault)
                 .ToListAsync(ct);
 
@@ -53,14 +64,14 @@ public class UpdateWarehouseHandler(IAppDbContext db)
 
         try
         {
-            await db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
         }
         catch (DbUpdateConcurrencyException)
         {
             throw new ConcurrencyConflictException("Depo güncellenirken eşzamanlılık hatası oluştu.");
         }
 
-        var saved = await db.Warehouses.AsNoTracking().FirstAsync(x => x.Id == r.Id, ct);
+        var saved = await _db.Warehouses.AsNoTracking().FirstAsync(x => x.Id == r.Id, ct);
 
         return new WarehouseDto(
             saved.Id,
