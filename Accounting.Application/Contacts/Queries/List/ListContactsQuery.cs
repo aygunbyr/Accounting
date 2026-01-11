@@ -9,7 +9,12 @@ namespace Accounting.Application.Contacts.Queries.List;
 public record ListContactsQuery(
     int? BranchId,
     string? Search,
-    ContactType? Type,
+    // Filters
+    bool? IsCustomer,
+    bool? IsVendor,
+    bool? IsEmployee,
+    bool? IsRetail,
+    // Paging
     int Page = PaginationConstants.DefaultPage,
     int PageSize = PaginationConstants.DefaultPageSize
     ) : IRequest<ContactListResult>;

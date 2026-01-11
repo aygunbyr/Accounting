@@ -4,6 +4,7 @@ using Accounting.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Accounting.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260111131255_RefactorContactsUnifiedModel")]
+    partial class RefactorContactsUnifiedModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -354,7 +357,7 @@ namespace Accounting.Infrastructure.Migrations
 
                     b.HasKey("ContactId");
 
-                    b.ToTable("CompanyDetails", (string)null);
+                    b.ToTable("CompanyDetails");
                 });
 
             modelBuilder.Entity("Accounting.Domain.Entities.CompanySettings", b =>
@@ -419,7 +422,7 @@ namespace Accounting.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CompanySettings", (string)null);
+                    b.ToTable("CompanySettings");
                 });
 
             modelBuilder.Entity("Accounting.Domain.Entities.Contact", b =>
@@ -1305,7 +1308,7 @@ namespace Accounting.Infrastructure.Migrations
 
                     b.HasKey("ContactId");
 
-                    b.ToTable("PersonDetails", (string)null);
+                    b.ToTable("PersonDetails");
                 });
 
             modelBuilder.Entity("Accounting.Domain.Entities.Role", b =>
@@ -1342,7 +1345,7 @@ namespace Accounting.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Roles", (string)null);
+                    b.ToTable("Roles");
                 });
 
             modelBuilder.Entity("Accounting.Domain.Entities.RolePermission", b =>
@@ -1372,7 +1375,7 @@ namespace Accounting.Infrastructure.Migrations
                     b.HasIndex("RoleId", "Permission")
                         .IsUnique();
 
-                    b.ToTable("RolePermissions", (string)null);
+                    b.ToTable("RolePermissions");
                 });
 
             modelBuilder.Entity("Accounting.Domain.Entities.Stock", b =>
@@ -1572,7 +1575,7 @@ namespace Accounting.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Accounting.Domain.Entities.UserRole", b =>
@@ -1602,7 +1605,7 @@ namespace Accounting.Infrastructure.Migrations
                     b.HasIndex("UserId", "RoleId")
                         .IsUnique();
 
-                    b.ToTable("UserRoles", (string)null);
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("Accounting.Domain.Entities.Warehouse", b =>

@@ -55,9 +55,9 @@ public static class DataSeeder
 
         // Lookup'lar (seed sonrası)
         var contactIds = await db.Contacts.AsNoTracking().OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
-        var customerIds = await db.Contacts.AsNoTracking().Where(x => x.Type == ContactType.Customer).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
-        var vendorIds = await db.Contacts.AsNoTracking().Where(x => x.Type == ContactType.Vendor).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
-        var employeeIds = await db.Contacts.AsNoTracking().Where(x => x.Type == ContactType.Employee).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
+        var customerIds = await db.Contacts.AsNoTracking().Where(x => x.IsCustomer).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
+        var vendorIds = await db.Contacts.AsNoTracking().Where(x => x.IsVendor).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
+        var employeeIds = await db.Contacts.AsNoTracking().Where(x => x.IsEmployee).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
 
         var itemsAll = await db.Items.AsNoTracking().Where(x => !x.IsDeleted).OrderBy(x => x.Id).ToListAsync(ct);
         var accountIds = await db.CashBankAccounts.AsNoTracking().Where(x => !x.IsDeleted).OrderBy(x => x.Id).Select(x => x.Id).ToListAsync(ct);
@@ -211,47 +211,93 @@ public static class DataSeeder
 
         var contacts = new List<Contact>();
 
-        // 6 müşteri
-        for (int i = 1; i <= 6; i++)
+        // 1. Şirket Müşteri (Corporate Customer)
+        contacts.Add(new Contact
         {
-            contacts.Add(new Contact
-            {
-                BranchId = branchIds[(i - 1) % branchIds.Count],
-                Type = ContactType.Customer,
-                Code = $"CUST{i:000}",
-                Name = $"Müşteri {i}",
-                Email = $"musteri{i}@demo.local",
-                Phone = $"+90 212 000 0{i:000}"
-            });
-        }
+            BranchId = branchIds[0],
+            Type = ContactIdentityType.Company,
+            Code = "CUST001",
+            Name = "Mavi Teknoloji A.Ş.",
+            IsCustomer = true,
+            Email = "info@mavitek.com",
+            Phone = "02125551010",
+            CompanyDetails = new CompanyDetails { TaxNumber = "1111111110", TaxOffice = "Beşiktaş" }
+        });
 
-        // 4 tedarikçi
-        for (int i = 1; i <= 4; i++)
+        // 2. Şahıs Müşteri / Perakende (Retail Customer)
+        contacts.Add(new Contact
         {
-            contacts.Add(new Contact
-            {
-                BranchId = branchIds[(i - 1) % branchIds.Count],
-                Type = ContactType.Vendor,
-                Code = $"VEND{i:000}",
-                Name = $"Tedarikçi {i}",
-                Email = $"tedarikci{i}@demo.local",
-                Phone = $"+90 216 111 0{i:000}"
-            });
-        }
+            BranchId = branchIds[1 % branchIds.Count],
+            Type = ContactIdentityType.Person,
+            Code = "RET001",
+            Name = "Ahmet Yılmaz",
+            IsCustomer = true,
+            IsRetail = true,
+            Email = "ahmet.yilmaz@gmail.com",
+            Phone = "05325552020",
+            PersonDetails = new PersonDetails { Tckn = "11111111110", FirstName = "Ahmet", LastName = "Yılmaz" }
+        });
 
-        // 5 çalışan/personel
-        for (int i = 1; i <= 5; i++)
+        // 3. Tedarikçi Şirket (Corporate Vendor)
+        contacts.Add(new Contact
         {
-            contacts.Add(new Contact
-            {
-                BranchId = branchIds[(i - 1) % branchIds.Count],
-                Type = ContactType.Employee,
-                Code = $"EMP{i:000}",
-                Name = $"Çalışan {i}",
-                Email = $"calisan{i}@demo.local",
-                Phone = $"+90 532 222 0{i:000}"
-            });
-        }
+            BranchId = branchIds[0],
+            Type = ContactIdentityType.Company,
+            Code = "VEND001",
+            Name = "Tedarik Gross Ltd.",
+            IsVendor = true,
+            Email = "satis@tedarikgross.com",
+            Phone = "02164443030",
+            CompanyDetails = new CompanyDetails { TaxNumber = "2222222220", TaxOffice = "Kadıköy" }
+        });
+
+        // 4. Çalışan 1 (Employee)
+        contacts.Add(new Contact
+        {
+            BranchId = branchIds[0],
+            Type = ContactIdentityType.Person,
+            Code = "EMP001",
+            Name = "Mehmet Öz",
+            IsEmployee = true,
+            Email = "mehmet.oz@demo.local",
+            Phone = "05335554040",
+            PersonDetails = new PersonDetails 
+            { 
+                Tckn = "33333333330", FirstName = "Mehmet", LastName = "Öz", 
+                Title = "Satış Müdürü", Department = "Satış" 
+            }
+        });
+
+        // 5. Çalışan 2 (Employee)
+        contacts.Add(new Contact
+        {
+            BranchId = branchIds[1 % branchIds.Count],
+            Type = ContactIdentityType.Person,
+            Code = "EMP002",
+            Name = "Ayşe Demir",
+            IsEmployee = true,
+            Email = "ayse.demir@demo.local",
+            Phone = "05345555050",
+            PersonDetails = new PersonDetails 
+            { 
+                Tckn = "44444444440", FirstName = "Ayşe", LastName = "Demir", 
+                Title = "Muhasebe Uzmanı", Department = "Finans" 
+            }
+        });
+
+        // 6. Şirket Müşteri + Tedarikçi (Customer & Vendor) - Mahsuplaşma örneği
+        contacts.Add(new Contact
+        {
+            BranchId = branchIds[2 % branchIds.Count],
+            Type = ContactIdentityType.Company,
+            Code = "PARTNER01",
+            Name = "Ortak Lojistik A.Ş.",
+            IsCustomer = true,
+            IsVendor = true,
+            Email = "finans@ortaklojistik.com",
+            Phone = "08502226060",
+            CompanyDetails = new CompanyDetails { TaxNumber = "5555555550", TaxOffice = "Karşıyaka" }
+        });
 
         db.Contacts.AddRange(contacts);
         await db.SaveChangesAsync(ct);

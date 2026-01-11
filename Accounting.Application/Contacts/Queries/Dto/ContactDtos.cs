@@ -1,13 +1,38 @@
-﻿namespace Accounting.Application.Contacts.Queries.Dto;
+﻿using Accounting.Domain.Enums;
+
+namespace Accounting.Application.Contacts.Queries.Dto;
+
+public record CompanyDetailsDto(
+    string? TaxNumber,
+    string? TaxOffice,
+    string? MersisNo,
+    string? TicaretSicilNo
+);
+
+public record PersonDetailsDto(
+    string? Tckn,
+    string FirstName,
+    string LastName,
+    string? Title,
+    string? Department
+);
 
 public record ContactDto(
     int Id,
     int BranchId,
     string Code,
-    string Name,
-    string Type,        // "Customer" | "Vendor"
+    string Name, // Display Name
+    ContactIdentityType Type,
+    bool IsCustomer,
+    bool IsVendor,
+    bool IsEmployee,
+    bool IsRetail,
     string? Email,
-    string RowVersion,  // base64
+    string? Phone,
+    string? Iban,
+    CompanyDetailsDto? CompanyDetails,
+    PersonDetailsDto? PersonDetails,
+    string RowVersion,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc
 );
@@ -17,7 +42,11 @@ public record ContactListItemDto(
     int BranchId,
     string Code,
     string Name,
-    string Type,
+    ContactIdentityType Type,
+    bool IsCustomer,
+    bool IsVendor,
+    bool IsEmployee,
+    bool IsRetail,
     string? Email,
     DateTime CreatedAtUtc
 );

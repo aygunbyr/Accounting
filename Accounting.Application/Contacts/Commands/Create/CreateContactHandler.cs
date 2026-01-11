@@ -1,6 +1,7 @@
 ﻿using Accounting.Application.Common.Abstractions;
 using Accounting.Application.Contacts.Queries.Dto;
 using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,14 +17,63 @@ public class CreateContactHandler : IRequestHandler<CreateContactCommand, Contac
         // Auto-generate Code: CRI-{BranchId}-{Sequence}
         var code = await GenerateCodeAsync(req.BranchId, ct);
 
+        // Derive Name
+        string displayName = req.Name;
+        if (req.Type == ContactIdentityType.Person && req.PersonDetails != null)
+        {
+            displayName = $"{req.PersonDetails.FirstName} {req.PersonDetails.LastName}".Trim();
+        }
+
         var entity = new Contact
         {
             BranchId = req.BranchId,
             Code = code,
-            Name = req.Name.Trim(),
+            Name = displayName,
             Type = req.Type,
-            Email = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim()
+            
+            // Flags
+            IsCustomer = req.IsCustomer,
+            IsVendor = req.IsVendor,
+            IsEmployee = req.IsEmployee,
+            IsRetail = req.IsRetail,
+
+            // Common
+            Email = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim(),
+            Phone = req.Phone,
+            Iban = req.Iban,
+            Address = req.Address,
+            City = req.City,
+            District = req.District,
+
+            // Composition
+            CompanyDetails = (req.Type == ContactIdentityType.Company && req.CompanyDetails != null) 
+                ? new CompanyDetails 
+                { 
+                    TaxNumber = req.CompanyDetails.TaxNumber,
+                    TaxOffice = req.CompanyDetails.TaxOffice,
+                    MersisNo = req.CompanyDetails.MersisNo,
+                    TicaretSicilNo = req.CompanyDetails.TicaretSicilNo
+                } 
+                : null,
+
+            PersonDetails = (req.Type == ContactIdentityType.Person && req.PersonDetails != null)
+                ? new PersonDetails
+                {
+                    Tckn = req.PersonDetails.Tckn,
+                    FirstName = req.PersonDetails.FirstName,
+                    LastName = req.PersonDetails.LastName,
+                    Title = req.PersonDetails.Title,
+                    Department = req.PersonDetails.Department
+                }
+                : null
         };
+
+        if (req.Type == ContactIdentityType.Person && entity.PersonDetails == null)
+        {
+            // Fallback validation or throw? For now just create empty details to avoid null ref if critical? 
+            // Better to validate. Assuming validation happens before or here.
+            throw new Exception("Person details required for Person type contact.");
+        }
 
         _db.Contacts.Add(entity);
         await _db.SaveChangesAsync(ct);
@@ -33,8 +83,16 @@ public class CreateContactHandler : IRequestHandler<CreateContactCommand, Contac
             entity.BranchId,
             entity.Code,
             entity.Name,
-            entity.Type.ToString(),
+            entity.Type,
+            entity.IsCustomer,
+            entity.IsVendor,
+            entity.IsEmployee,
+            entity.IsRetail,
             entity.Email,
+            entity.Phone,
+            entity.Iban,
+            entity.CompanyDetails != null ? new CompanyDetailsDto(entity.CompanyDetails.TaxNumber, entity.CompanyDetails.TaxOffice, entity.CompanyDetails.MersisNo, entity.CompanyDetails.TicaretSicilNo) : null,
+            entity.PersonDetails != null ? new PersonDetailsDto(entity.PersonDetails.Tckn, entity.PersonDetails.FirstName, entity.PersonDetails.LastName, entity.PersonDetails.Title, entity.PersonDetails.Department) : null,
             Convert.ToBase64String(entity.RowVersion),
             entity.CreatedAtUtc,
             entity.UpdatedAtUtc

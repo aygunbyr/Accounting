@@ -3,6 +3,7 @@ using Accounting.Application.Common.Exceptions;
 using Accounting.Application.Common.Extensions;
 using Accounting.Application.Common.Interfaces;
 using Accounting.Application.Contacts.Queries.Dto;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,8 @@ public class GetContactByIdHandler : IRequestHandler<GetContactByIdQuery, Contac
     {
         var c = await _db.Contacts
             .AsNoTracking()
+            .Include(x => x.CompanyDetails)
+            .Include(x => x.PersonDetails)
             .ApplyBranchFilter(_currentUserService)
             .FirstOrDefaultAsync(x => x.Id == q.Id, ct);
 
@@ -30,9 +33,23 @@ public class GetContactByIdHandler : IRequestHandler<GetContactByIdQuery, Contac
             throw new NotFoundException("Contact", q.Id);
 
         return new ContactDto(
-            c.Id, c.BranchId, c.Code, c.Name, c.Type.ToString(), c.Email,
+            c.Id, 
+            c.BranchId, 
+            c.Code, 
+            c.Name, 
+            c.Type,
+            c.IsCustomer,
+            c.IsVendor,
+            c.IsEmployee,
+            c.IsRetail,
+            c.Email,
+            c.Phone,
+            c.Iban,
+            c.CompanyDetails != null ? new CompanyDetailsDto(c.CompanyDetails.TaxNumber, c.CompanyDetails.TaxOffice, c.CompanyDetails.MersisNo, c.CompanyDetails.TicaretSicilNo) : null,
+            c.PersonDetails != null ? new PersonDetailsDto(c.PersonDetails.Tckn, c.PersonDetails.FirstName, c.PersonDetails.LastName, c.PersonDetails.Title, c.PersonDetails.Department) : null,
             Convert.ToBase64String(c.RowVersion),
-            c.CreatedAtUtc, c.UpdatedAtUtc
+            c.CreatedAtUtc, 
+            c.UpdatedAtUtc
             );
     }
 }

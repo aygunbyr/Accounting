@@ -4,6 +4,7 @@ using Accounting.Application.Common.Extensions; // ApplyBranchFilter
 using Accounting.Application.Common.Interfaces; // ICurrentUserService
 using Accounting.Application.Contacts.Queries.Dto;
 using Accounting.Domain.Entities;
+using Accounting.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,13 +23,14 @@ public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, Contac
 
     public async Task<ContactDto> Handle(UpdateContactCommand req, CancellationToken ct)
     {
-        // 1) Fetch (TRACKING)
+        // 1) Fetch (TRACKING) + Includes
         var c = await _db.Contacts
+            .Include(x => x.CompanyDetails)
+            .Include(x => x.PersonDetails)
             .ApplyBranchFilter(_currentUserService)
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
-        if (c is null) throw new NotFoundException("Contact", req.Id);
 
-        // 2) Business rules: (şimdilik yok)
+        if (c is null) throw new NotFoundException("Contact", req.Id);
 
         // 3) Concurrency
         byte[] rv;
@@ -37,9 +39,61 @@ public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, Contac
         _db.Entry(c).Property(nameof(Contact.RowVersion)).OriginalValue = rv;
 
         // 4) Normalize / map
-        c.Name = req.Name.Trim();
-        c.Type = req.Type;
+        
+        // Derive Name
+        string displayName = req.Name;
+        if (req.Type == ContactIdentityType.Person && req.PersonDetails != null)
+        {
+            displayName = $"{req.PersonDetails.FirstName} {req.PersonDetails.LastName}".Trim();
+        }
+        c.Name = displayName;
+        
         c.Email = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim();
+        c.Phone = req.Phone;
+        c.Iban = req.Iban;
+        c.Address = req.Address;
+        c.City = req.City;
+        c.District = req.District;
+        
+        // Flags
+        c.IsCustomer = req.IsCustomer;
+        c.IsVendor = req.IsVendor;
+        c.IsEmployee = req.IsEmployee;
+        c.IsRetail = req.IsRetail;
+
+        // Identity Switch Logic
+        // Remove mismatching details
+        if (req.Type == ContactIdentityType.Person && c.CompanyDetails != null)
+        {
+            _db.CompanyDetails.Remove(c.CompanyDetails);
+            c.CompanyDetails = null;
+        }
+        if (req.Type == ContactIdentityType.Company && c.PersonDetails != null)
+        {
+            _db.PersonDetails.Remove(c.PersonDetails);
+            c.PersonDetails = null;
+        }
+
+        c.Type = req.Type;
+
+        // Update Details
+        if (req.Type == ContactIdentityType.Company && req.CompanyDetails != null)
+        {
+            if (c.CompanyDetails == null) c.CompanyDetails = new CompanyDetails();
+            c.CompanyDetails.TaxNumber = req.CompanyDetails.TaxNumber;
+            c.CompanyDetails.TaxOffice = req.CompanyDetails.TaxOffice;
+            c.CompanyDetails.MersisNo = req.CompanyDetails.MersisNo;
+            c.CompanyDetails.TicaretSicilNo = req.CompanyDetails.TicaretSicilNo;
+        }
+        else if (req.Type == ContactIdentityType.Person && req.PersonDetails != null)
+        {
+            if (c.PersonDetails == null) c.PersonDetails = new PersonDetails();
+            c.PersonDetails.Tckn = req.PersonDetails.Tckn;
+            c.PersonDetails.FirstName = req.PersonDetails.FirstName;
+            c.PersonDetails.LastName = req.PersonDetails.LastName;
+            c.PersonDetails.Title = req.PersonDetails.Title;
+            c.PersonDetails.Department = req.PersonDetails.Department;
+        }
 
         // 5) Audit
         c.UpdatedAtUtc = DateTime.UtcNow;
@@ -50,8 +104,12 @@ public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, Contac
         { throw new ConcurrencyConflictException("Cari başka biri tarafından güncellendi."); }
 
         // 7) Fresh read
-        var fresh = await _db.Contacts.AsNoTracking()
+        var fresh = await _db.Contacts
+            .Include(x => x.CompanyDetails)
+            .Include(x => x.PersonDetails)
+            .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == req.Id, ct);
+            
         if (fresh is null) throw new NotFoundException("Contact", req.Id);
 
         // 8) DTO
@@ -60,8 +118,16 @@ public class UpdateContactHandler : IRequestHandler<UpdateContactCommand, Contac
             fresh.BranchId,
             fresh.Code,
             fresh.Name,
-            fresh.Type.ToString(),
+            fresh.Type,
+            fresh.IsCustomer,
+            fresh.IsVendor,
+            fresh.IsEmployee,
+            fresh.IsRetail,
             fresh.Email,
+            fresh.Phone,
+            fresh.Iban,
+            fresh.CompanyDetails != null ? new CompanyDetailsDto(fresh.CompanyDetails.TaxNumber, fresh.CompanyDetails.TaxOffice, fresh.CompanyDetails.MersisNo, fresh.CompanyDetails.TicaretSicilNo) : null,
+            fresh.PersonDetails != null ? new PersonDetailsDto(fresh.PersonDetails.Tckn, fresh.PersonDetails.FirstName, fresh.PersonDetails.LastName, fresh.PersonDetails.Title, fresh.PersonDetails.Department) : null,
             Convert.ToBase64String(fresh.RowVersion),
             fresh.CreatedAtUtc,
             fresh.UpdatedAtUtc

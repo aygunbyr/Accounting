@@ -7,12 +7,30 @@ public class Contact : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranc
 {
     public int Id { get; set; }
     public int BranchId { get; set; }
-    public ContactType Type { get; set; } = ContactType.Customer;
+    
+    // Identity Type (Discriminator)
+    public ContactIdentityType Type { get; set; } = ContactIdentityType.Company;
+
+    // Flags (Roles)
+    public bool IsCustomer { get; set; }
+    public bool IsVendor { get; set; }
+    public bool IsEmployee { get; set; }
+    public bool IsRetail { get; set; } // Perakende
+
     public string Code { get; set; } = null!;
-    public string Name { get; set; } = null!;
-    public string? TaxNo { get; set; }
+    public string Name { get; set; } = null!; // Display Name (Company Name or First+Last)
+    
+    // Banking
+    public string? Iban { get; set; }
+
+    // Contact
     public string? Email { get; set; }
     public string? Phone { get; set; }
+    
+    // Address
+    public string? City { get; set; }
+    public string? District { get; set; }
+    public string? Address { get; set; }
 
     // unified timestamps
     public DateTime CreatedAtUtc { get; set; }
@@ -25,4 +43,8 @@ public class Contact : IHasTimestamps, ISoftDeletable, IHasRowVersion, IHasBranc
 
     // Navigations
     public Branch Branch { get; set; } = null!;
+    
+    // 1:0..1 Relationships
+    public virtual CompanyDetails? CompanyDetails { get; set; }
+    public virtual PersonDetails? PersonDetails { get; set; }
 }

@@ -8,8 +8,23 @@ namespace Accounting.Application.Contacts.Commands.Update;
 
 public record UpdateContactCommand(
     int Id,
+    ContactIdentityType Type,
+    // Flags
+    bool IsCustomer,
+    bool IsVendor,
+    bool IsEmployee,
+    bool IsRetail,
+    // Common
     string Name,
-    ContactType Type,
     string? Email,
+    string? Phone,
+    string? Iban,
+    // Address
+    string? Address,
+    string? City,
+    string? District,
+    // Details
+    CompanyDetailsDto? CompanyDetails,
+    PersonDetailsDto? PersonDetails,
     string RowVersion // base64
     ) : IRequest<ContactDto>;

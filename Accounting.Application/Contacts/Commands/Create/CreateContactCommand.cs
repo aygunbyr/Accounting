@@ -8,7 +8,22 @@ namespace Accounting.Application.Contacts.Commands.Create;
 
 public record CreateContactCommand(
     int BranchId,
-    string Name,
-    ContactType Type,
-    string? Email
+    ContactIdentityType Type,
+    // Flags
+    bool IsCustomer,
+    bool IsVendor,
+    bool IsEmployee,
+    bool IsRetail,
+    // Common
+    string Name, // Unvan for Company, ignored if Person (derived)
+    string? Email,
+    string? Phone,
+    string? Iban,
+    // Address
+    string? Address,
+    string? City,
+    string? District,
+    // Details
+    CompanyDetailsDto? CompanyDetails,
+    PersonDetailsDto? PersonDetails
     ) : IRequest<ContactDto>;

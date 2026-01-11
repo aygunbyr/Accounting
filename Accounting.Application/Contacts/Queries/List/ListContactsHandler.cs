@@ -29,7 +29,7 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
             .AsNoTracking()
             .ApplyBranchFilter(_currentUserService);
 
-        // BranchId filter (eğer belirtilmişse)
+        // BranchId filter
         if (q.BranchId.HasValue)
         {
             qry = qry.Where(x => x.BranchId == q.BranchId.Value);
@@ -40,9 +40,23 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
             var s = q.Search.Trim();
             qry = qry.Where(x => x.Name.Contains(s) || x.Code.Contains(s) || (x.Email != null && x.Email.Contains(s)));
         }
-        if (q.Type.HasValue)
+
+        // Flag Filters
+        if (q.IsCustomer.HasValue && q.IsCustomer.Value)
         {
-            qry = qry.Where(x => x.Type == q.Type.Value);
+            qry = qry.Where(x => x.IsCustomer);
+        }
+        if (q.IsVendor.HasValue && q.IsVendor.Value)
+        {
+            qry = qry.Where(x => x.IsVendor);
+        }
+        if (q.IsEmployee.HasValue && q.IsEmployee.Value)
+        {
+            qry = qry.Where(x => x.IsEmployee);
+        }
+        if (q.IsRetail.HasValue && q.IsRetail.Value)
+        {
+            qry = qry.Where(x => x.IsRetail);
         }
 
         var total = await qry.CountAsync(ct);
@@ -52,7 +66,16 @@ public class ListContactsHandler : IRequestHandler<ListContactsQuery, ContactLis
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(x => new ContactListItemDto(
-                x.Id, x.BranchId, x.Code, x.Name, x.Type.ToString(), x.Email,
+                x.Id, 
+                x.BranchId, 
+                x.Code, 
+                x.Name, 
+                x.Type, 
+                x.IsCustomer, 
+                x.IsVendor, 
+                x.IsEmployee, 
+                x.IsRetail, 
+                x.Email,
                 x.CreatedAtUtc
             ))
             .ToListAsync(ct);
